@@ -317,7 +317,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence,
-  collection, query, where, addDoc, updateDoc, serverTimestamp
+  collection, query, where, addDoc, updateDoc, serverTimestamp, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -692,7 +692,7 @@ inboxCloseX.onclick=()=>toggleModal(inboxModal,false);
 function showStealInbox(docId, data){
   currentInboxId=docId; currentInboxData=data;
   const attacker=data.attackerName||data.attackerId;
-  inboxText.innerHTML=`<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName||"una carta")</strong>}. Pulsa OK para restar 1 de tu inventario.`;
+  inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>. Pulsa OK para restar 1 de tu inventario.`;
   inboxPreview.innerHTML="";
   const vc=state.cards.find(c=>c.id===data.cardId);
   const block=document.createElement("div"); block.className="cardSlot";
@@ -997,7 +997,7 @@ async function onUse(){
     // Regalo pendiente: si hay debuff gift donde giverId==victim y receiverId==yo
     // avisamos y anulamos
     const giftQ = query(debuffCol, where("type","==","gift"), where("active","==",true), where("receiverId","==",currentUser.uid), where("giverId","==",pr.id));
-    const gSnap = await (await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js")).getDocs(giftQ);
+   const gSnap = await getDocs(giftQ);
     if(gSnap.docs.length){
       // notificarme y cerrar gift
       await addDoc(giftAlertCol,{ receiverId: currentUser.uid, creditorId: pr.id, creditorName: pr.displayName||pr.email||pr.id, status:"pending", createdAt: serverTimestamp() });
