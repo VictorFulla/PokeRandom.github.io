@@ -310,8 +310,10 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect, GoogleAuthProvider,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile,
+  getRedirectResult
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
 import {
   getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence,
   collection, query, where, addDoc, updateDoc, serverTimestamp, getDocs
@@ -327,6 +329,18 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+// --- Manejo del resultado de signInWithRedirect (Google) ---
+try {
+  const redirectRes = await getRedirectResult(auth);
+  if (redirectRes && redirectRes.user) {
+    console.log("[Auth] Redirect OK como:", redirectRes.user.email || redirectRes.user.uid);
+    // onAuthStateChanged también se disparará; no hay que hacer más aquí
+  }
+} catch (e) {
+  console.error("[Auth] Redirect ERROR:", e);
+  alert("Error al completar el login (redirect): " + (e.code || e.message));
+}
+
 const db = getFirestore(app);
 enableIndexedDbPersistence(db).catch(()=>{});
 
@@ -451,7 +465,28 @@ $("#resetBtn").onclick = ()=>{
 /* ========= Auth ========= */
 const who=$("#whoAmI"), btnGoogle=$("#btnGoogle"), btnEmail=$("#btnEmail"), btnLogout=$("#btnLogout");
 const toolsBox=$("#toolsBox");
-btnGoogle.onclick=async()=>{try{const p=new GoogleAuthProvider();p.setCustomParameters({prompt:"select_account"});await signInWithPopup(auth,p)}catch(e){if(e.code==="auth/popup-blocked"||e.code==="auth/popup-closed-by-user"){try{await signInWithRedirect(auth,new GoogleAuthProvider())}catch(e2){alert("Redirect falló: "+e2.code)}}else if(e.code==="auth/unauthorized-domain"){alert("Dominio no autorizado en Firebase.")}else{alert("Error Google: "+e.code)}}};
+btnGoogle.onclick = async () => {
+  try {
+    const p = new GoogleAuthProvider();
+    p.setCustomParameters({ prompt: "select_account" });
+    await signInWithPopup(auth, p);
+  } catch (e) {
+    console.warn("[Auth] Popup Google falló:", e.code);
+    if (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user") {
+      try {
+        // Fallback a redirect (lo recogeremos arriba con getRedirectResult)
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+      } catch (e2) {
+        alert("Redirect falló: " + (e2.code || e2.message));
+      }
+    } else if (e.code === "auth/unauthorized-domain") {
+      alert("Dominio no autorizado en Firebase.");
+    } else {
+      alert("Error Google: " + (e.code || e.message));
+    }
+  }
+};
+
 btnEmail.onclick=async()=>{const email=prompt("Email:");if(!email)return;const pass=prompt("Contraseña:");if(!pass)return;try{await signInWithEmailAndPassword(auth,email,pass)}catch(e){if(e.code==="auth/user-not-found"||e.code==="auth/invalid-credential"){if(confirm("No existe ese usuario. ¿Crear cuenta con ese email?")){try{const cred=await createUserWithEmailAndPassword(auth,email,pass);const name=prompt("Nombre para mostrar (opcional):")||"";if(name)await updateProfile(cred.user,{displayName:name});toast("Cuenta creada ✅")}catch(e2){alert("Error creando: "+e2.code)}}return}if(e.code==="auth/unauthorized-domain"){alert("Dominio no autorizado en Firebase.");return}alert("Error email/contraseña: "+e.code)}};
 btnLogout.onclick=()=>signOut(auth);
 async function ensureProfile(u){
