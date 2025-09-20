@@ -1,1383 +1,765 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Random Lock Wubalonga — v4.8</title>
-<style>
-:root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.08);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--good:#22c55e;--bad:#ef4444;--warn:#f59e0b;--br:16px}
-*{box-sizing:border-box}html,body{height:100%}
-body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
-.wrap{max-width:1240px;margin:0 auto;padding:16px}
-header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(1.2) blur(10px);background:rgba(13,16,22,.75);border-bottom:1px solid var(--edge)}
-header .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-h1.logo{margin:0;font-size:22px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#a78bfa,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 18px rgba(124,92,255,.25)}
-.logo .sub{font-size:12px;color:var(--muted);letter-spacing:.5px}
-.btn{background:var(--accent);border:none;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;transition:.15s}
-.btn:hover{transform:translateY(-1px)}.btn.alt{background:#0e121a;border:1px solid var(--edge)}.btn.good{background:var(--good);color:#07240f}.btn.bad{background:var(--bad)}.btn.warn{background:var(--warn);color:#2d1500}
-.kpi{font-weight:900;font-size:26px}.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-.grid{display:grid;gap:16px;grid-template-columns:2fr 1fr}@media(max-width:1040px){.grid{grid-template-columns:1fr}}
-.card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-.section-title{margin:0 0 12px 0;font-size:18px;display:flex;align-items:center;gap:8px}
-.small{font-size:12px;color:var(--muted)}.hr{height:1px;background:var(--edge);margin:12px 0}
-input,select{background:#0e121a;color:var(--text);border:1px solid var(--edge);border-radius:12px;padding:10px}
-select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.spacer{flex:1}
-.badge{display:inline-flex;gap:6px;align-items:center;padding:2px 8px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-size:12px}
-.cards{display:grid;gap:12px;grid-template-columns:repeat(5,minmax(150px,1fr))}
-/* Popups de notificación: una sola columna, carta centrada y más grande */
-#inboxModal .panel, #attackModal .panel { grid-template-columns: 1fr; max-width: 720px; }
-#inboxPreview.cards, #attackPreview.cards { grid-template-columns: 1fr; justify-items: center; }
-#inboxPreview .cardSlot, #attackPreview .cardSlot { width: 260px; }
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Random Lock Wobalonga — v5</title>
+  <style>
+    :root{
+      --bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.08);
+      --text:#e9eef7;--muted:#a7b0c0;--accent:#7c5cff;--accent-2:#5f47ff;
+      --good:#22c55e;--bad:#ef4444;--warn:#f59e0b;--br:16px
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font:14px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
+    .wrap{max-width:1240px;margin:0 auto;padding:16px}
 
-@media(max-width:1200px){.cards{grid-template-columns:repeat(4,minmax(140px,1fr))}}
-@media(max-width:900px){.cards{grid-template-columns:repeat(3,minmax(130px,1fr))}}
-@media(max-width:640px){.cards{grid-template-columns:repeat(2,minmax(120px,1fr))}}
-.cardSlot{position:relative;background:#0e121a;border:1px solid var(--edge);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;transition:.15s;cursor:pointer;min-height:200px}
-.cardSlot:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
-.cardSlot .imgWrap{background:linear-gradient(180deg,#0b0e13,#10141c);border:1px solid var(--edge);border-radius:10px;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.cardSlot img{max-width:100%;max-height:100%}.cardSlot .title{font-weight:800;font-size:14px}
-.qty{position:absolute;top:8px;right:8px;background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.35);padding:2px 8px;border-radius:999px;font-size:12px;font-weight:800}
-.zero{filter:grayscale(1) contrast(.8) opacity(.6)}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px 14px;z-index:120;opacity:0;transition:.3s;pointer-events:none}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
-.gain{color:#86efac}.loss{color:#fecaca}
-.readonly{opacity:.82;filter:saturate(.9)}
-.tools{position:relative}
-.toolsBtn{background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;gap:10px;align-items:center;font-size:15px;color:#fff}
-.toolsBtn .coinDot{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--edge);color:#fff;font-weight:800}
-.toolsPanel{position:absolute;right:0;top:44px;min-width:260px;background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px;display:none;z-index:200}
-.toolsPanel.show{display:block}.toolsRow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
-.slot{height:56px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--edge);border-radius:10px;overflow:hidden}
-.slotText{font-weight:800}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
-.modal.show{display:flex}
-.modal .panel{
-  background:var(--panel);
-  border:1px solid var(--edge);
-  border-radius:18px;
-  max-width:820px;
-  width:100%;
-  padding:16px;
-  display:grid;
-  gap:14px;
-  grid-template-columns:1fr 1fr;
-  max-height:90vh;
-  overflow-y:auto;   /* solo vertical */
-  overflow-x:hidden; /* adiós scrollbar horizontal */
-}
-@media(max-width:760px){.modal .panel{grid-template-columns:1fr}}
-.modal .bigImg{aspect-ratio:1/1;border:1px solid var(--edge);border-radius:12px;background:#0e121a;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.modal h3{margin:0}.modal .closeX{position:absolute;top:8px;right:12px;background:#00000066;border:1px solid var(--edge);color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-/* picked highlight */
-.picked{outline:2px solid #60a5fa; box-shadow:0 0 0 3px #60a5fa22 inset}
-/* spy tint */
-.spyTint body, .spyTint main{filter:hue-rotate(-25deg) saturate(1.1)}
-#inboxModal .hr, #attackModal .hr { display: none; }
-/* Popups: 1 columna, carta centrada y más grande */
-#inboxModal .panel, #attackModal .panel { grid-template-columns: 1fr; max-width: 720px; }
-#inboxPreview.cards, #attackPreview.cards { grid-template-columns: 1fr; justify-items: center; }
-#inboxPreview .cardSlot, #attackPreview .cardSlot { width: 260px; }
-/* Oculta separadores dentro de pop-ups */
-/* Oculta separadores dentro de pop-ups */
-#inboxModal .hr, #attackModal .hr { display: none; }
-/* FAB admin flotante */
-.fab{
-  position:fixed; right:16px; bottom:16px;
-  padding:12px 16px; border-radius:999px; border:1px solid var(--edge);
-  background:#111; color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.35);
-  cursor:pointer; z-index:9999;
-}
-.fab:hover{ transform:translateY(-1px); }
+    header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(1.2) blur(8px);background:rgba(13,16,22,.75);border-bottom:1px solid var(--edge)}
+    header .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    h1.logo{margin:0;font-size:22px;letter-spacing:.3px;display:flex;align-items:center;gap:10px}
+    h1.logo .brand{font-weight:900;background:linear-gradient(92deg,#fff,#a08cff);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 18px rgba(124,92,255,.25)}
+    .sub{font-size:12px;color:var(--muted)}
 
-/* Tag admin en logs */
-.admin-tag{ background:#633cff; color:#fff; border-radius:6px; padding:2px 6px; font-size:12px; margin-right:6px }
+    .btn{background:var(--accent);border:none;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;transition:.15s}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.alt{background:#0e121a;border:1px solid var(--edge);color:var(--text)}
+    .btn.good{background:var(--good)}
+    .btn.bad{background:var(--bad)}
+    .btn.warn{background:var(--warn);color:#2d1500}
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;border:1px solid var(--edge);background:#0e121a}
 
-/* Color especial para entradas de admin en la lista (si el render pone la clase) */
-.log-admin{ color:#b19cff; }
-</style>
+    .grid{display:grid;gap:16px;grid-template-columns:2fr 1fr}
+    @media(max-width:1040px){.grid{grid-template-columns:1fr}}
+
+    .card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+    .section-title{margin:0 0 12px 0;font-size:18px;display:flex;align-items:center;gap:8px}
+    .small{font-size:12px;color:var(--muted)}
+    .hr{height:1px;background:var(--edge);margin:10px 0}
+
+    /* Inventario */
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+    .cardSlot{position:relative;background:#0e121a;border:1px solid var(--edge);border-radius:14px;padding:10px;cursor:pointer;transition:.15s}
+    .cardSlot:hover{transform:translateY(-2px)}
+    .cardSlot .imgWrap{aspect-ratio:1/1;border-radius:10px;overflow:hidden;border:1px solid var(--edge);display:grid;place-items:center;background:#0b0e13}
+    .cardSlot img{max-width:100%;max-height:100%;display:block;filter:contrast(1.05)}
+    .cardSlot.dim img{filter:grayscale(1) contrast(.8) opacity(.5)}
+    .cardSlot .title{font-weight:700;margin-top:8px}
+    .cardSlot .meta{font-size:12px;color:var(--muted)}
+    .cardSlot .qty{position:absolute;top:8px;right:8px;background:#111;border:1px solid var(--edge);padding:2px 6px;border-radius:10px;font-size:12px}
+
+    /* Modales */
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:18px}
+    .modal[aria-hidden="false"]{display:flex}
+    .modal .panel{background:var(--panel);border:1px solid var(--edge);border-radius:18px;max-width:820px;width:100%;padding:16px;display:grid;gap:14px;grid-template-columns:1fr 1fr;max-height:90vh;overflow-y:auto;overflow-x:hidden}
+    .closeX{justify-self:end;background:#111;border:1px solid var(--edge);color:var(--text);border-radius:8px;padding:6px 10px;cursor:pointer}
+
+    /* Popups de notificación: una columna, carta centrada */
+    #inboxModal .panel, #attackModal .panel { grid-template-columns: 1fr; max-width: 720px; }
+    #inboxPreview.cards, #attackPreview.cards { grid-template-columns: 1fr; justify-items: center; }
+    #inboxPreview .cardSlot, #attackPreview .cardSlot { width: 260px; }
+    #inboxModal .hr, #attackModal .hr { display: none; }
+
+    /* Wallet chip arriba dcha */
+    .rightBar{margin-left:auto;display:flex;gap:8px;align-items:center}
+    .kpi{font-weight:900;font-size:18px}
+
+    /* Logs */
+    .logs{max-height:300px;overflow:auto;border:1px solid var(--edge);border-radius:12px;padding:8px}
+    .logs ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+    .logs li{padding:6px 8px;border:1px dashed var(--edge);border-radius:8px}
+    .logs li.win{color:var(--good)}
+    .logs li.lose{color:var(--bad)}
+    .log-admin{ color:#b19cff; }
+
+    /* FAB admin flotante */
+    .fab{position:fixed;right:16px;bottom:16px;padding:12px 16px;border-radius:999px;border:1px solid var(--edge);background:#111;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,0.35);cursor:pointer;z-index:9999}
+    .fab:hover{transform:translateY(-1px)}
+    .admin-tag{background:#633cff;color:#fff;border-radius:6px;padding:2px 6px;font-size:12px;margin-right:6px}
+
+    .input{width:100%;background:#0e121a;border:1px solid var(--edge);border-radius:10px;color:var(--text);padding:8px 10px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .badge{background:#0e121a;border:1px solid var(--edge);padding:2px 6px;border-radius:999px;font-size:11px}
+  </style>
 </head>
 <body>
-<header>
-  <div class="wrap row">
-    <h1 class="logo">Random Lock Wubalonga <span class="sub">• v4.8</span></h1>
-
-    <div class="badge" id="whoAmI">Sin sesión</div>
-    <button id="btnGoogle" class="btn good">Entrar con Google</button>
-    <button id="btnEmail" class="btn alt">Email/Contraseña</button>
-    <button id="btnLogout" class="btn warn" style="display:none">Salir</button>
-
-    <div class="spacer"></div>
-
-    <!-- Espiar -->
-    <div class="tools" id="spyTools" style="display:none">
-      <button id="btnSpy" class="btn alt">👁️ Espiar</button>
-      <div id="spyMenu" class="toolsPanel"></div>
-      <div id="spyInfo" style="display:none" class="badge">Espiando a: <strong id="spyName"></strong> <button id="spyExit" class="btn alt" style="margin-left:8px">Volver</button></div>
-    </div>
-
-    <!-- Herramientas -->
-    <div class="tools" id="toolsBox" style="display:none">
-      <button id="toolsBtn" class="toolsBtn" title="Herramientas">
-        <span class="coinDot">🪙 <span id="coinsMini">0</span></span> ⋯
-      </button>
-      <div id="toolsPanel" class="toolsPanel">
-        <div class="toolsRow">
-          <div><span class="small">Monedas:</span> <span class="kpi mono" id="coins">0</span></div>
-          <button id="coinMenuBtn" class="btn alt" style="padding:6px 10px">±</button>
-        </div>
-        <div class="toolsRow">
-          <div><span class="small">Karma 😈:</span> <span class="kpi mono" id="karma">0</span></div>
-          <button id="karmaBtn" class="btn alt" style="padding:6px 10px">He recibido un ataque</button>
-        </div>
-        <div class="hr"></div>
-        <div class="toolsRow">
-          <button id="exportBtn" class="btn alt" style="padding:6px 10px">Exportar</button>
-          <label class="btn alt" style="padding:6px 10px">Importar <input id="importFile" type="file" accept="application/json" style="display:none"></label>
-          <button id="resetBtn" class="btn warn" style="padding:6px 10px">Reiniciar</button>
+  <header>
+    <div class="wrap">
+      <div class="row">
+        <h1 class="logo"><span class="brand">Random Lock Wobalonga</span> <span class="sub">inventario + ruleta</span></h1>
+        <div class="rightBar">
+          <div class="chip">
+            <span>🪙</span>
+            <span id="coins" class="kpi">0</span>
+            <span class="sub">monedas</span>
+          </div>
+          <div class="chip"><span>🧿</span><span id="karma" class="kpi">0</span><span class="sub">karma</span></div>
+          <button id="btnLoginGoogle" class="btn alt">Entrar con Google</button>
+          <button id="btnLogout" class="btn alt" style="display:none">Salir</button>
         </div>
       </div>
     </div>
-  </div>
-</header>
+  </header>
 
-<main class="wrap" style="padding-top:18px">
-  <!-- Debufos visibles -->
-  <div id="debuffBar" class="flex small" style="margin-bottom:8px;gap:8px;display:none"></div>
-
-  <div class="grid">
-    <section class="card" id="mainSection">
-      <div class="section-title">
-        🃏 Inventario de cartas
-        <span class="small">(clic para ver y comprar/usar)</span>
-        <div class="spacer"></div>
-        <label class="small" style="display:flex;gap:8px;align-items:center">
-          <select id="typeFilter">
-            <option value="">Todas las categorías</option>
-            <option value="curación">Curación</option><option value="ataque">Ataque</option>
-            <option value="defensa">Defensa</option><option value="economía">Economía</option>
-            <option value="gacha">Gacha</option><option value="ítem">Ítem</option><option value="captura">Captura</option>
+  <main class="wrap grid">
+    <section>
+      <div class="card">
+        <div class="section-title">Inventario</div>
+        <div class="toolbar">
+          <label class="small"><input type="checkbox" id="hideZero"/> Ocultar 0</label>
+          <select id="filterType" class="input" style="max-width:200px">
+            <option value="">Todos los tipos</option>
+            <option value="Curacion">Curación</option>
+            <option value="ataque">Ataque</option>
+            <option value="gacha">Gacha</option>
+            <option value="economia">Economía</option>
+            <option value="defensa">Defensa</option>
+            <option value="item">Ítem</option>
+            <option value="captura">Captura</option>
           </select>
-          <label style="display:flex;gap:6px;align-items:center">
-            <input type="checkbox" id="hideZero"/> Ocultar sin tener
-          </label>
-        </label>
+        </div>
+        <div id="inventory" class="cards" style="margin-top:12px"></div>
       </div>
-      <div id="cardsGrid" class="cards"></div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="section-title">Ruleta</div>
+        <div class="grid2">
+          <button id="spinPaid" class="btn">Tirar (gasta 1 Ruleta)</button>
+          <button id="spinFree" class="btn alt">Tirada gratis (post-gym)</button>
+        </div>
+        <div class="small" style="margin-top:8px">Resultados: <span id="slotText" class="badge">—</span></div>
+      </div>
     </section>
 
-    <aside class="card">
-      <div class="section-title">🎰 Ruleta</div>
-      <div class="small">Incluye <strong>10 monedas</strong> + <strong>Monedero perdido</strong> + 1 legendaria (10/13) + 1 épica (7) + 3 de 4 + 4 de 2.</div>
-      <div class="hr"></div>
-      <div class="slot"><div id="slotText" class="slotText">—</div></div>
-      <div class="flex" style="margin-top:10px">
-        <button id="spinPaid" class="btn">Tirar (gasta 1 “Ruleta”)</button>
-        <button id="spinFree" class="btn good">Tirada gratis (post-gym)</button>
-        <div class="spacer"></div>
-        <span class="badge">Tienes “Ruleta”: <span id="ruletaQty">0</span></span>
+    <aside>
+      <div class="card">
+        <div class="section-title">Monedero</div>
+        <div class="grid2">
+          <button id="add1" class="btn good">+1</button>
+          <button id="sub1" class="btn bad">−1</button>
+        </div>
+        <div class="hr"></div>
+        <div class="grid2">
+          <button id="btnLider" class="btn alt">Líder completado</button>
+          <button id="btnImportante" class="btn alt">Combate importante</button>
+        </div>
       </div>
 
-      <div class="hr"></div>
-      <div class="section-title">📒 Registros</div>
-      <details>
-        <summary class="flex"><span class="chev">▶</span> Historial de monedas</summary>
-        <div class="details" style="border:1px dashed var(--edge);border-radius:12px;padding:10px;margin-top:8px">
-          <div id="walletLog" class="small"></div>
-        </div>
-      </details>
-      <div class="hr"></div>
-      <details>
-        <summary class="flex"><span class="chev">▶</span> Historial de cartas</summary>
-        <div class="details" style="border:1px dashed var(--edge);border-radius:12px;padding:10px;margin-top:8px">
-          <div id="useLog" class="small"></div>
-        </div>
-      </details>
+      <div class="card" style="margin-top:16px">
+        <div class="section-title">Historial</div>
+        <div class="logs"><ul id="walletLogList"></ul></div>
+        <div class="hr"></div>
+        <div class="section-title small">Cartas usadas</div>
+        <div class="logs"><ul id="useLogList"></ul></div>
+      </div>
     </aside>
-  </div>
-  <div class="footer small">Firestore por usuario. Robos/ataques con defensas. Exporta tu perfil para backup.</div>
-</main>
+  </main>
 
-<div id="toast" class="toast"></div>
-
-<!-- Modal Monedas -->
-<div id="coinModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Ajustar monedas">
-    <button class="closeX" id="coinCloseX">Cerrar</button>
-    <div style="grid-column:1/-1"><h3>💰 Ajustar monedas</h3><div class="small">Enteros. No negativos.</div></div>
-    <div>
-      <label class="small">Cantidad</label>
-      <input id="coinAmount" type="number" step="1" min="0" placeholder="0"/>
-      <label class="small" style="margin-top:8px;display:block">Motivo (opcional)</label>
-      <input id="coinReason" type="text" placeholder="p. ej. Recompensa del juego X"/>
-    </div>
-    <div>
-      <label class="small">Acción</label>
-      <div class="flex" style="margin-top:8px">
-        <button id="coinAdd" class="btn good">+ Ingreso</button>
-        <button id="coinSub" class="btn bad">− Gasto</button>
-        <button id="coinClose" class="btn alt right">Cerrar</button>
+  <!-- FAB ADMIN -->
+  <button id="adminFab" class="fab" title="Admin cartas">Admin</button>
+  <!-- Modal ADMIN -->
+  <div id="adminModal" class="modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-label="Administrador de cartas" style="grid-template-columns:1fr;max-width:720px">
+      <button class="closeX" id="adminCloseX">Cerrar</button>
+      <h3>🛠️ Administrador de cartas</h3>
+      <div class="small">Selecciona carta y cantidad. Puedes <strong>añadir</strong> o <strong>retirar</strong>. Se registra como <span class="admin-tag">[ADMIN]</span>.</div>
+      <div class="grid2" style="margin-top:8px">
+        <div>
+          <label class="small" for="adminCardSelect">Carta</label>
+          <select id="adminCardSelect" class="input"></select>
+        </div>
+        <div>
+          <label class="small" for="adminQty">Cantidad</label>
+          <input id="adminQty" type="number" min="1" value="1" class="input" />
+        </div>
       </div>
-    </div>
-    <div style="grid-column:1/-1" class="hr"></div>
-    <div>
-      <div class="small" style="margin-bottom:6px">Atajos de partida</div>
-      <div class="flex">
-        <button id="btnLeader" class="btn">🏆 Líder completado</button>
-        <button id="btnBoss" class="btn alt">⚔️ Combate importante</button>
-      </div>
-      <div class="small" style="margin-top:6px">Líder: +6 (o +9 sin bajas). Importante: +5 (o +7 sin bajas).</div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Carta -->
-<div id="cardModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Detalle de carta">
-    <button class="closeX" id="cardCloseX">Cerrar</button>
-    <div class="bigImg"><img id="cardImgBig" alt="Carta" style="max-width:100%;max-height:100%"></div>
-    <div>
-      <h3 id="cardTitle">Carta</h3>
-      <div class="small" id="cardTypeCost"></div>
-      <div id="cardDesc" class="small" style="margin-top:8px"></div>
-      <div class="hr"></div>
-      <div class="flex">
-        <span class="badge">Precio: <span id="cardPrice">0</span> 🪙</span>
-        <span class="badge">Tienes: <span id="cardQty">0</span></span>
-      </div>
-      <div class="hr"></div>
-      <div class="flex">
-        <button id="buyBtn" class="btn">Comprar</button>
-        <button id="useBtn" class="btn alt">Usar</button>
-        <button id="closeCard" class="btn right alt">Cerrar</button>
+      <div class="flex" style="display:flex;gap:10px;margin-top:10px">
+        <button id="adminAddBtn" class="btn good">Añadir</button>
+        <button id="adminRemoveBtn" class="btn bad">Retirar</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Modal Recompensa ruleta -->
-<div id="rewardModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Recompensa de ruleta">
-    <button class="closeX" id="rewardCloseX">Cerrar</button>
-    <div class="bigImg"><img id="rewardImg" alt="Carta ganada" style="max-width:100%;max-height:100%"></div>
-    <div>
-      <h3 class="rewardTitle">🎉 ¡Has obtenido <span id="rewardName"></span>!</h3>
-      <div class="small" id="rewardMeta"></div>
-      <div style="margin-top:8px" id="rewardDesc" class="small"></div>
-      <div class="hr"></div>
-      <button id="rewardClose" class="btn alt right">Cerrar</button>
+  <!-- Modal ROBO (víctima) -->
+  <div id="inboxModal" class="modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-label="Notificación de robo" style="grid-template-columns:1fr;max-width:720px">
+      <button class="closeX" id="inboxCloseX">Cerrar</button>
+      <h3>⚠️ Te han robado una carta</h3>
+      <div class="small" id="inboxText">…</div>
+      <div id="inboxPreview" class="cards" style="margin-top:10px"></div>
+      <div class="flex"><button id="inboxApply" class="btn bad">OK (restar de mi inventario)</button></div>
     </div>
   </div>
-</div>
 
-<!-- Modal Notificación de ROBO (víctima) -->
-<div id="inboxModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Notificación de robo" style="grid-template-columns:1fr;max-width:720px">
-    <button class="closeX" id="inboxCloseX">Cerrar</button>
-    <h3>⚠️ Te han robado una carta</h3>
-    <div class="small" id="inboxText">…</div>
-    <div id="inboxPreview" class="cards" style="margin-top:10px"></div>
-    <div class="flex">
-      <button id="inboxApply" class="btn bad">OK (restar de mi inventario)</button>
+  <!-- Modal ATAQUE (víctima) -->
+  <div id="attackModal" class="modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-label="Notificación de ataque" style="grid-template-columns:1fr;max-width:720px">
+      <button class="closeX" id="attackCloseX">Cerrar</button>
+      <h3>⚔️ Has recibido un ataque</h3>
+      <div class="small" id="attackText">…</div>
+      <div id="attackPreview" class="cards" style="margin-top:10px"></div>
+      <div id="defenseButtons" class="flex"><button id="attackOk" class="btn bad">OK (recibir ataque)</button></div>
     </div>
   </div>
-</div>
 
-
-<!-- Modal Notificación de ATAQUE (víctima) -->
-<div id="attackModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Ataque recibido" style="grid-template-columns:1fr">
-    <button class="closeX" id="attackCloseX">Cerrar</button>
-    <h3>⚔️ ¡Ataque recibido!</h3>
-    <div class="small" id="attackText">…</div>
-    <div id="attackPreview" class="cards" style="margin-top:10px"></div>
-    <div class="hr"></div>
-    <div class="flex" id="defenseButtons"></div>
-  </div>
-</div>
-
-<!-- Modal Robo sigiloso (ladrón) -->
-<div id="stealModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Robo sigiloso" style="grid-template-columns:1fr">
-    <button class="closeX" id="stealCloseX">Cerrar</button>
-    <h3>🕵️‍♂️ Robo sigiloso</h3>
-    <div class="small">Elige un usuario y UNA carta del inventario del rival. A ti se te suma ahora; al rival se le restará cuando pulse OK.</div>
-    <div class="flex">
-      <select id="stealTarget"><option value="">— Elegir usuario —</option></select>
-      <button id="stealLoad" class="btn alt">Ver inventario</button>
-    </div>
-    <div id="stealGrid" class="cards"></div>
-    <div class="hr"></div>
-    <div class="flex"><button id="stealConfirm" class="btn" disabled>Robar carta seleccionada</button><div class="spacer"></div><button id="stealCancel" class="btn alt">Cancelar</button></div>
-  </div>
-</div>
-
-<!-- Modal Barajear cartas -->
-<div id="shuffleModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Barajear cartas" style="grid-template-columns:1fr">
-    <button class="closeX" id="shuffleCloseX">Cerrar</button>
-    <h3>🔀 Barajear cartas</h3>
-    <div class="small">Elige <strong>3</strong> cartas (por unidades). Se restarán y recibirás <strong>2</strong> aleatorias, ponderadas por rarezas.</div>
-    <div id="shufflePickGrid" class="cards" style="margin-top:10px"></div>
-    <div class="hr"></div>
-    <div class="flex">
-      <div class="badge">Seleccionadas: <span id="shuffleCount">0</span>/3</div>
-      <div class="spacer"></div>
-      <button id="shuffleConfirm" class="btn" disabled>Barajar</button>
-      <button id="shuffleCancel" class="btn alt">Cancelar</button>
+  <!-- Modal REWARD (ruleta) -->
+  <div id="rewardModal" class="modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-label="Recompensa">
+      <button class="closeX" id="rewardCloseX">Cerrar</button>
+      <h3 id="rewardName">Recompensa</h3>
+      <div id="rewardMeta" class="small"></div>
+      <div class="cards" style="grid-template-columns:1fr;justify-items:center">
+        <div class="cardSlot" style="width:260px">
+          <div class="imgWrap"><img id="rewardImg" alt="reward" /></div>
+        </div>
+      </div>
+      <div class="flex"><button id="rewardClose" class="btn alt">OK</button></div>
     </div>
   </div>
-</div>
 
-<!-- Modal Resultado Barajar -->
-<div id="shuffleResultModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Resultado barajar">
-    <button class="closeX" id="shuffleResultCloseX">Cerrar</button>
-    <div class="bigImg"><img id="shuffleImg1" alt="Carta 1" style="max-width:100%;max-height:100%"></div>
-    <div>
-      <h3>🎁 Nuevas cartas</h3>
-      <div id="shuffleNames" class="small"></div>
-      <div class="hr"></div>
-      <button id="shuffleResultClose" class="btn alt right">Cerrar</button>
+  <!-- Modal SHUFFLE (barajear) -->
+  <div id="shuffleModal" class="modal" aria-hidden="true">
+    <div class="panel" role="dialog" aria-label="Barajear cartas" style="grid-template-columns:1fr">
+      <button class="closeX" id="shuffleCloseX">Cerrar</button>
+      <h3>🔀 Barajear cartas</h3>
+      <div class="small">Elige <strong>3</strong> unidades de tu inventario (pueden ser repetidas). Recibirás <strong>2</strong> nuevas ponderadas por rareza.</div>
+      <div class="small">Seleccionadas: <span id="shuffleCount" class="badge">0</span></div>
+      <div id="shufflePickGrid" class="cards" style="margin-top:8px"></div>
+      <div class="flex"><button id="shuffleConfirm" class="btn" disabled>Confirmar barajeo</button><button id="shuffleCancel" class="btn alt">Cancelar</button></div>
     </div>
   </div>
-</div>
 
-<!-- Modal selector de usuario reutilizable -->
-<div id="targetModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Elegir usuario" style="grid-template-columns:1fr">
-    <button class="closeX" id="targetCloseX">Cerrar</button>
-    <h3 id="targetTitle">Selecciona usuario</h3>
-    <div class="flex">
-      <select id="targetSelect"><option value="">— Elegir —</option></select>
-      <button id="targetOk" class="btn">Aceptar</button>
-      <button id="targetCancel" class="btn alt">Cancelar</button>
-    </div>
-  </div>
-</div>
+  <script type="module">
+    // ===== Firebase SDK (modular) =====
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+    import { getFirestore, collection, doc, getDoc, setDoc, updateDoc, addDoc, onSnapshot, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-<script type="module">
-/* ========= Firebase ========= */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import {
-  getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect, GoogleAuthProvider,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile,
-  getRedirectResult
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-
-import {
-  getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence,
-  collection, query, where, addDoc, updateDoc, serverTimestamp, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
-  authDomain: "pokerandom-ce300.firebaseapp.com",
-  projectId: "pokerandom-ce300",
-  storageBucket: "pokerandom-ce300.firebasestorage.app",
-  messagingSenderId: "637348459448",
-  appId: "1:637348459448:web:4ab19e68bcce734692554d"
-};
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-// Recoger resultado redirect (por si el popup fue bloqueado)
-(async ()=>{ try{ await getRedirectResult(auth); }catch(e){ console.warn(e);} })();
-const db = getFirestore(app);
-enableIndexedDbPersistence(db).catch(()=>{});
-
-/* ========= Helpers ========= */
-const $ = s => document.querySelector(s);
-const toast = (m)=>{ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); };
-const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
-const slugType = t => t.trim().toLowerCase().replace("curacion","curación").replace("economia","economía").replace("item","ítem");
-const tierOf = c => (c===13||c===10)?"legendaria": c===7?"épica": c===4?"rara": c===2?"común": (c===0||c===99)?"especial":"otra";
-const capFirst = s => { if(!s) return ""; let t=String(s).trim(); t=t.replace(/\bpokemon(es)?\b/gi,m=>m.toLowerCase().endsWith("es")?"Pokémones":"Pokémon"); t=t.replace(/\busala\b/gi,"úsala").replace(/\busa la\b/gi,"úsala"); t=t.replace(/\bpage\b/gi,"pague"); return t.charAt(0).toUpperCase()+t.slice(1); };
-const randInt = (n)=> Math.floor(Math.random()*n);
-
-/* ========= Datos base ========= */
-const rawList = [
-  [2,"Curacion","Objeto curativo","permite comprar un objeto curativo de una tienda."],
-  [7,"Curacion","Dama curativa","Puedes comprar hasta 5 objetos curativos en la misma tienda."],
-  [4,"Gacha","Ruleta","Puedes tirar ruleta en la que obtendrás una carta aleatoria."],
-  [99,"Ataque","Robo de monedas","Puedes robar 5 monedas a otro jugador en cualquier momento."],
-  [0,"economia","Venta ilegal","libera un pokemon y recibe 2 monedas."],
-  [10,"economia","10 monedas","recibes 10 monedas al instante."],
-  [3,"economia","Monedero perdido","recibes de 1 a 5 monedas aleatorias."],
-  [2,"economia","Apuesta","Recibes 3 monedas más si no pierdes pokemon contra el siguiente líder de gimnasio."],
-  [10,"captura","Captura shiny","puedes capturar una vez más en ruta y ese pokemon se volverá shiny."],
-  [2,"captura","Skip pokemon","al usarla antes de capturar, puedes decidir si skipear el primer pokémon que salga. Esto no contará como primer pokémon de ruta y píldoras volver a intentar capturar."],
-  [10,"captura","Recaptura","puedes recapturar"],
-  [4,"captura","Reroll","puedes usarla tras aparecer el primer pokémon y podrás skipearlo e ir a por el siguiente."],
-  [4,"item","Masterball","obtienes una masterball."],
-  [7,"item","Compra MT","úsala para poder comprar una MT en una tienda del juego"],
-  [10,"item","Capsula habilidad","úsala para obtener una cápsula habilidad."],
-  [10,"item","Piedra Evolutiva","Úsala para canjearla por una piedra evolutiva a tu elección."],
-  [10,"item","MegaPiedra","Úsala para obtener una mega piedra a tu elección."],
-  [4,"Gacha","Caja sorpresa","Cambia un item por otro random del mismo tipo."],
-  [10,"item","Objeto fuerte","obtienes un objeto competitivo a tu elección."],
-  [10,"Curacion","Revivir Pokemon","revive un pokemon"],
-  [10,"Curacion","Revivir Inicial","Revive a tu inicial una vez (no cuenta para el uso de revivir, es decir, píldoras  revivir a un inicial que haya sido revivido por la carta revivir)"],
-  [7,"Curacion","Cambio de inicial","puedes designar a otro pokémon vivo de tu elección como inicial"],
-  [10,"defensa","Reversa","bloqueas y devuelves la carta de ataque del rival"],
-  [7,"defensa","Bloqueo","bloquear la carta del rival"],
-  [10,"curacion","Bendición de Arceus","usala antes de un combate y el primer pokemon muerto, no morirá realmente."],
-  [7,"ataque","Robo Curativo","robas 3 objetos curativos a un rival"],
-  [4,"ataque","Desgaste","Obligas a un rival a no poder sacar ni meter pokemons antes del siguiente combate contra un líder."],
-  [7,"ataque","Liberación","escoge dos pokemons del rival y él decidirá uno al que liberar."],
-  [10,"ataque","Robo de caja","roba el pokémon a tu elección de la caja del rival"],
-  [13,"ataque","Robo de equipo","roba un pokémon aleatorio del equipo del rival"],
-  [7,"ataque","bloqueo pokemon","bloquea un pokémon rival hasta el siguiente líder (en los combates también estaba bloqueado y por tanto no lo podrá usar)"],
-  [7,"ataque","destructor","obligas al rival a jugar con solo 5 pokemons hasta el siguiente líder"],
-  [5,"ataque","Mismo destino","tu liberas un pokemon y el rival deberá liberar otro que comparta uno de los tipos"],
-  [4,"ataque","envenenamiento","el rival deber tirar 2 curas de su inventario"],
-  [10,"gacha","Prime","si tu pokémon elegido con la carta no muere en los combates contra los demás, recibirá 31 IVS en todo, si lo vuelves a usar, se volverá shiny"],
-  [4,"defensa","Venganza","si te han tirado 2 o más cartas el mismo jugador, puedes tirar de ruleta o robarle un pokémon aleatorio de su caja."],
-  [4,"gacha","Apuesta Segura","Apuesta que vas a ganar los combates contra los demás jugadores. si Ganas, recibes 15 monedas, si pierdes, debes dar 5 monedas a cada jugador que te gano."],
-  [10,"ataque","Cambio repentino","Un pokémon de un rival cambiará su habilidad al menos que el rival page 15 monedas"],
-  [0,"item","Intercambio","Intercambia un pokémon con un rival si ambos quieren."],
-  [2,"defensa","Regalo","Envías un objeto curativo aleatorio a un rival. A cambio, si te lanza una carta negativa, tendrás que devolver el regalo por 3 de su propio inventario."],
-  [10,"defensa","Maldición","Maldices a un rival, si ese jugador tiene 3 de karma negativo o más, puedes robarle una carta a tu elección."],
-  [7,"Ataque","Robo sigiloso","Robas una carta del rival"],
-  [7,"defensa","Buff permanente","subes 8 puntos todos los IVS de un pokémon a tu elección"],
-  [2,"defensa","Protección del débil","usa cuando te tiren una carta de ataque, tira una moneda; si sale cara, te proteges y el rival recupera su carta; si sale cruz, recibes el ataque y pierdes esta carta."],
-  [4,"gacha","Barajear cartas","Elige 3 cartas de tu inventario; recibes 2 cartas aleatorias ponderadas por rareza."]
-];
-let cardsBase = rawList.map((r,i)=>({id:"c"+String(i+1).padStart(2,"0"),cost:+r[0],type:slugType(r[1]),name:r[2].trim(),desc:capFirst(r[3]||""),qty:0}));
-// Ajuste: Intercambio pasa a costar 2
-cardsBase = cardsBase.map(c=> c.name.toLowerCase()==="intercambio" ? {...c, cost:2} : c);
-
-/* ========= Estado ========= */
-let currentUser=null, spyUid=null, unsubInv=null, unsubProfiles=null, unsubInbox=null, unsubAttackInbox=null, unsubDebuffs=null;
-let profiles=[];
-let state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[],updatedAt:null};
-
-/* ========= Refs ========= */
-const invRef = uid => doc(db,"inventories",uid);
-const profRef = uid => doc(db,"profiles",uid);
-const stealCol = collection(db,"stealRequests");
-const attackCol = collection(db,"attackRequests");
-const debuffCol = collection(db,"debuffs");
-
-/* ========= UI comunes ========= */
-const coinsEl=$("#coins"), coinsMini=$("#coinsMini"), karmaEl=$("#karma");
-const gridEl=$("#cardsGrid"), walletLogEl=$("#walletLog"), useLogEl=$("#useLog");
-const typeFilter=$("#typeFilter"), hideZero=$("#hideZero");
-const toolsBtn=$("#toolsBtn"), toolsPanel=$("#toolsPanel");
-toolsBtn.onclick=(e)=>{e.stopPropagation();toolsPanel.classList.toggle("show")};
-document.body.addEventListener("click",()=>toolsPanel.classList.remove("show"));
-typeFilter.onchange=render; hideZero.onchange=render;
-
-/* ========= Exportar / Importar / Reiniciar ========= */
-$("#exportBtn").onclick = ()=>{
-  const filename = `wobalonga_${(currentUser?.displayName||currentUser?.email||"anon").replace(/[^a-z0-9_-]/gi,"_")}_${new Date().toISOString().slice(0,10)}.json`;
-  const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-};
-$("#importFile").onchange = async (e)=>{
-  const file = e.target.files?.[0]; if(!file) return;
-  try{
-    const text = await file.text();
-    const data = JSON.parse(text);
-    state.coins = Math.max(0, Math.trunc(data.coins||0));
-    state.karma = Math.trunc(data.karma||0);
-    if(Array.isArray(data.cards)){
-      const map = new Map(data.cards.map(c=>[c.id, Math.max(0, Math.trunc(c.qty||0))]));
-      state.cards.forEach(c=>{ c.qty = map.get(c.id)||0; });
-    }
-    state.walletLog = Array.isArray(data.walletLog)?data.walletLog:[];
-    state.useLog    = Array.isArray(data.useLog)?data.useLog:[];
-    toast("📥 Importado");
-    scheduleSave(); render();
-  }catch(err){ alert("Import inválido"); }
-};
-$("#resetBtn").onclick = ()=>{
-  if(!confirm("¿Seguro que quieres reiniciar tu inventario?")) return;
-  if(!confirm("Esto no tiene deshacer. ¿Confirmas?")) return;
-  state.coins = 0; state.karma = 0; state.cards.forEach(c=> c.qty = 0);
-  state.walletLog = []; state.useLog = [];
-  toast("🧹 Reiniciado");
-  scheduleSave(); render();
-};
-
-/* ========= Auth ========= */
-const who=$("#whoAmI"), btnGoogle=$("#btnGoogle"), btnEmail=$("#btnEmail"), btnLogout=$("#btnLogout");
-const toolsBox=$("#toolsBox"), spyTools=$("#spyTools");
-btnGoogle.onclick = async () => {
-  try {
-    const p = new GoogleAuthProvider();
-    p.setCustomParameters({ prompt: "select_account" });
-    await signInWithPopup(auth, p);
-  } catch (e) {
-    if (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user") {
-      try { await signInWithRedirect(auth, new GoogleAuthProvider()); } catch (e2) { alert("Redirect falló: " + (e2.code || e2.message)); }
-    } else if (e.code === "auth/unauthorized-domain") {
-      alert("Dominio no autorizado en Firebase.");
-    } else {
-      alert("Error Google: " + (e.code || e.message));
-    }
-  }
-};
-
-btnEmail.onclick=async()=>{const email=prompt("Email:");if(!email)return;const pass=prompt("Contraseña:");if(!pass)return;try{await signInWithEmailAndPassword(auth,email,pass)}catch(e){if(e.code==="auth/user-not-found"||e.code==="auth/invalid-credential"){if(confirm("No existe ese usuario. ¿Crear cuenta con ese email?")){try{const cred=await createUserWithEmailAndPassword(auth,email,pass);const name=prompt("Nombre para mostrar (opcional):")||"";if(name)await updateProfile(cred.user,{displayName:name});toast("Cuenta creada ✅")}catch(e2){alert("Error creando: "+e2.code)}}return}if(e.code==="auth/unauthorized-domain"){alert("Dominio no autorizado en Firebase.");return}alert("Error email/contraseña: "+e.code)}};
-btnLogout.onclick=()=>signOut(auth);
-
-async function ensureProfile(u){
-  const d=await getDoc(profRef(u.uid));
-  const payload={displayName:u.displayName||(u.email?u.email.split("@")[0]:"Jugador"),email:u.email||null,updatedAt:serverTimestamp()};
-  if(!d.exists()) payload.createdAt=serverTimestamp();
-  await setDoc(profRef(u.uid),payload,{merge:true});
-}
-async function initInventoryIfMissing(uid){
-  const d=await getDoc(invRef(uid));
-  if(!d.exists()){
-    await setDoc(invRef(uid),{coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[],updatedAt:serverTimestamp()});
-  }
-}
-
-onAuthStateChanged(auth, async (user)=>{
-  if(user){
-    currentUser=user;
-    who.textContent = user.displayName || user.email || user.uid;
-    btnGoogle.style.display="none"; btnEmail.style.display="none"; btnLogout.style.display="inline-block";
-    toolsBox.style.display="block"; spyTools.style.display="block";
-    document.documentElement.classList.remove("spyTint");
-    await ensureProfile(user);
-    await initInventoryIfMissing(user.uid);
-    subscribeProfiles();
-    subscribeInventory(user.uid);
-    subscribeStealInbox(user.uid);
-    subscribeAttackInbox(user.uid);
-    subscribeDebuffs(user.uid);
-  }else{
-    currentUser=null;
-    who.textContent="Sin sesión";
-    btnGoogle.style.display="inline-block"; btnEmail.style.display="inline-block"; btnLogout.style.display="none";
-    toolsBox.style.display="none"; spyTools.style.display="none";
-    unsubscribeAll();
-    state={coins:0,karma:0,cards:cardsBase.map(x=>({...x,qty:0})),walletLog:[],useLog:[]};
-    render();
-  }
-});
-
-function unsubscribeAll(){
-  [unsubInv,unsubProfiles,unsubInbox,unsubAttackInbox,unsubDebuffs].forEach(fn=>{try{fn&&fn()}catch{}});
-  unsubInv=unsubProfiles=unsubInbox=unsubAttackInbox=unsubDebuffs=null;
-}
-
-/* ========= Subs ========= */
-function subscribeProfiles(){
-  if(unsubProfiles){unsubProfiles();unsubProfiles=null}
-  unsubProfiles=onSnapshot(collection(db,"profiles"),(snap)=>{
-    profiles=snap.docs.map(d=>({id:d.id,...d.data()}));
-    renderSpyMenu();
-    // select para robo
-    const me=currentUser?.uid;
-    const opts=['<option value="">— Elegir usuario —</option>'].concat(
-      profiles.filter(p=>p.id!==me).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`)
-    );
-    const tsel=$("#stealTarget"); if(tsel) tsel.innerHTML=opts.join("");
-  });
-}
-function subscribeInventory(uid){
-  if(unsubInv){unsubInv();unsubInv=null}
-  unsubInv=onSnapshot(invRef(uid),(snap)=>{ if(!snap.exists())return; state=snap.data()||state; render(); });
-}
-function subscribeStealInbox(uid){
-  if(unsubInbox){unsubInbox();unsubInbox=null}
-  // Escucha todos los robos pendientes a mí
-  const qv = query(
-    collection(db,"stealRequests"),
-    where("victimId","==",uid),
-    where("status","==","pending")
-  );
-  unsubInbox = onSnapshot(qv, async (snap)=>{
-    const docs = snap.docs;
-    if(!docs.length) return;
-
-    // Filtramos en cliente si ya está marcado como visto (por si hay antiguos)
-    const first = docs.find(d => !d.data().seenByVictim) || docs[0];
-    const data = first.data();
-
-    // Abrir pop-up y marcar como visto para no repetir al recargar
-    showStealInbox(first.id, data);
-  });
-}
-
-function subscribeAttackInbox(uid){
-  if(unsubAttackInbox){unsubAttackInbox();unsubAttackInbox=null}
-  const qv = query(
-    collection(db,"attackRequests"),
-    where("victimId","==",uid),
-    where("status","==","pending")
-  );
-  unsubAttackInbox = onSnapshot(qv, (snap)=>{
-    const docs = snap.docs;
-    if(!docs.length) return;
-    // Abre el primero pendiente
-    showAttackInbox(docs[0].id, docs[0].data());
-  });
-}
-
-function subscribeDebuffs(uid){
-  if(unsubDebuffs){unsubDebuffs();unsubDebuffs=null}
-  const qv=query(debuffCol, where("targetId","==",uid), where("active","==",true));
-  let initial=true;
-  unsubDebuffs=onSnapshot(qv,(snap)=>{
-    if(initial){ initial=false; render(); return; }
-    snap.docChanges().forEach(ch=>{
-      if(ch.type==="added"){
-        const d=ch.doc.data();
-        if(d.type==="curse") toast(`🪄 Te han maldecido (${d.fromName||d.fromId})`);
-        if(d.type==="gift")  toast(`🎁 Regalo pendiente de ${d.giverName||d.giverId}`);
-      }
-    });
-    render();
-  });
-}
-
-/* ========= Guardado ========= */
-let saveTimer=null;
-function scheduleSave(){ if(spyUid||!currentUser) return; clearTimeout(saveTimer); saveTimer=setTimeout(()=>saveNow().catch(()=>{}),350); }
-async function saveNow(){ await setDoc(invRef(currentUser.uid), {...state, updatedAt:serverTimestamp()}, {merge:true}); }
-
-/* ========= Render ========= */
-function render(){
-  $("#mainSection").classList.toggle("readonly", !!spyUid);
-  coinsEl.textContent=String(state.coins||0);
-  coinsMini.textContent=String(state.coins||0);
-  karmaEl.textContent=String(state.karma||0);
-
-  gridEl.innerHTML="";
-  const f=(typeFilter.value||"").trim(), hide=hideZero.checked;
-  state.cards.forEach(card=>{
-    if(spyUid && (card.qty||0)<=0) return; // espiar: solo las que tiene
-    if(f && card.type!==f) return; if(hide && (card.qty||0)<=0) return;
-    const slot=document.createElement("div"); slot.className="cardSlot"+((card.qty||0)<=0?" zero":""); slot.dataset.id=card.id;
-    const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
-    const img=document.createElement("img"); img.alt=card.name; img.src=`img/${card.id}.png`; img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${card.id}.jpg`; } };
-    imgWrap.appendChild(img);
-    const title=document.createElement("div"); title.className="title"; title.textContent=card.name;
-    const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(card.type)}</span> · <span class="badge">${card.cost} 🪙 · ${esc(tierOf(card.cost))}</span>`;
-    if(card.qty>0){ const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+card.qty; slot.appendChild(qty); }
-    slot.appendChild(imgWrap); slot.appendChild(title); slot.appendChild(meta);
-    slot.onclick=()=> openCard(card.id);
-    gridEl.appendChild(slot);
-  });
-
-  walletLogEl.innerHTML=(state.walletLog||[]).slice().reverse().map(l=>{
-    const gain=l.type==="ingreso"; const cls=gain?"gain":"loss"; const sign=gain?"+":"−";
-    const note=l.note?` — <span class="small">${esc(l.note)}</span>`:"";
-    return `<div class="${cls}"><span class="small">${new Date(l.date).toLocaleString()}</span> · <strong>${esc(l.type)}</strong> · <span class="mono">${sign} ${Math.trunc(l.amount)}</span>${note}</div>`;
-  }).join("");
-  useLogEl.innerHTML=(state.useLog||[]).slice().reverse().map(u=>{
-    const gain=/Compraste|Ganaste por ruleta|Añadida|añadida|\(\+1\)|pendiente/i.test(u.name);
-    const cls=gain?"gain":"loss";
-    const note=u.note?` — <span class="small">${esc(u.note)}</span>`:"";
-    return `<div class="${cls}"><span class="small">${new Date(u.date).toLocaleString()}</span> · ${esc(u.name)}${note}</div>`;
-  }).join("");
-
-  const r=state.cards.find(c=>c.name.toLowerCase()==="ruleta"); $("#ruletaQty").textContent=r?(r.qty||0):0;
-
-  // Debufos visibles
-  (async ()=>{
-    if(!currentUser){ $("#debuffBar").style.display="none"; return; }
-    const q = query(debuffCol, where("targetId","==",currentUser.uid), where("active","==",true));
-    const snaps = await getDocs(q);
-    const items = snaps.docs.map(d=>({id:d.id, ...d.data()}));
-    const bar = $("#debuffBar");
-    if(!items.length){ bar.style.display="none"; bar.innerHTML=""; return; }
-    bar.style.display="flex";
-    bar.innerHTML = items.map(it=>{
-      if(it.type==="curse") return `<span class="badge">🪄 Maldición de <strong>${esc(it.fromName||it.fromId)}</strong></span>`;
-      if(it.type==="gift")  return `<span class="badge">🎁 Regalo pendiente con <strong>${esc(it.giverName||it.giverId)}</strong></span>`;
-      return "";
-    }).join("");
-  })();
-}
-
-/* ========= Header extra ========= */
-$("#karmaBtn").onclick=async()=>{
-  if(!currentUser) return;
-  if(confirm("¿Has recibido un ataque?")){
-    state.karma=(state.karma||0)-1; toast("⚡ Karma reducido (ataque recibido)"); scheduleSave(); render();
-  }
-};
-
-/* ========= Modales comunes ========= */
-const modals=[...document.querySelectorAll(".modal")];
-function toggleModal(el,show){el.classList.toggle("show",!!show);el.setAttribute("aria-hidden",show?"false":"true")}
-modals.forEach(m=>m.addEventListener("click",(e)=>{if(e.target===m)toggleModal(m,false)}));
-window.addEventListener("keydown",(e)=>{if(e.key==="Escape"){modals.forEach(m=>toggleModal(m,false))}});
-
-/* ========= Monedero ========= */
-$("#coinMenuBtn").onclick=()=>toggleModal($("#coinModal"),true);
-$("#coinClose").onclick=()=>toggleModal($("#coinModal"),false);
-$("#coinCloseX").onclick=()=>toggleModal($("#coinModal"),false);
-$("#coinAdd").onclick=()=>coinOp("ingreso");
-$("#coinSub").onclick=()=>coinOp("gasto");
-$("#btnLeader").onclick=quickLeader;
-$("#btnBoss").onclick=quickBoss;
-function coinOp(kind){
-  if(spyUid||!currentUser) return;
-  const amt=Math.max(0,Math.trunc(Number($("#coinAmount").value))); if(!amt){alert("Cantidad inválida");return}
-  const note=($("#coinReason").value||"").trim();
-  if(kind==="ingreso"){state.coins+=amt;toast(`🪙 +${amt} monedas`)}
-  else{ if(state.coins<amt){alert("No tienes suficientes monedas");return} state.coins-=amt;toast(`💸 -${amt} monedas`)}
-  state.walletLog.push({date:new Date().toISOString(),type:kind,amount:amt,note});
-  $("#coinAmount").value="";$("#coinReason").value="";
-  scheduleSave(); toggleModal($("#coinModal"),false); render();
-}
-function quickLeader(){ if(spyUid||!currentUser)return; const lost=confirm("¿Has perdido algún Pokémon contra el líder?\nAceptar = SÍ · Cancelar = NO"); const total=lost?6:9; state.coins+=total; toast(`🏆 +${total} monedas (${lost?"con":"sin"} bajas)`); state.walletLog.push({date:new Date().toISOString(),type:"ingreso",amount:total,note:`Líder completado (${lost?"con":"sin"} bajas)`}); scheduleSave(); render();}
-function quickBoss(){ if(spyUid||!currentUser)return; const lost=confirm("¿Has perdido algún Pokémon en el combate importante?\nAceptar = SÍ · Cancelar = NO"); const total=lost?5:7; state.coins+=total; toast(`⚔️ +${total} monedas (${lost?"con":"sin"} bajas)`); state.walletLog.push({date:new Date().toISOString(),type:"ingreso",amount:total,note:`Combate importante (${lost?"con":"sin"} bajas)`}); scheduleSave(); render(); }
-
-/* ========= Carta modal ========= */
-const cardModal=$("#cardModal");
-$("#closeCard").onclick=()=>toggleModal(cardModal,false);
-$("#cardCloseX").onclick=()=>toggleModal(cardModal,false);
-let currentCardId=null;
-$("#buyBtn").onclick=onBuy; $("#useBtn").onclick=onUse;
-
-function openCard(id){
-  currentCardId=id; const c=state.cards.find(x=>x.id===id); if(!c)return;
-  const big=$("#cardImgBig"); big.removeAttribute("data-tried"); big.onerror=null;
-  big.src=`img/${c.id}.png`; big.onerror=()=>{ if(!big.dataset.tried){ big.dataset.tried=1; big.src=`img/${c.id}.jpg`;} };
-  $("#cardTitle").textContent=c.name;
-  $("#cardTypeCost").innerHTML=`<span class="badge">${esc(c.type)}</span> · <span class="badge">${c.cost} 🪙 · ${esc(tierOf(c.cost))}</span>`;
-  $("#cardDesc").textContent=c.desc||"";
-  $("#cardPrice").textContent=Math.trunc(c.cost||0);
-  $("#cardQty").textContent=Math.trunc(c.qty||0);
-  $("#useBtn").disabled=(c.qty||0)<=0 || !!spyUid || !currentUser;
-  $("#buyBtn").disabled=!!spyUid || !currentUser;
-  toggleModal(cardModal,true);
-}
-
-function onBuy(){
-  if(spyUid||!currentUser)return;
-  const c=state.cards.find(x=>x.id===currentCardId); if(!c)return;
-  const price=Math.trunc(c.cost||0);
-  if(state.coins<price){alert("No tienes suficientes monedas para comprar esta carta.");return}
-  state.coins-=price; c.qty=(c.qty||0)+1;
-  state.walletLog.push({date:new Date().toISOString(),type:"gasto",amount:price,note:`Compra: ${c.name}`});
-  state.useLog.push({date:new Date().toISOString(),cardId:c.id,name:`Compraste ${c.name} (+1)`,note:"Compra"});
-  toast(`🛒 Compraste ${c.name} (+1)`); scheduleSave(); render(); openCard(c.id);
-}
-
-/* ========= Utils ========= */
-function findCardByName(name){ return state.cards.find(c=>c.name.toLowerCase()===name.toLowerCase()); }
-function addCoins(amount,note){ state.coins+=amount; state.walletLog.push({date:new Date().toISOString(),type:"ingreso",amount,note}); }
-
-/* ========= Robo sigiloso (por notificación) ========= */
-const stealModal=$("#stealModal"), stealTarget=$("#stealTarget"), stealLoad=$("#stealLoad"), stealGrid=$("#stealGrid");
-const stealConfirm=$("#stealConfirm"), stealCancel=$("#stealCancel"), stealCloseX=$("#stealCloseX");
-let stealSelectedCardId=null, stealSelectedCardName=null, victimSnapshot=null;
-stealCancel.onclick=()=>toggleModal(stealModal,false);
-stealCloseX.onclick=()=>toggleModal(stealModal,false);
-
-function openSteal(){
-  stealSelectedCardId=null; stealSelectedCardName=null; stealGrid.innerHTML="";
-  stealConfirm.disabled=true;
-  toggleModal(stealModal,true);
-}
-stealLoad.onclick=async()=>{
-  const uid=stealTarget.value; if(!uid){alert("Elige un usuario");return}
-  const snap=await getDoc(invRef(uid)); if(!snap.exists()){alert("Inventario no encontrado");return}
-  victimSnapshot=snap.data();
-  stealGrid.innerHTML="";
-  victimSnapshot.cards.filter(c=> (c.qty||0)>0).forEach(c=>{
-    const slot=document.createElement("div"); slot.className="cardSlot"; slot.dataset.id=c.id;
-    const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
-    const img=document.createElement("img"); img.alt=c.name; img.src=`img/${c.id}.png`; img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${c.id}.jpg`; } };
-    imgWrap.appendChild(img);
-    const title=document.createElement("div"); title.className="title"; title.textContent=c.name;
-    const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(c.type)}</span> · <span class="badge">${c.cost} 🪙</span>`;
-    slot.onclick=()=>{
-      [...stealGrid.children].forEach(e=>e.classList.remove("picked"));
-      slot.classList.add("picked");
-      stealSelectedCardId=c.id; stealSelectedCardName=c.name; stealConfirm.disabled=false;
+    // 👉 TU CONFIG (la que ya me pasaste)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
+      authDomain: "pokerandom-ce300.firebaseapp.com",
+      projectId: "pokerandom-ce300",
+      storageBucket: "pokerandom-ce300.firebasestorage.app",
+      messagingSenderId: "637348459448",
+      appId: "1:637348459448:web:4ab19e68bcce734692554d"
     };
-    if(c.qty>0){ const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+c.qty; slot.appendChild(qty); }
-    slot.appendChild(imgWrap); slot.appendChild(title); slot.appendChild(meta);
-    stealGrid.appendChild(slot);
-  });
-};
-stealConfirm.onclick = async () => {
-  if(!currentUser) return;
-  const uid = stealTarget.value;
-  if(!uid || !stealSelectedCardId) return;
 
-  // Al ladrón se le suma ya
-  const mine = state.cards.find(c=>c.id===stealSelectedCardId);
-  if(mine){ mine.qty = (mine.qty||0) + 1; }
-  state.useLog.push({
-    date:new Date().toISOString(),
-    name:`Robo sigiloso: añadida ${stealSelectedCardName} (+1)`,
-    note:`de ${uid}`
-  });
-// Gastar la carta "Robo sigiloso" del atacante y sumar karma +1
-const stealCard = findCardByName("Robo sigiloso");
-if(stealCard && (stealCard.qty||0)>0){
-  stealCard.qty = Math.max(0, (stealCard.qty||0)-1);
-  state.useLog.push({date:new Date().toISOString(), name:"Usaste Robo sigiloso (−1)"});
-}
-state.karma = (state.karma||0) + 1;
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-  scheduleSave(); render(); toggleModal(stealModal,false);
+    // ===== Helpers =====
+    const $ = sel => document.querySelector(sel);
+    const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+    const toast = (t)=>{ console.log("[toast]", t); };
 
-  // Notificación a la víctima (pendiente)
-  await addDoc(collection(db,"stealRequests"), {
-    attackerId: currentUser.uid,
-    attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
-    victimId: uid,
-    cardId: stealSelectedCardId,
-    cardName: stealSelectedCardName,
-    status: "pending",
-    seenByVictim: false,
-    createdAt: serverTimestamp()
-  });
+    // ===== Estado =====
+    const cardsBase = [
+      // coste, tipo, nombre, desc
+      {cost:2,type:"Curacion",name:"Objeto curativo",desc:"Permite comprar un objeto curativo de una tienda."},
+      {cost:7,type:"Curacion",name:"Dama curativa",desc:"Puedes comprar hasta 5 objetos curativos en la misma tienda."},
+      {cost:4,type:"Gacha",name:"Ruleta",desc:"Puedes tirar una ruleta que otorga una carta aleatoria."},
+      {cost:99,type:"ataque",name:"Robo de monedas",desc:"Robas 5 monedas a otro jugador en cualquier momento."},
+      {cost:0,type:"economia",name:"Venta ilegal",desc:"Libera un Pokémon y recibe 2 monedas."},
+      {cost:10,type:"economia",name:"10 monedas",desc:"Recibes 10 monedas al instante."},
+      {cost:3,type:"economia",name:"Monedero perdido",desc:"Recibes de 1 a 5 monedas aleatorias."},
+      {cost:2,type:"economia",name:"Apuesta",desc:"Recibes 3 monedas más si no pierdes Pokémon contra el siguiente líder."},
+      {cost:10,type:"captura",name:"Captura shiny",desc:"Una captura extra en ruta y se vuelve shiny."},
+      {cost:2,type:"captura",name:"Skip pokemon",desc:"Antes de capturar, puedes skipear el primer Pokémon que salga."},
+      {cost:10,type:"captura",name:"Recaptura",desc:"Puedes recapturar."},
+      {cost:4,type:"captura",name:"Reroll",desc:"Tras ver el primer Pokémon, puedes skipearlo e ir a por el siguiente."},
+      {cost:4,type:"item",name:"Masterball",desc:"Obtienes una Masterball."},
+      {cost:7,type:"item",name:"Compra MT",desc:"Permite comprar una MT en una tienda."},
+      {cost:10,type:"item",name:"Capsula habilidad",desc:"Obtienes una cápsula habilidad."},
+      {cost:10,type:"item",name:"Piedra Evolutiva",desc:"Canjea por una piedra evolutiva a elección."},
+      {cost:10,type:"item",name:"MegaPiedra",desc:"Obtienes una mega piedra a elección."},
+      {cost:4,type:"Gacha",name:"Caja sorpresa",desc:"Cambia un ítem por otro random del mismo tipo."},
+      {cost:10,type:"item",name:"Objeto fuerte",desc:"Obtienes un objeto competitivo a elección."},
+      {cost:10,type:"Curacion",name:"Revivir Pokemon",desc:"Revive un Pokémon."},
+      {cost:10,type:"Curacion",name:"Revivir Inicial",desc:"Revive a tu inicial una vez."},
+      {cost:7,type:"Curacion",name:"Cambio de inicial",desc:"Designa a otro Pokémon vivo como inicial."},
+      {cost:10,type:"defensa",name:"Reversa",desc:"(Descartado sistema de defensa en app)."},
+      {cost:7,type:"defensa",name:"Bloqueo",desc:"(Descartado sistema de defensa en app)."},
+      {cost:10,type:"Curacion",name:"Bendición de Arceus",desc:"El primer Pokémon que muera en el combate no morirá realmente."},
+      {cost:7,type:"ataque",name:"Robo Curativo",desc:"Robas 3 objetos curativos a un rival."},
+      {cost:4,type:"ataque",name:"Desgaste",desc:"El rival no puede sacar/meter pokémon antes del siguiente líder."},
+      {cost:7,type:"ataque",name:"Liberación",desc:"Escoge dos pokémon del rival; él decide uno a liberar."},
+      {cost:10,type:"ataque",name:"Robo de caja",desc:"Robas un Pokémon de la caja del rival."},
+      {cost:13,type:"ataque",name:"Robo de equipo",desc:"Robas un Pokémon aleatorio del equipo rival."},
+      {cost:7,type:"ataque",name:"bloqueo pokemon",desc:"Bloquea un Pokémon rival hasta el siguiente líder."},
+      {cost:7,type:"ataque",name:"destructor",desc:"El rival jugará con 5 Pokémon hasta el siguiente líder."},
+      {cost:5,type:"ataque",name:"Mismo destino",desc:"Libera uno y el rival libera otro que comparta tipo."},
+      {cost:4,type:"ataque",name:"envenenamiento",desc:"El rival debe tirar 2 curas de su inventario."},
+      {cost:10,type:"gacha",name:"Prime",desc:"Si no muere en combates, 31 IVs en todo; al reusar, shiny."},
+      {cost:4,type:"defensa",name:"Venganza",desc:"(Descartado sistema de defensa en app)."},
+      {cost:4,type:"gacha",name:"Apuesta Segura",desc:"Si ganas a todos, +15 monedas; si pierdes, pagas 5 a cada uno."},
+      {cost:10,type:"ataque",name:"Cambio repentino",desc:"Cambia la habilidad de un Pokémon rival salvo que pague 15."},
+      {cost:0,type:"item",name:"Intercambio",desc:"Intercambia un Pokémon con un rival si ambos quieren. (Cuesta 2 monedas en app)."},
+      {cost:2,type:"defensa",name:"Regalo",desc:"(Se notifica sólo)."},
+      {cost:10,type:"defensa",name:"Maldición",desc:"(Se notifica sólo, sin defensas automáticas)."},
+      {cost:7,type:"ataque",name:"Robo sigiloso",desc:"Robas una carta del rival (con notificación)."},
+      {cost:7,type:"defensa",name:"Buff permanente",desc:"Sube 8 IVs a un Pokémon."},
+      {cost:2,type:"defensa",name:"Protección del débil",desc:"(Descartado sistema de defensa en app)."},
+      {cost:4,type:"gacha",name:"Barajear cartas",desc:"Elige 3 unidades y recibe 2 nuevas ponderadas por rareza."}
+    ].map((c,i)=>({
+      ...c,
+      id: (c.name||"")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+        .toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"") || `c${String(i+1).padStart(2,"0")}`
+    }));
 
-  toast("🕵️ Robo enviado. El rival confirmará la resta.");
-};
+    let currentUser = null;
+    let state = { coins:0, karma:0, cards: cardsBase.map(x=>({...x, qty:0})), walletLog:[], useLog:[] };
 
-/* ========= ADMIN CARTAS ========= */
-const adminFab = $("#adminFab");
-const adminModal = $("#adminModal");
-const adminCloseX = $("#adminCloseX");
-const adminCardSelect = $("#adminCardSelect");
-const adminQty = $("#adminQty");
-const adminAddBtn = $("#adminAddBtn");
-const adminRemoveBtn = $("#adminRemoveBtn");
+    // ===== Firestore refs =====
+    const invCol = collection(db, "inventories");
+    const profileCol = collection(db, "profiles");
+    const stealCol = collection(db, "stealRequests");
+    const attackCol = collection(db, "attackRequests");
 
-// Abre modal admin (requiere estar logueado y NO estar espiando)
-if (adminFab) {
-  adminFab.onclick = ()=>{
-    if(!currentUser || spyUid){
-      alert("Necesitas estar autenticado y no estar en modo espiar.");
+    let unsubInv=null, unsubSteal=null, unsubAttack=null;
+
+    // ===== Auth UI =====
+    const btnLoginGoogle = $("#btnLoginGoogle");
+    const btnLogout = $("#btnLogout");
+    btnLoginGoogle.onclick = async ()=>{
+      try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ alert("Error login Google: "+e.message); }
+    };
+    btnLogout.onclick = ()=> signOut(auth);
+
+    onAuthStateChanged(auth, async (user)=>{
+      currentUser = user || null;
+      $("#btnLoginGoogle").style.display = user?"none":"inline-flex";
+      $("#btnLogout").style.display = user?"inline-flex":"none";
+      if(!user){
+        if(unsubInv){unsubInv();unsubInv=null}
+        if(unsubSteal){unsubSteal();unsubSteal=null}
+        if(unsubAttack){unsubAttack();unsubAttack=null}
+        state = { coins:0, karma:0, cards: cardsBase.map(x=>({...x, qty:0})), walletLog:[], useLog:[] };
+        render();
+        return;
+      }
+
+      // crear perfil mínimo
+      await setDoc(doc(profileCol, user.uid), {
+        displayName: user.displayName || user.email || user.uid,
+        updatedAt: serverTimestamp()
+      }, {merge:true});
+
+      // suscribir inventario del usuario
+      const invRef = doc(invCol, user.uid);
+      unsubInv = onSnapshot(invRef, async (snap)=>{
+        if(!snap.exists()){
+          await setDoc(invRef, state);
+          return;
+        }
+        const data = snap.data();
+        // blindajes por si faltan campos
+        state.coins = data.coins ?? 0;
+        state.karma = data.karma ?? 0;
+        state.walletLog = data.walletLog ?? [];
+        state.useLog = data.useLog ?? [];
+        // merge cards
+        const byId = new Map(cardsBase.map(c=>[c.id,c]));
+        const loaded = (data.cards||[]).map(c=>({ ...(byId.get(c.id)||{}), ...c }));
+        // añadir las que falten
+        cardsBase.forEach(b=>{ if(!loaded.find(x=>x.id===b.id)) loaded.push({...b, qty:0}); });
+        state.cards = loaded;
+        render();
+      });
+
+      // bandeja de robos y ataques
+      subscribeStealInbox(user.uid);
+      subscribeAttackInbox(user.uid);
+    });
+
+    // ===== Guardar (debounce) =====
+    let saveTimer=null; function scheduleSave(){
+      clearTimeout(saveTimer);
+      saveTimer=setTimeout(async()=>{
+        if(!currentUser) return;
+        await setDoc(doc(invCol, currentUser.uid), state, {merge:true});
+      },300);
+    }
+
+    // ===== Render =====
+    function render(){
+      $("#coins").textContent = Math.trunc(state.coins||0);
+      $("#karma").textContent = Math.trunc(state.karma||0);
+      renderInventory();
+      renderWalletLog();
+      renderUseLog();
+    }
+
+    function renderInventory(){
+      const hideZero = $("#hideZero").checked;
+      const type = $("#filterType").value || "";
+      const grid = $("#inventory");
+      grid.innerHTML="";
+      let list = [...state.cards];
+      if(type) list = list.filter(c=> (c.type||"").toLowerCase()===type.toLowerCase());
+      list.forEach(c=>{
+        if(hideZero && (c.qty||0)<=0) return;
+        const el = document.createElement("div"); el.className="cardSlot"; if((c.qty||0)<=0) el.classList.add("dim");
+        el.innerHTML = `
+          <div class="imgWrap"><img alt="${esc(c.name)}" src="img/${c.id}.png" onerror="this.onerror=null;this.src='img/${c.id}.jpg'"/></div>
+          <div class="title">${esc(c.name)}</div>
+          <div class="meta"><span class="badge">${esc(c.type)}</span> · <span class="badge">${c.cost} 🪙</span></div>
+          <div class="qty">× ${Math.trunc(c.qty||0)}</div>
+        `;
+        el.onclick = ()=> openCard(c.id);
+        grid.appendChild(el);
+      });
+    }
+
+    function renderWalletLog(){
+      const ul = $("#walletLogList"); if(!ul) return; ul.innerHTML="";
+      const log = (state.walletLog||[]).slice().reverse();
+      for(const it of log){
+        const li=document.createElement("li");
+        if(it.delta>0) li.classList.add("win");
+        if(it.delta<0) li.classList.add("lose");
+        li.textContent = `${new Date(it.date).toLocaleString()} — ${it.note} (${it.delta>0?"+":""}${it.delta})`;
+        ul.appendChild(li);
+      }
+    }
+
+    function renderUseLog(){
+      const ul = $("#useLogList"); if(!ul) return; ul.innerHTML="";
+      const log = (state.useLog||[]).slice().reverse();
+      for(const it of log){
+        const li=document.createElement("li");
+        if(typeof it.delta === "number"){
+          if(it.delta>0) li.classList.add("win");
+          if(it.delta<0) li.classList.add("lose");
+        }
+        if(it.admin) li.classList.add("log-admin");
+        li.textContent = `${new Date(it.date).toLocaleString()} — ${it.name}`;
+        ul.appendChild(li);
+      }
+    }
+
+    // ===== Card modal (simple) =====
+    let currentCardId=null;
+    function openCard(id){
+      currentCardId = id;
+      const c = state.cards.find(x=>x.id===id); if(!c) return;
+      const canUse = (c.qty||0)>0 && !!currentUser;
+      const confirmUse = confirm(`¿Usar "${c.name}"?` + (canUse?"":"\n(No tienes unidades)"));
+      if(confirmUse) onUse();
+    }
+
+    // ===== Monedero =====
+    const logCoins=(delta,note)=>{
+      (state.walletLog ||= []).push({date:new Date().toISOString(), delta, note});
+    };
+    const setCoins = (n)=>{ state.coins = Math.max(0, Math.trunc(n||0)); };
+    const addCoins = (n,note)=>{ state.coins = Math.max(0, Math.trunc((state.coins||0)+n)); logCoins(n,note); };
+
+    $("#add1").onclick=()=>{ addCoins(1,"+1 manual"); scheduleSave(); render(); };
+    $("#sub1").onclick=()=>{ addCoins(-1,"−1 manual"); scheduleSave(); render(); };
+
+    $("#btnLider").onclick=async()=>{
+      const ok = confirm("¿Has completado un líder? Si no perdiste ningún Pokémon, obtienes +3 extra.");
+      if(!ok) return;
+      const noLoss = confirm("¿Confirmas que NO perdiste ningún Pokémon?");
+      const gain = noLoss? 9 : 6;
+      addCoins(gain, `Líder completado (+${gain})`);
+      scheduleSave(); render();
+    };
+
+    $("#btnImportante").onclick=async()=>{
+      const ok = confirm("¿Combate importante ganado? Si no perdiste Pokémon, +2 extra.");
+      if(!ok) return;
+      const noLoss = confirm("¿Confirmas que NO perdiste ningún Pokémon?");
+      const gain = 5 + (noLoss?2:0);
+      addCoins(gain, `Combate importante (+${gain})`);
+      scheduleSave(); render();
+    };
+
+    // ===== USAR carta =====
+    async function onUse(){
+      if (!currentUser) return;
+      const c = state.cards.find(x => x.id === currentCardId); if (!c) return;
+      if ((c.qty || 0) <= 0) { alert("No tienes esta carta."); return; }
+
+      const spend = ()=>{ c.qty = Math.max(0, (c.qty||0)-1); };
+
+      // Economía automáticas
+      if (c.name.toLowerCase() === "10 monedas") {
+        spend(); addCoins(10, "Carta 10 monedas");
+        (state.useLog||=[]).push({date:new Date().toISOString(),name:"Usaste 10 monedas (+10) (−1)"});
+        scheduleSave(); render(); return;
+      }
+      if (c.name.toLowerCase() === "venta ilegal") {
+        spend(); addCoins(2, "Venta ilegal");
+        (state.useLog||=[]).push({date:new Date().toISOString(),name:"Usaste Venta ilegal (+2) (−1)"});
+        scheduleSave(); render(); return;
+      }
+      if (c.name.toLowerCase() === "monedero perdido") {
+        spend(); const n = 1 + Math.floor(Math.random()*5); addCoins(n, "Monedero perdido");
+        (state.useLog||=[]).push({date:new Date().toISOString(),name:`Usaste Monedero perdido (+${n}) (−1)`});
+        scheduleSave(); render(); return;
+      }
+      if (c.name.toLowerCase() === "robo de monedas") {
+        spend(); addCoins(5, "Robo de monedas");
+        (state.useLog||=[]).push({date:new Date().toISOString(),name:"Usaste Robo de monedas (+5) (−1)"});
+        scheduleSave(); render(); return;
+      }
+
+      // Robo sigiloso → se gasta al confirmar robo
+      if (c.name.toLowerCase() === "robo sigiloso") { openSteal(); return; }
+      // Barajear cartas → se gasta al confirmar barajeo
+      if (c.name.toLowerCase() === "barajear cartas") { openShuffle(); return; }
+
+      // Ataques genéricos (notificación y gasta carta)
+      if ((c.type||"").toLowerCase()==="ataque"){
+        const target = await pickUser(`¿A quién quieres atacar con “${c.name}”?`);
+        if(!target) return;
+        state.karma = (state.karma||0) + 1;
+        await addDoc(attackCol, {
+          attackerId: currentUser.uid,
+          attackerName: currentUser.displayName || currentUser.email || currentUser.uid,
+          victimId: target.uid,
+          cardName: c.name,
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+        spend();
+        (state.useLog||=[]).push({date:new Date().toISOString(),name:`Ataque enviado: ${c.name} → ${target.name} (−1)`});
+        scheduleSave(); render(); return;
+      }
+
+      // Resto: efecto in-game, se gasta igualmente
+      spend();
+      (state.useLog||=[]).push({date:new Date().toISOString(),name:`Usaste ${c.name} (efecto en partida) (−1)`});
+      scheduleSave(); render();
+      alert("Esta carta se aplica en la partida (fuera de la app). Ya se ha descontado del inventario.");
       return;
     }
-    fillAdminSelect();
-    adminQty.value = "1";
-    toggleModal(adminModal, true);
-  };
-}
 
-if (adminCloseX) {
-  adminCloseX.onclick = ()=> toggleModal(adminModal,false);
-}
-
-// Rellena el select con TODAS las cartas ordenadas por tipo y nombre
-function fillAdminSelect(){
-  const cards = [...(state.cards||[])];
-  cards.sort((a,b)=>{
-    const t = (a.type||"").localeCompare(b.type||"");
-    if(t!==0) return t;
-    return (a.name||"").localeCompare(b.name||"");
-  });
-  adminCardSelect.innerHTML = "";
-  for(const c of cards){
-    const opt = document.createElement("option");
-    opt.value = c.id;
-    opt.textContent = `${c.name} — ${c.type} · ${c.cost}🪙`;
-    adminCardSelect.appendChild(opt);
-  }
-}
-
-// Registrar en historial con etiqueta [ADMIN]
-function logAdmin(delta, card){
-  const sign = delta>0? "+" : "−";
-  const abs = Math.abs(delta);
-  (state.useLog ||= []).push({
-    date: new Date().toISOString(),
-    name: `[ADMIN] ${sign}${abs} ${card.name}`,
-    admin: true,
-    delta
-  });
-}
-
-// Click en Añadir
-if (adminAddBtn) {
-  adminAddBtn.onclick = ()=>{
-    if(!currentUser || spyUid){ alert("No puedes usar admin ahora."); return; }
-    const id = adminCardSelect.value;
-    const n = Math.max(1, Math.trunc(Number(adminQty.value)||1));
-    const card = (state.cards||[]).find(c=>c.id===id);
-    if(!card){ alert("Carta no encontrada"); return; }
-    card.qty = (card.qty||0) + n;
-    logAdmin(+n, card);
-    toast(`✅ [ADMIN] Añadidas ${n} × ${card.name}`);
-    scheduleSave(); render();
-  };
-}
-
-// Click en Retirar
-if (adminRemoveBtn) {
-  adminRemoveBtn.onclick = ()=>{
-    if(!currentUser || spyUid){ alert("No puedes usar admin ahora."); return; }
-    const id = adminCardSelect.value;
-    const n = Math.max(1, Math.trunc(Number(adminQty.value)||1));
-    const card = (state.cards||[]).find(c=>c.id===id);
-    if(!card){ alert("Carta no encontrada"); return; }
-    const before = (card.qty||0);
-    const real = Math.min(before, n);
-    card.qty = Math.max(0, before - real);
-    logAdmin(-real, card);
-    toast(`🗑️ [ADMIN] Retiradas ${real} × ${card.name}`);
-    scheduleSave(); render();
-  };
-}
-
-/* ========= Robos (víctima) ========= */
-const inboxModal=$("#inboxModal"), inboxText=$("#inboxText"), inboxPreview=$("#inboxPreview");
-const inboxApply=$("#inboxApply"), inboxCloseX=$("#inboxCloseX");
-let currentInboxId=null, currentInboxData=null;
-
-inboxCloseX.onclick = async ()=>{
-  if(currentInboxId){
-    await updateDoc(doc(db,"stealRequests", currentInboxId), {
-      seenByVictim: true,
-      seenAt: serverTimestamp()
-    });
-  }
-  toggleModal(inboxModal,false);
-  currentInboxId=null; currentInboxData=null;
-};
-
-async function showStealInbox(docId, data){
-  // Simplificado: notificación + OK
-  currentInboxId = docId;
-  currentInboxData = data;
-
-  const attacker = data.attackerName || data.attackerId || "Alguien";
-  inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
-
-  // marcar visto para que NO reaparezca al recargar
-  try {
-    await updateDoc(doc(db,"stealRequests", currentInboxId), {
-      seenByVictim: true,
-      seenAt: serverTimestamp()
-    });
-  } catch(e){ console.warn("No se pudo marcar visto:", e); }
-
-  // preview centrada (1 carta)
-  inboxPreview.innerHTML = "";
-  const cardDef = state.cards.find(c => c.id === data.cardId) || { id: data.cardId, name: data.cardName || "Carta", type: "", cost: "?" };
-  const block = document.createElement("div"); block.className = "cardSlot";
-  const imgWrap = document.createElement("div"); imgWrap.className = "imgWrap";
-  const img = document.createElement("img"); img.alt = cardDef.name; img.src = `img/${cardDef.id}.png`;
-  img.onerror = ()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ = 1; img.src = `img/${cardDef.id}.jpg`; } };
-  imgWrap.appendChild(img);
-  const title = document.createElement("div"); title.className = "title"; title.textContent = cardDef.name;
-  const meta = document.createElement("div"); meta.className = "small"; meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost} 🪙</span>`;
-  const qtyNow = (state.cards.find(c=>c.id===cardDef.id)?.qty)||0;
-  const qty = document.createElement("div"); qty.className="qty"; qty.textContent = "× "+qtyNow;
-  block.appendChild(imgWrap); block.appendChild(title); block.appendChild(meta); block.appendChild(qty);
-  inboxPreview.appendChild(block);
-
-  // un solo botón OK: cerrar YA y aplicar en segundo plano
-  inboxApply.onclick = async () => {
-    if(!currentInboxId || !currentInboxData){ toggleModal(inboxModal,false); return; }
-
-    // cerrar al instante
-    toggleModal(inboxModal,false);
-    const _docId = currentInboxId;
-    const _data  = currentInboxData;
-    currentInboxId = null; currentInboxData = null;
-
-    try{
-      // restar 1 unidad si la tienes
-      const cid = _data.cardId;
-      const localCard = state.cards.find(x=>x.id===cid);
-      if(localCard && (localCard.qty||0)>0){
-        localCard.qty = Math.max(0, (localCard.qty||0) - 1);
-        state.useLog.push({date:new Date().toISOString(),cardId:cid,name:`Te robaron ${_data.cardName} (−1)`,note:`Por ${_data.attackerName||_data.attackerId}`});
-        toast(`🔻 -1 ${_data.cardName}`);
-      }else{
-        toast("No tenías esa carta disponible para restar.");
-      }
-
-      // marcar aplicado
-      await updateDoc(doc(db,"stealRequests", _docId), {
-        status: "applied",
-        appliedAt: serverTimestamp(),
-        seenByVictim: true
-      });
-
-      scheduleSave(); render();
-    }catch(e){ console.error("Error al aplicar robo:", e); }
-  };
-
-  toggleModal(inboxModal,true);
-}
-
-/* ========= Ataques (víctima) ========= */
-const attackModal=$("#attackModal"), attackText=$("#attackText"), attackPreview=$("#attackPreview"), defenseButtons=$("#defenseButtons"), attackCloseX=$("#attackCloseX");
-attackCloseX.onclick=()=>toggleModal(attackModal,false);
-let currentAttackId=null, currentAttackData=null;
-
-async function showAttackInbox(docId, data){
-  currentAttackId = docId;
-  currentAttackData = data;
-  const attacker = data.attackerName || data.attackerId || "Alguien";
-  attackText.innerHTML = `<strong>${esc(attacker)}</strong> te ha atacado con <strong>${esc(data.cardName)}</strong>.`;
-
-  // Preview centrada con 1 carta
-  attackPreview.innerHTML = "";
-  const block = document.createElement("div"); block.className="cardSlot";
-  const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
-  const idGuess = state.cards.find(c=>c.name.toLowerCase()===data.cardName.toLowerCase())?.id || "c01";
-  const img=document.createElement("img"); img.alt=data.cardName; img.src=`img/${idGuess}.png`;
-  img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${idGuess}.jpg`; } };
-  imgWrap.appendChild(img);
-  const title=document.createElement("div"); title.className="title"; title.textContent=data.cardName;
-  block.appendChild(imgWrap); block.appendChild(title);
-  attackPreview.appendChild(block);
-
-  // Botón único OK: cierra ya y aplica karma -1
-  defenseButtons.innerHTML = "";
-  const okBtn = document.createElement("button");
-  okBtn.className = "btn bad";
-  okBtn.textContent = "OK (recibir ataque)";
-  okBtn.onclick = async () => {
-    // Cerrar al instante
-    toggleModal(attackModal,false);
-    const _docId = currentAttackId;
-    currentAttackId = null; currentAttackData = null;
-
-    try{
-      state.karma = (state.karma||0) - 1;
-      await updateDoc(doc(db,"attackRequests", _docId), {
-        status: "applied",
-        resolvedAt: serverTimestamp()
-      });
-      toast("⚡ Ataque aplicado: karma −1");
-      scheduleSave(); render();
-    } catch(e){
-      console.error("Error aplicando ataque:", e);
+    // ===== Ruleta =====
+    const slotText=$("#slotText");
+    $("#spinPaid").onclick=async()=>{
+      const ru = state.cards.find(c=>c.name.toLowerCase()==="ruleta");
+      if(!ru || (ru.qty||0)<=0){ alert("No tienes tiradas de Ruleta."); return; }
+      if(!confirm("¿Gastar 1 Ruleta? Esto es aleatorio 😅")) return;
+      ru.qty-=1; const res=await doSpin(); showReward(res); (state.useLog||=[]).push({date:new Date().toISOString(),name:`Ganaste por ruleta: ${res.name} (+1)`}); scheduleSave(); render();
+    };
+    $("#spinFree").onclick=()=>{
+      if(!confirm("¿Has vencido a un líder de gimnasio? Te doy 1 Ruleta gratis.")) return;
+      const ru = state.cards.find(c=>c.name.toLowerCase()==="ruleta"); if(!ru) return; ru.qty=(ru.qty||0)+1; scheduleSave(); render();
+    };
+    async function doSpin(){
+      const fixed = ["10 monedas","Monedero perdido"]; // fijas
+      const pool = state.cards.filter(c=>[13,10,7,4,2].includes(c.cost));
+      const pick = pool[Math.floor(Math.random()*pool.length)];
+      const got = state.cards.find(c=>c.id===pick.id); got.qty=(got.qty||0)+1; slotText.textContent=pick.name; return pick;
     }
-  };
-  defenseButtons.appendChild(okBtn);
+    function showReward(card){
+      $("#rewardName").textContent = card.name;
+      $("#rewardMeta").textContent = `${card.type} · ${card.cost} 🪙`;
+      const img=$("#rewardImg"); img.onerror=null; img.src=`img/${card.id}.png`; img.onerror=()=>{img.src=`img/${card.id}.jpg`};
+      toggleModal($("#rewardModal"), true);
+    }
+    $("#rewardClose").onclick=()=>toggleModal($("#rewardModal"),false);
+    $("#rewardCloseX").onclick=()=>toggleModal($("#rewardModal"),false);
 
-  // ¡ESTAS 2 LÍNEAS FALTABAN! (mostrar y CERRAR función)
-  toggleModal(attackModal,true);
-}
+    // ===== Barajear =====
+    const shuffleModal=$("#shuffleModal"), shufflePickGrid=$("#shufflePickGrid"), shuffleConfirm=$("#shuffleConfirm"), shuffleCount=$("#shuffleCount");
+    let shufflePick={};
+    function openShuffle(){
+      shufflePick={}; shuffleCount.textContent="0"; shufflePickGrid.innerHTML="";
+      state.cards.filter(c=>(c.qty||0)>0).forEach(c=>{
+        const slot=document.createElement("div"); slot.className="cardSlot"; slot.dataset.id=c.id;
+        slot.innerHTML = `
+          <div class="imgWrap"><img alt="${esc(c.name)}" src="img/${c.id}.png" onerror="this.onerror=null;this.src='img/${c.id}.jpg'"/></div>
+          <div class="title">${esc(c.name)}</div>
+          <div class="meta"><span class="badge">${esc(c.type)}</span> · <span class="badge">${c.cost} 🪙</span></div>
+          <div class="qty">× ${Math.trunc(c.qty||0)}</div>
+        `;
+        const ctr=document.createElement("div"); ctr.style.display="flex"; ctr.style.gap="6px"; ctr.style.marginTop="6px";
+        const less=document.createElement("button"); less.className="btn alt"; less.textContent="−";
+        const num=document.createElement("span"); num.className="badge"; num.textContent="0";
+        const more=document.createElement("button"); more.className="btn alt"; more.textContent="+";
+        let picked=0;
+        function total(){ return Object.values(shufflePick).reduce((a,b)=>a+b,0); }
+        more.onclick=()=>{ if((picked+total())>=3) return; if(picked>=c.qty) return; picked++; shufflePick[c.id]=picked; num.textContent=String(picked); update(); };
+        less.onclick=()=>{ if(picked<=0) return; picked--; if(picked<=0) delete shufflePick[c.id]; else shufflePick[c.id]=picked; num.textContent=String(picked); update(); };
+        function update(){ shuffleCount.textContent=String(Object.values(shufflePick).reduce((a,b)=>a+b,0)); shuffleConfirm.disabled = (Object.values(shufflePick).reduce((a,b)=>a+b,0)!==3); }
+        ctr.appendChild(less); ctr.appendChild(num); ctr.appendChild(more); slot.appendChild(ctr);
+        shufflePickGrid.appendChild(slot);
+      });
+      toggleModal(shuffleModal,true);
+    }
+    $("#shuffleCancel").onclick=()=>toggleModal(shuffleModal,false);
+    $("#shuffleCloseX").onclick=()=>toggleModal(shuffleModal,false);
+    $("#shuffleConfirm").onclick=()=>{
+      if(Object.values(shufflePick).reduce((a,b)=>a+b,0)!==3) return;
+      // restar seleccionadas
+      Object.entries(shufflePick).forEach(([id,n])=>{
+        const c=state.cards.find(x=>x.id===id); c.qty=Math.max(0,(c.qty||0)-n);
+      });
+      // gastar la propia carta "Barajear cartas"
+      const sh = state.cards.find(x=>x.name.toLowerCase()==="barajear cartas"); if(sh && (sh.qty||0)>0) sh.qty-=1;
+      // dar 2 nuevas (ponderación simple por coste)
+      function pick(){ const pool=[]; state.cards.forEach(c=>{ const w = c.cost>=10?5: c.cost>=7?3: c.cost>=4?2:1; for(let i=0;i<w;i++) pool.push(c); }); return pool[Math.floor(Math.random()*pool.length)]; }
+      const r1=pick(), r2=pick(); r1.qty=(r1.qty||0)+1; r2.qty=(r2.qty||0)+1;
+      (state.useLog||=[]).push({date:new Date().toISOString(),name:`Barajear: ${r1.name} y ${r2.name} (+1,+1)`});
+      scheduleSave(); render(); toggleModal(shuffleModal,false);
+      alert(`Nuevas cartas: ${r1.name} y ${r2.name}`);
+    };
 
-/* ========= Espiar ========= */
-function renderSpyMenu(){
-  const me=currentUser?.uid;
-  const items=profiles.filter(p=>p.id!==me).map(p=>`<button class="spyItem" data-uid="${p.id}" style="width:100%;text-align:left;background:transparent;color:var(--text);border:1px solid transparent;padding:8px 10px;border-radius:10px;cursor:pointer">${esc(p.displayName||p.email||p.id)}</button>`);
-  let box = $("#spyMenu");
-  if(!box){
-    $("#spyTools").style.display="block";
-    const menu=$("#spyMenu");
-    $("#btnSpy").onclick=(e)=>{e.stopPropagation();menu.classList.toggle("show")};
-    document.body.addEventListener("click",()=>menu.classList.remove("show"));
-    menu.addEventListener("click",(e)=>{
-      const btn=e.target.closest(".spyItem"); if(!btn)return;
-      const uid=btn.getAttribute("data-uid"); menu.classList.remove("show"); if(!uid)return;
-      spyUid=uid; $("#spyInfo").style.display="inline-flex";
-      const profile=profiles.find(p=>p.id===uid); $("#spyName").textContent=profile?.displayName||profile?.email||uid;
-      document.documentElement.classList.add("spyTint");
-      subscribeInventory(uid);
-    });
-    $("#spyExit").onclick=()=>{spyUid=null;$("#spyInfo").style.display="none";document.documentElement.classList.remove("spyTint");if(currentUser)subscribeInventory(currentUser.uid)};
-  }
-  $("#spyMenu").innerHTML=items.length?items.join(""):'<div class="small">No hay otros usuarios aún.</div>';
-}
+    // ===== Notificaciones (ROBO) =====
+    const inboxModal=$("#inboxModal"), inboxText=$("#inboxText"), inboxPreview=$("#inboxPreview");
+    const inboxApply=$("#inboxApply"), inboxCloseX=$("#inboxCloseX");
+    let currentInboxId=null, currentInboxData=null;
 
-/* ========= Selector de usuario reutilizable ========= */
-function pickUser(title="Selecciona usuario"){
-  return new Promise((resolve)=>{
-    const m=$("#targetModal"), sel=$("#targetSelect"), ok=$("#targetOk"), cancel=$("#targetCancel"), titleEl=$("#targetTitle"), closeX=$("#targetCloseX");
-    titleEl.textContent = title;
-    const me=currentUser?.uid;
-    sel.innerHTML = ['<option value="">— Elegir —</option>'].concat(
-      profiles.filter(p=>p.id!==me).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`)
-    ).join("");
-    function done(val){ toggleModal(m,false); ok.onclick=cancel.onclick=closeX.onclick=null; resolve(val); }
-    ok.onclick=()=>{ const v=sel.value; if(!v) return; const p=profiles.find(x=>x.id===v); done({uid:v,name:p?.displayName||p?.email||v}); };
-    cancel.onclick=()=>done(null);
-    closeX.onclick=()=>done(null);
-    toggleModal(m,true);
-  });
-}
+    inboxCloseX.onclick = async ()=>{
+      if(currentInboxId){ await updateDoc(doc(stealCol, currentInboxId), { seenByVictim:true, seenAt:serverTimestamp() }); }
+      toggleModal(inboxModal,false); currentInboxId=null; currentInboxData=null;
+    };
 
-/* ========= USAR carta ========= */
-async function onUse(){
-  if (spyUid || !currentUser) return;
-  const c = state.cards.find(x => x.id === currentCardId); if (!c) return;
-  if ((c.qty || 0) <= 0) { alert("No tienes esta carta."); return; }
+    function subscribeStealInbox(uid){
+      if(unsubSteal){unsubSteal();unsubSteal=null}
+      const qv = query(stealCol, where("victimId","==",uid), where("status","==","pending"));
+      unsubSteal = onSnapshot(qv,(snap)=>{
+        const docs=snap.docs; if(!docs.length) return; const first=docs.find(d=>!d.data().seenByVictim)||docs[0];
+        showStealInbox(first.id, first.data());
+      });
+    }
 
-  // helper para gastar la carta actual de forma segura
-  const spend = ()=>{
-    c.qty = Math.max(0, (c.qty || 0) - 1);
-    $("#cardQty").textContent = Math.trunc(c.qty || 0); // refresco rápido en el modal
-  };
+    async function showStealInbox(docId, data){
+      currentInboxId=docId; currentInboxData=data;
+      const attacker = data.attackerName || data.attackerId || "Alguien";
+      inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName||"una carta")}</strong>.`;
+      try{ await updateDoc(doc(stealCol, currentInboxId), { seenByVictim:true, seenAt:serverTimestamp() }); }catch{}
+      // preview
+      inboxPreview.innerHTML="";
+      const cardDef = state.cards.find(c=>c.id===data.cardId) || {id:data.cardId,name:data.cardName||"Carta",type:"",cost:"?"};
+      const slot=document.createElement("div"); slot.className="cardSlot"; slot.style.width="260px";
+      slot.innerHTML=`<div class="imgWrap"><img alt="${esc(cardDef.name)}" src="img/${cardDef.id}.png" onerror="this.onerror=null;this.src='img/${cardDef.id}.jpg'"/></div><div class="title">${esc(cardDef.name)}</div><div class="meta"><span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost} 🪙</span></div>`;
+      inboxPreview.appendChild(slot);
 
-  // ——— ECONOMÍA: efectos automáticos (SIEMPRE gastan la carta) ———
-  if (c.name.toLowerCase() === "10 monedas") {
-    spend();
-    addCoins(10, "Carta 10 monedas");
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste 10 monedas (+10) y gastaste la carta (−1)"});
-    toast("💰 +10 monedas");
-    scheduleSave(); render(); return;
-  }
+      inboxApply.onclick = async ()=>{
+        if(!currentInboxId || !currentInboxData){ toggleModal(inboxModal,false); return; }
+        toggleModal(inboxModal,false);
+        const _docId=currentInboxId, _data=currentInboxData; currentInboxId=null; currentInboxData=null;
+        try{
+          const cid=_data.cardId; const local=state.cards.find(x=>x.id===cid);
+          if(local && (local.qty||0)>0){ local.qty=Math.max(0,(local.qty||0)-1); (state.useLog||=[]).push({date:new Date().toISOString(),cardId:cid,name:`Te robaron ${_data.cardName} (−1)`,note:`Por ${_data.attackerName||_data.attackerId}`}); }
+          await updateDoc(doc(stealCol,_docId), { status:"applied", appliedAt:serverTimestamp(), seenByVictim:true });
+          scheduleSave(); render();
+        }catch(e){ console.error(e); }
+      };
 
-  if (c.name.toLowerCase() === "venta ilegal") {
-    spend();
-    addCoins(2, "Venta ilegal");
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Venta ilegal (+2) y gastaste la carta (−1)"});
-    toast("🪙 +2 por Venta ilegal");
-    scheduleSave(); render(); return;
-  }
+      toggleModal(inboxModal,true);
+    }
 
-  if (c.name.toLowerCase() === "monedero perdido") {
-    spend();
-    const n = 1 + Math.floor(Math.random()*5);
-    addCoins(n, "Monedero perdido");
-    state.useLog.push({date:new Date().toISOString(), name:`Usaste Monedero perdido (+${n}) y gastaste la carta (−1)`});
-    toast(`🎲 Monedero perdido: +${n}`);
-    scheduleSave(); render(); return;
-  }
+    // ===== Notificaciones (ATAQUE) =====
+    const attackModal=$("#attackModal"), attackText=$("#attackText"), attackPreview=$("#attackPreview"), defenseButtons=$("#defenseButtons"), attackCloseX=$("#attackCloseX");
+    let currentAttackId=null, currentAttackData=null;
 
-  if (c.name.toLowerCase() === "robo de monedas") {
-    spend();
-    addCoins(5, "Robo de monedas");
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Robo de monedas (+5) y gastaste la carta (−1)"});
-    toast("💸 +5 por Robo de monedas");
-    scheduleSave(); render(); return;
-  }
+    attackCloseX.onclick=()=>{ toggleModal(attackModal,false); currentAttackId=null; currentAttackData=null; };
 
-  // ——— ESPECIALES ———
-  // Robo sigiloso: se gasta al CONFIRMAR el robo (no aquí)
-  if (c.name.toLowerCase() === "robo sigiloso") {
-    openSteal();
-    return;
-  }
+    function subscribeAttackInbox(uid){
+      if(unsubAttack){unsubAttack();unsubAttack=null}
+      const qv = query(attackCol, where("victimId","==",uid), where("status","==","pending"));
+      unsubAttack = onSnapshot(qv,(snap)=>{
+        const docs=snap.docs; if(!docs.length) return; showAttackInbox(docs[0].id, docs[0].data());
+      });
+    }
 
-  // Barajear cartas: se gasta al CONFIRMAR el barajeo (no aquí)
-  if (c.name.toLowerCase() === "barajear cartas") {
-    openShuffle();
-    return;
-  }
+    async function showAttackInbox(docId, data){
+      currentAttackId=docId; currentAttackData=data;
+      const attacker = data.attackerName || data.attackerId || "Alguien";
+      attackText.innerHTML = `<strong>${esc(attacker)}</strong> te ha atacado con <strong>${esc(data.cardName)}</strong>.`;
+      attackPreview.innerHTML=""; const guess = state.cards.find(c=>c.name.toLowerCase()===data.cardName.toLowerCase());
+      const slot=document.createElement("div"); slot.className="cardSlot"; slot.style.width="260px";
+      const id=guess?guess.id:"c01";
+      slot.innerHTML=`<div class=\"imgWrap\"><img alt=\"${esc(data.cardName)}\" src=\"img/${id}.png\" onerror=\"this.onerror=null;this.src='img/${id}.jpg'\"/></div><div class=\"title\">${esc(data.cardName)}</div>`;
+      attackPreview.appendChild(slot);
+      defenseButtons.innerHTML="";
+      const okBtn=document.createElement("button"); okBtn.className="btn bad"; okBtn.textContent="OK (recibir ataque)";
+      okBtn.onclick = async ()=>{
+        toggleModal(attackModal,false); const _docId=currentAttackId; currentAttackId=null; currentAttackData=null;
+        try{ state.karma=(state.karma||0)-1; await updateDoc(doc(attackCol,_docId), {status:"applied", resolvedAt:serverTimestamp()}); toast("Ataque aplicado: karma −1"); scheduleSave(); render(); }catch(e){ console.error(e); }
+      };
+      defenseButtons.appendChild(okBtn);
+      toggleModal(attackModal,true);
+    }
 
-  // ——— ATAQUES genéricos: notifican y GASTAN la carta ———
-  if (c.type === "ataque") {
-    const target = await pickUser(`¿A quién quieres atacar con “${c.name}”?`);
-    if (!target) return;
+    // ===== Robo sigiloso (UI mínima) =====
+    async function pickUser(promptText){
+      // Carga perfiles para seleccionar
+      const users=[]; // snapshot manual
+      // Simple: pedir UID o nombre via prompt (puedes cambiar a desplegable real si ya tienes lista en memoria)
+      const target = window.prompt(promptText+"\n(Escribe UID del rival)");
+      if(!target) return null;
+      return { uid: target, name: target };
+    }
 
-    state.karma = (state.karma || 0) + 1; // karma del atacante +1
+    let stealSelectedCardId=null, stealSelectedCardName=null, stealTarget=null;
+    function openSteal(){
+      // Elegir rival
+      pickUser("¿A quién quieres robar?").then(target=>{
+        if(!target) return; stealTarget=target;
+        // Elegir carta del rival (flujo simple: pedimos nombre exacto)
+        const name = window.prompt("Nombre de la carta a robar (exacto):"); if(!name) return;
+        const myCard = state.cards.find(c=>c.name.toLowerCase()===name.toLowerCase());
+        if(!myCard){ alert("Esa carta no existe en tu set."); return; }
+        stealSelectedCardId = myCard.id; stealSelectedCardName=myCard.name;
+        // Al ladrón se le suma ya
+        myCard.qty=(myCard.qty||0)+1; (state.useLog||=[]).push({date:new Date().toISOString(),name:`Robo sigiloso: añadida ${myCard.name} (+1)`});
+        // Gastar la carta de Robo sigiloso + karma +1
+        const stealCard = state.cards.find(x=>x.name.toLowerCase()==="robo sigiloso"); if(stealCard && (stealCard.qty||0)>0) stealCard.qty-=1;
+        state.karma=(state.karma||0)+1;
+        scheduleSave(); render();
+        // Crear notificación a la víctima
+        addDoc(stealCol, { attackerId: currentUser.uid, attackerName: currentUser.displayName||currentUser.email||currentUser.uid, victimId: stealTarget.uid, cardId: stealSelectedCardId, cardName: stealSelectedCardName, status:"pending", seenByVictim:false, createdAt:serverTimestamp() });
+        alert("Robo enviado. El rival confirmará la resta.");
+      });
+    }
 
-    await addDoc(attackCol, {
-      attackerId: currentUser.uid,
-      attackerName: currentUser.displayName || currentUser.email || currentUser.uid,
-      victimId: target.uid,
-      cardName: c.name,
-      status: "pending",
-      createdAt: serverTimestamp()
-    });
+    // ===== Admin cartas =====
+    const adminFab=$("#adminFab"), adminModal=$("#adminModal"), adminCloseX=$("#adminCloseX");
+    const adminCardSelect=$("#adminCardSelect"), adminQty=$("#adminQty"), adminAddBtn=$("#adminAddBtn"), adminRemoveBtn=$("#adminRemoveBtn");
 
-    // gastar la carta usada
-    spend();
+    adminFab.onclick=()=>{
+      if(!currentUser){ alert("Necesitas estar autenticado."); return; }
+      fillAdminSelect(); adminQty.value="1"; toggleModal(adminModal,true);
+    };
+    adminCloseX.onclick=()=>toggleModal(adminModal,false);
 
-    state.useLog.push({date:new Date().toISOString(), name:`Ataque enviado: ${c.name} → ${target.name} (gastada −1)`});
-    toast(`⚔️ Ataque enviado a ${target.name}`);
-    scheduleSave(); render(); return;
-  }
+    function fillAdminSelect(){
+      const cards=[...state.cards]; cards.sort((a,b)=> (a.type||"").localeCompare(b.type||"") || (a.name||"").localeCompare(b.name||""));
+      adminCardSelect.innerHTML=""; for(const c of cards){ const opt=document.createElement("option"); opt.value=c.id; opt.textContent=`${c.name} — ${c.type} · ${c.cost}🪙`; adminCardSelect.appendChild(opt); }
+    }
+    function logAdmin(delta, card){ (state.useLog||=[]).push({date:new Date().toISOString(), name:`[ADMIN] ${delta>0?"+":""}${delta} ${card.name}`, admin:true, delta}); }
 
-  // ——— SIN efecto automático: se considera “in-game” y SE GASTA igual ———
-  spend();
-  state.useLog.push({
-    date: new Date().toISOString(),
-    name: `Usaste ${c.name} (efecto en partida) (−1)`
-  });
-  toast(`🗂️ Usaste ${c.name} (−1)`);
-  scheduleSave(); render();
-  alert("Esta carta se aplica en la partida (fuera de la app). Ya se ha descontado de tu inventario.");
-  return;
-}
+    adminAddBtn.onclick=()=>{
+      if(!currentUser){ alert("No puedes usar admin ahora."); return; }
+      const id=adminCardSelect.value; const n=Math.max(1,Math.trunc(Number(adminQty.value)||1));
+      const card=state.cards.find(c=>c.id===id); if(!card){ alert("Carta no encontrada"); return; }
+      card.qty=(card.qty||0)+n; logAdmin(+n, card); toast(`[ADMIN] +${n} ${card.name}`); scheduleSave(); render();
+    };
+    adminRemoveBtn.onclick=()=>{
+      if(!currentUser){ alert("No puedes usar admin ahora."); return; }
+      const id=adminCardSelect.value; const n=Math.max(1,Math.trunc(Number(adminQty.value)||1));
+      const card=state.cards.find(c=>c.id===id); if(!card){ alert("Carta no encontrada"); return; }
+      const before=(card.qty||0); const real=Math.min(before,n); card.qty=Math.max(0,before-real); logAdmin(-real, card); toast(`[ADMIN] −${real} ${card.name}`); scheduleSave(); render();
+    };
 
+    // ===== Util =====
+    function toggleModal(el,show){ if(!el) return; el.setAttribute("aria-hidden", show?"false":"true"); }
 
-/* ========= Ruleta ========= */
-const slotText=$("#slotText");
-$("#spinPaid").onclick=async()=>{
-  if(spyUid||!currentUser)return;
-  const ru = findCardByName("Ruleta");
-  if(!ru || (ru.qty||0)<=0){ alert("No tienes tiradas de Ruleta."); return; }
-  if(!confirm("¿Gastar 1 Ruleta? Esto es aleatorio, no me odies si sale feo 😅")) return;
-  ru.qty-=1;
-  const res = await doSpin();
-  showReward(res);
-  state.useLog.push({date:new Date().toISOString(), name:`Ganaste por ruleta: ${res.name} (+1)`});
-  scheduleSave(); render();
-};
-$("#spinFree").onclick=async()=>{
-  if(spyUid||!currentUser)return;
-  if(!confirm("¿Has vencido a un líder de gimnasio? Te doy 1 Ruleta gratis.")) return;
-  const ru = findCardByName("Ruleta"); if(!ru) return;
-  ru.qty = (ru.qty||0)+1; toast("🎁 +1 Ruleta");
-  state.useLog.push({date:new Date().toISOString(), name:"Ruleta gratis (post-gym) (+1)"}); 
-  scheduleSave(); render();
-};
-async function doSpin(){
-  // Fijos: 10 monedas + Monedero perdido
-  const ten = findCardByName("10 monedas"); if(ten) ten.qty=(ten.qty||0)+1;
-  const mp  = findCardByName("Monedero perdido"); if(mp) mp.qty=(mp.qty||0)+1;
+    // Filtros
+    $("#hideZero").onchange=render; $("#filterType").onchange=render;
 
-  // Bolsa ponderada: 1 legendaria (coste 10 o 13), 1 épica (7), 3 de coste 4, 4 de coste 2
-  const leg = pickRandomByCost([13,10],1);
-  const epi = pickRandomByCost([7],1);
-  const rar = pickRandomByCost([4],3);
-  const com = pickRandomByCost([2],4);
-  const pool = [...leg,...epi,...rar,...com];
-  const chosen = pool[Math.floor(Math.random()*pool.length)];
-  const mine = state.cards.find(c=>c.id===chosen.id);
-  if(mine) mine.qty=(mine.qty||0)+1;
-  slotText.textContent = chosen.name;
-  return chosen;
-}
-function pickRandomByCost(costs, n){
-  const list = state.cards.filter(c=>costs.includes(c.cost));
-  const arr=[]; for(let i=0;i<n;i++){ arr.push(list[Math.floor(Math.random()*list.length)]); }
-  return arr;
-}
-function showReward(card){
-  const m=$("#rewardModal");
-  $("#rewardName").textContent = card.name;
-  $("#rewardMeta").textContent = `${card.type} · ${card.cost} 🪙 · ${tierOf(card.cost)}`;
-  const img=$("#rewardImg"); img.removeAttribute("data-tried"); img.onerror=null;
-  img.src=`img/${card.id}.png`; img.onerror=()=>{ if(!img.dataset.tried){ img.dataset.tried=1; img.src=`img/${card.id}.jpg`; } };
-  toggleModal(m,true);
-}
-$("#rewardCloseX").onclick=()=>toggleModal($("#rewardModal"),false);
-$("#rewardClose").onclick=()=>toggleModal($("#rewardModal"),false);
-
-/* ========= Barajear cartas ========= */
-const shuffleModal=$("#shuffleModal"), shufflePickGrid=$("#shufflePickGrid"), shuffleConfirm=$("#shuffleConfirm"), shuffleCount=$("#shuffleCount");
-let shufflePick={}; // {cardId: unidadesSeleccionadas}
-function openShuffle(){
-  shufflePick={};
-  shuffleCount.textContent="0";
-  shufflePickGrid.innerHTML="";
-  // Mostrar todas las cartas con qty>0 y permitir sumar unidades específicas
-  state.cards.filter(c=> (c.qty||0)>0).forEach(c=>{
-    const slot=document.createElement("div"); slot.className="cardSlot"; slot.dataset.id=c.id;
-    const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
-    const img=document.createElement("img"); img.alt=c.name; img.src=`img/${c.id}.png`; img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${c.id}.jpg`; } };
-    imgWrap.appendChild(img);
-    const title=document.createElement("div"); title.className="title"; title.textContent=c.name;
-    const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${c.type}</span> · <span class="badge">${c.cost} 🪙</span>`;
-    const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+c.qty; slot.appendChild(qty);
-
-    // Contador +/-
-    const ctr=document.createElement("div"); ctr.className="flex";
-    const less=document.createElement("button"); less.className="btn alt"; less.textContent="−";
-    const more=document.createElement("button"); more.className="btn alt"; more.textContent="+";
-    const num=document.createElement("span"); num.className="badge"; num.textContent="0";
-    ctr.appendChild(less); ctr.appendChild(num); ctr.appendChild(more);
-
-    let picked=0;
-    more.onclick=()=>{ if((picked+totalPicked())>=3) return; if(picked>=c.qty) return; picked++; shufflePick[c.id]=picked; num.textContent=String(picked); updateShuffleBtn(); slot.classList.toggle("picked",picked>0); };
-    less.onclick=()=>{ if(picked<=0) return; picked--; if(picked<=0) delete shufflePick[c.id]; else shufflePick[c.id]=picked; num.textContent=String(picked); updateShuffleBtn(); slot.classList.toggle("picked",picked>0); };
-
-    slot.appendChild(imgWrap); slot.appendChild(title); slot.appendChild(meta); slot.appendChild(ctr);
-    shufflePickGrid.appendChild(slot);
-  });
-  updateShuffleBtn();
-  toggleModal(shuffleModal,true);
-}
-function totalPicked(){ return Object.values(shufflePick).reduce((a,b)=>a+b,0); }
-function updateShuffleBtn(){
-  const t=totalPicked(); shuffleCount.textContent=String(t);
-  shuffleConfirm.disabled = t!==3;
-}
-$("#shuffleCancel").onclick=()=>toggleModal(shuffleModal,false);
-$("#shuffleCloseX").onclick=()=>toggleModal(shuffleModal,false);
-$("#shuffleConfirm").onclick=async()=>{
-  if(totalPicked()!==3) return;
-
-  // Restar seleccionadas
-  Object.entries(shufflePick).forEach(([id, n])=>{
-    const c=state.cards.find(x=>x.id===id);
-    c.qty = Math.max(0, (c.qty||0) - n);
-// Gastar la carta "Barajear cartas" que activó el modal
-const shuffleCard = findCardByName("Barajear cartas");
-if(shuffleCard && (shuffleCard.qty||0)>0){
-  shuffleCard.qty = Math.max(0,(shuffleCard.qty||0)-1);
-  state.useLog.push({date:new Date().toISOString(), name:"Usaste Barajear cartas (−1)"});
-}
-
-  });
-
-  // Dar 2 aleatorias ponderadas por rareza (según qué metiste)
-  const weights = {legendaria:0, épica:0, rara:0, común:0};
-  Object.entries(shufflePick).forEach(([id,n])=>{
-    const c=state.cards.find(x=>x.id===id);
-    const tier=tierOf(c.cost);
-    weights[tier]=(weights[tier]||0)+n;
-  });
-  function pickWeighted(){
-    const pool=[];
-    state.cards.forEach(c=>{
-      const t=tierOf(c.cost);
-      const w = t==="legendaria"? (1+weights.legendaria) :
-                t==="épica"? (1+weights.épica) :
-                t==="rara"? (1+weights.rara) :
-                t==="común"? (1+weights.común) : 1;
-      for(let i=0;i<w;i++) pool.push(c);
-    });
-    return pool[Math.floor(Math.random()*pool.length)];
-  }
-  const r1=pickWeighted(); const r2=pickWeighted();
-  r1.qty=(r1.qty||0)+1; r2.qty=(r2.qty||0)+1;
-
-  state.useLog.push({date:new Date().toISOString(), name:`Barajear: recibiste ${r1.name} y ${r2.name} (+1,+1)`});
-  toast(`🔀 Nuevas: ${r1.name} y ${r2.name}`);
-  scheduleSave(); render(); toggleModal(shuffleModal,false);
-
-  // Mostrar modal resultado con 2 nombres (y 1 imagen grande por simplicidad)
-  $("#shuffleNames").textContent = `${r1.name} y ${r2.name}`;
-  const img=$("#shuffleImg1"); img.removeAttribute("data-tried"); img.onerror=null;
-  img.src=`img/${r1.id}.png`; img.onerror=()=>{ if(!img.dataset.tried){ img.dataset.tried=1; img.src=`img/${r1.id}.jpg`; } };
-  toggleModal($("#shuffleResultModal"),true);
-};
-$("#shuffleResultCloseX").onclick=()=>toggleModal($("#shuffleResultModal"),false);
-$("#shuffleResultClose").onclick=()=>toggleModal($("#shuffleResultModal"),false);
-<!-- ========= FAB ADMIN CARTAS ========= -->
-<button id="adminFab" class="fab" title="Admin cartas">Admin</button>
-
-<!-- ========= Modal ADMIN CARTAS ========= -->
-<div id="adminModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Administrador de cartas" style="grid-template-columns:1fr;max-width:720px">
-    <button class="closeX" id="adminCloseX">Cerrar</button>
-    <h3>🛠️ Administrador de cartas</h3>
-    <div class="small">Selecciona una carta y una cantidad. Puedes <strong>añadir</strong> o <strong>retirar</strong> del inventario actual. Queda registrado como <span class="admin-tag">[ADMIN]</span>.</div>
-
-    <div class="grid2" style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-top:8px">
-      <div>
-        <label class="small" for="adminCardSelect">Carta</label>
-        <select id="adminCardSelect" class="input"></select>
-      </div>
-      <div>
-        <label class="small" for="adminQty">Cantidad</label>
-        <input id="adminQty" type="number" min="1" value="1" class="input">
-      </div>
-    </div>
-
-    <div class="flex" style="gap:10px;margin-top:10px">
-      <button id="adminAddBtn" class="btn good">Añadir</button>
-      <button id="adminRemoveBtn" class="btn bad">Retirar</button>
-    </div>
-
-    <div class="small muted">Consejo: usa este menú sólo para corregir errores o aplicar acordado por mesa.</div>
-  </div>
-</div>
-
-/* ========= Cerrar modales generales ========= */
-$("#rewardClose").onclick=()=>toggleModal($("#rewardModal"),false);
-
-/* ========= FIN ========= */
-</script>
+    // Primer render
+    render();
+  </script>
 </body>
 </html>
