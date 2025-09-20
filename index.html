@@ -815,6 +815,7 @@ stealConfirm.onclick = async () => {
 };
 
 /* ========= Robos (víctima) ========= */
+/* ========= Robos (víctima) ========= */
 const inboxModal=$("#inboxModal"), inboxText=$("#inboxText"), inboxPreview=$("#inboxPreview");
 const inboxApply=$("#inboxApply"), inboxCloseX=$("#inboxCloseX");
 let currentInboxId=null, currentInboxData=null;
@@ -830,47 +831,23 @@ inboxCloseX.onclick = async ()=>{
   currentInboxId=null; currentInboxData=null;
 };
 
-// Asignamos la acción del botón OK (cierra YA y aplica en segundo plano)
-inboxApply.onclick = async () => {
-  if(!currentInboxId || !currentInboxData) { toggleModal(inboxModal,false); return; }
+async function showStealInbox(docId, data){
+  // Simplificado: notificación + OK
+  currentInboxId = docId;
+  currentInboxData = data;
 
-  // Cierra inmediatamente el pop-up
-  toggleModal(inboxModal,false);
-  const _docId = currentInboxId;
-  const _data  = currentInboxData;
-  currentInboxId = null; currentInboxData = null;
+  const attacker = data.attackerName || data.attackerId || "Alguien";
+  inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
 
-  try{
-    // Restar 1 unidad de la carta si la tenías
-    const cid = _data.cardId;
-    const localCard = state.cards.find(x=>x.id===cid);
-    if(localCard && (localCard.qty||0) > 0){
-      localCard.qty = Math.max(0, (localCard.qty||0) - 1);
-      state.useLog.push({
-        date: new Date().toISOString(),
-        cardId: cid,
-        name: `Te robaron ${_data.cardName} (−1)`,
-        note: `Por ${_data.attackerName||_data.attackerId}`
-      });
-      toast(`🔻 -1 ${_data.cardName}`);
-    } else {
-      toast("No tenías esa carta disponible para restar.");
-    }
-
-    // Marcar como aplicado
-    await updateDoc(doc(db,"stealRequests", _docId), {
-      status: "applied",
-      appliedAt: serverTimestamp(),
-      seenByVictim: true
+  // marcar visto para que NO reaparezca al recargar
+  try {
+    await updateDoc(doc(db,"stealRequests", currentInboxId), {
+      seenByVictim: true,
+      seenAt: serverTimestamp()
     });
+  } catch(e){ console.warn("No se pudo marcar visto:", e); }
 
-    scheduleSave(); render();
-  } catch(e){
-    console.error("Error al aplicar robo:", e);
-  }
-};
-
-  // Preview: una sola tarjeta
+  // preview centrada (1 carta)
   inboxPreview.innerHTML = "";
   const cardDef = state.cards.find(c => c.id === data.cardId) || { id: data.cardId, name: data.cardName || "Carta", type: "", cost: "?" };
   const block = document.createElement("div"); block.className = "cardSlot";
@@ -880,47 +857,44 @@ inboxApply.onclick = async () => {
   imgWrap.appendChild(img);
   const title = document.createElement("div"); title.className = "title"; title.textContent = cardDef.name;
   const meta = document.createElement("div"); meta.className = "small"; meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost} 🪙</span>`;
-  block.appendChild(imgWrap); block.appendChild(title); block.appendChild(meta);
-  const qty = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + ( (state.cards.find(c=>c.id===cardDef.id)?.qty)||0 );
-  block.appendChild(qty);
+  const qtyNow = (state.cards.find(c=>c.id===cardDef.id)?.qty)||0;
+  const qty = document.createElement("div"); qty.className="qty"; qty.textContent = "× "+qtyNow;
+  block.appendChild(imgWrap); block.appendChild(title); block.appendChild(meta); block.appendChild(qty);
   inboxPreview.appendChild(block);
 
-  // Eliminamos cualquier botón de defensa previo y dejamos un solo OK
-  const stealDefenseButtons = $("#stealDefenseButtons");
-  stealDefenseButtons.innerHTML = "";
-
-  // Asignamos la acción del botón OK (inboxApply)
+  // un solo botón OK: cerrar YA y aplicar en segundo plano
   inboxApply.onclick = async () => {
-    if(!currentInboxId || !currentInboxData) { toggleModal(inboxModal,false); return; }
+    if(!currentInboxId || !currentInboxData){ toggleModal(inboxModal,false); return; }
+
+    // cerrar al instante
+    toggleModal(inboxModal,false);
+    const _docId = currentInboxId;
+    const _data  = currentInboxData;
+    currentInboxId = null; currentInboxData = null;
+
     try{
-      // Restar 1 unidad de la carta si la tenías
-      const cid = currentInboxData.cardId;
+      // restar 1 unidad si la tienes
+      const cid = _data.cardId;
       const localCard = state.cards.find(x=>x.id===cid);
-      if(localCard && (localCard.qty||0) > 0){
+      if(localCard && (localCard.qty||0)>0){
         localCard.qty = Math.max(0, (localCard.qty||0) - 1);
-        state.useLog.push({ date: new Date().toISOString(), cardId: cid, name: `Te robaron ${currentInboxData.cardName} (−1)`, note: `Por ${currentInboxData.attackerName||currentInboxData.attackerId}`});
-        toast(`🔻 -1 ${currentInboxData.cardName}`);
-      } else {
-        // Si no la tienes, notificamos y no hacemos nada
+        state.useLog.push({date:new Date().toISOString(),cardId:cid,name:`Te robaron ${_data.cardName} (−1)`,note:`Por ${_data.attackerName||_data.attackerId}`});
+        toast(`🔻 -1 ${_data.cardName}`);
+      }else{
         toast("No tenías esa carta disponible para restar.");
       }
-      // Marcamos el request como aplicado
-      await updateDoc(doc(db,"stealRequests", currentInboxId), {
+
+      // marcar aplicado
+      await updateDoc(doc(db,"stealRequests", _docId), {
         status: "applied",
         appliedAt: serverTimestamp(),
         seenByVictim: true
       });
-      scheduleSave();
-    } catch(e){
-      console.error("Error al aplicar robo:", e);
-    } finally {
-      toggleModal(inboxModal,false);
-      currentInboxId = null; currentInboxData = null;
-      render();
-    }
+
+      scheduleSave(); render();
+    }catch(e){ console.error("Error al aplicar robo:", e); }
   };
 
-  // Mostrar modal
   toggleModal(inboxModal,true);
 }
 
