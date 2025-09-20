@@ -429,6 +429,61 @@ const rawList = [
 let cardsBase = rawList.map((r,i)=>({id:"c"+String(i+1).padStart(2,"0"),cost:+r[0],type:slugType(r[1]),name:r[2].trim(),desc:capFirst(r[3]||""),qty:0}));
 // Ajuste: Intercambio pasa a costar 2
 cardsBase = cardsBase.map(c=> c.name.toLowerCase()==="intercambio" ? {...c, cost:2} : c);
+// === Migración de estado a esquema canónico ===
+function canonicalName(n){
+  return String(n||"")
+    .toLowerCase()
+    .replace(/\s*\(.*?\)\s*/g,"")      // quita " (monedas)" y similares
+    .replace(/\s+/g," ")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // sin acentos
+    .trim();
+}
+
+const baseById   = new Map(cardsBase.map(c => [c.id, c]));
+const baseByName = new Map(cardsBase.map(c => [canonicalName(c.name), c]));
+
+/** Recibe un objeto state (como el de Firestore) y devuelve uno migrado */
+function migrateState(s){
+  if(!s || !Array.isArray(s.cards)){
+    return {coins:0, karma:0, walletLog:[], useLog:[], cards: cardsBase.map(x=>({...x, qty:0}))};
+  }
+
+  // Sumar cantidades de duplicados por ID o por nombre canónico
+  const qtyById = new Map(cardsBase.map(c => [c.id, 0]));
+
+  for(const old of s.cards){
+    const oldQty = Math.max(0, parseInt(old?.qty||0,10) || 0);
+
+    // 1) Coincidir por ID válido
+    if(old?.id && baseById.has(old.id)){
+      qtyById.set(old.id, (qtyById.get(old.id)||0) + oldQty);
+      continue;
+    }
+
+    // 2) Coincidir por nombre canónico (arregla "Intercambio (monedas)" -> "Intercambio")
+    const cname = canonicalName(old?.name);
+    if(cname && baseByName.has(cname)){
+      const base = baseByName.get(cname);
+      qtyById.set(base.id, (qtyById.get(base.id)||0) + oldQty);
+      continue;
+    }
+
+    // 3) Si no coincide con nada, se ignora (era basura/duplicado de versiones viejas)
+  }
+
+  // Reconstruir cartas en el orden canónico y con metadatos actuales
+  const newCards = cardsBase.map(b => ({...b, qty: qtyById.get(b.id)||0}));
+
+  return {
+    coins: Math.max(0, parseInt(s.coins||0,10) || 0),
+    karma: parseInt(s.karma||0,10) || 0,
+    walletLog: Array.isArray(s.walletLog) ? s.walletLog : [],
+    useLog:    Array.isArray(s.useLog)    ? s.useLog    : [],
+    cards: newCards,
+    updatedAt: s.updatedAt || null
+  };
+}
+
 
 /* ========= Estado ========= */
 let currentUser=null, spyUid=null, unsubInv=null, unsubProfiles=null, unsubInbox=null, unsubAttackInbox=null, unsubDebuffs=null;
@@ -464,18 +519,10 @@ $("#exportBtn").onclick = ()=>{
 $("#importFile").onchange = async (e)=>{
   const file = e.target.files?.[0]; if(!file) return;
   try{
-    const text = await file.text();
     const data = JSON.parse(text);
-    state.coins = Math.max(0, Math.trunc(data.coins||0));
-    state.karma = Math.trunc(data.karma||0);
-    if(Array.isArray(data.cards)){
-      const map = new Map(data.cards.map(c=>[c.id, Math.max(0, Math.trunc(c.qty||0))]));
-      state.cards.forEach(c=>{ c.qty = map.get(c.id)||0; });
-    }
-    state.walletLog = Array.isArray(data.walletLog)?data.walletLog:[];
-    state.useLog    = Array.isArray(data.useLog)?data.useLog:[];
-    toast("📥 Importado");
-    scheduleSave(); render();
+state = migrateState(data);
+toast("📥 Importado");
+scheduleSave(); render();
   }catch(err){ alert("Import inválido"); }
 };
 $("#resetBtn").onclick = ()=>{
@@ -568,7 +615,13 @@ function subscribeProfiles(){
 }
 function subscribeInventory(uid){
   if(unsubInv){unsubInv();unsubInv=null}
-  unsubInv=onSnapshot(invRef(uid),(snap)=>{ if(!snap.exists())return; state=snap.data()||state; render(); });
+  unsubInv = onSnapshot(invRef(uid), (snap)=>{
+  if(!snap.exists()) return;
+  state = migrateState(snap.data()||state);
+  render();
+  // Guarda de vuelta el estado limpio (deja la base sin duplicados)
+  try{ scheduleSave(); }catch{}
+});
 }
 function subscribeStealInbox(uid){
   if(unsubInbox){unsubInbox();unsubInbox=null}
