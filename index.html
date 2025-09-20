@@ -1004,100 +1004,98 @@ function pickUser(title="Selecciona usuario"){
 
 /* ========= USAR carta ========= */
 async function onUse(){
-  if(spyUid||!currentUser)return;
-  const c=state.cards.find(x=>x.id===currentCardId); if(!c)return;
-  if((c.qty||0)<=0){alert("No tienes esta carta.");return}
+  if (spyUid || !currentUser) return;
+  const c = state.cards.find(x => x.id === currentCardId); if (!c) return;
+  if ((c.qty || 0) <= 0) { alert("No tienes esta carta."); return; }
 
   // helper para gastar la carta actual de forma segura
   const spend = ()=>{
-    c.qty = Math.max(0, (c.qty||0) - 1);
-    $("#cardQty").textContent = Math.trunc(c.qty||0); // refresco rápido del modal
+    c.qty = Math.max(0, (c.qty || 0) - 1);
+    $("#cardQty").textContent = Math.trunc(c.qty || 0); // refresco rápido en el modal
   };
 
   // ——— ECONOMÍA: efectos automáticos (SIEMPRE gastan la carta) ———
-  if(c.name.toLowerCase()==="10 monedas"){
+  if (c.name.toLowerCase() === "10 monedas") {
     spend();
-    addCoins(10,"Carta 10 monedas");
-    state.useLog.push({date:new Date().toISOString(),name:"Usaste 10 monedas (+10) y gastaste la carta (−1)"});
+    addCoins(10, "Carta 10 monedas");
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste 10 monedas (+10) y gastaste la carta (−1)"});
     toast("💰 +10 monedas");
     scheduleSave(); render(); return;
   }
 
-  if(c.name.toLowerCase()==="venta ilegal"){
+  if (c.name.toLowerCase() === "venta ilegal") {
     spend();
-    addCoins(2,"Venta ilegal");
-    state.useLog.push({date:new Date().toISOString(),name:"Usaste Venta ilegal (+2) y gastaste la carta (−1)"});
+    addCoins(2, "Venta ilegal");
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Venta ilegal (+2) y gastaste la carta (−1)"});
     toast("🪙 +2 por Venta ilegal");
     scheduleSave(); render(); return;
   }
 
-  if(c.name.toLowerCase()==="monedero perdido"){
+  if (c.name.toLowerCase() === "monedero perdido") {
     spend();
     const n = 1 + Math.floor(Math.random()*5);
-    addCoins(n,"Monedero perdido");
-    state.useLog.push({date:new Date().toISOString(),name:`Usaste Monedero perdido (+${n}) y gastaste la carta (−1)`});
+    addCoins(n, "Monedero perdido");
+    state.useLog.push({date:new Date().toISOString(), name:`Usaste Monedero perdido (+${n}) y gastaste la carta (−1)`});
     toast(`🎲 Monedero perdido: +${n}`);
     scheduleSave(); render(); return;
   }
 
-  // la de 99 "Robo de monedas": +5 y SE GASTA
-  if(c.name.toLowerCase()==="robo de monedas"){
+  if (c.name.toLowerCase() === "robo de monedas") {
     spend();
-    addCoins(5,"Robo de monedas");
-    state.useLog.push({date:new Date().toISOString(),name:"Usaste Robo de monedas (+5) y gastaste la carta (−1)"}); 
+    addCoins(5, "Robo de monedas");
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Robo de monedas (+5) y gastaste la carta (−1)"});
     toast("💸 +5 por Robo de monedas");
     scheduleSave(); render(); return;
   }
 
   // ——— ESPECIALES ———
-  // Robo sigiloso: abre modal (se gasta al confirmar el robo)
-  if(c.name.toLowerCase()==="robo sigiloso"){
+  // Robo sigiloso: se gasta al CONFIRMAR el robo (no aquí)
+  if (c.name.toLowerCase() === "robo sigiloso") {
     openSteal();
     return;
   }
 
-  // Barajear cartas: abre modal (se gasta al confirmar el barajeo)
-  if(c.name.toLowerCase()==="barajear cartas"){
+  // Barajear cartas: se gasta al CONFIRMAR el barajeo (no aquí)
+  if (c.name.toLowerCase() === "barajear cartas") {
     openShuffle();
     return;
   }
 
   // ——— ATAQUES genéricos: notifican y GASTAN la carta ———
-  if(c.type==="ataque"){
+  if (c.type === "ataque") {
     const target = await pickUser(`¿A quién quieres atacar con “${c.name}”?`);
-    if(!target) return;
+    if (!target) return;
 
-    // Karma del atacante +1
-    state.karma = (state.karma||0) + 1;
+    state.karma = (state.karma || 0) + 1; // karma del atacante +1
 
     await addDoc(attackCol, {
       attackerId: currentUser.uid,
-      attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+      attackerName: currentUser.displayName || currentUser.email || currentUser.uid,
       victimId: target.uid,
       cardName: c.name,
       status: "pending",
       createdAt: serverTimestamp()
     });
 
-    // GASTAR la carta usada
+    // gastar la carta usada
     spend();
 
-    state.useLog.push({date:new Date().toISOString(),name:`Ataque enviado: ${c.name} → ${target.name} (gastada −1)`});
+    state.useLog.push({date:new Date().toISOString(), name:`Ataque enviado: ${c.name} → ${target.name} (gastada −1)`});
     toast(`⚔️ Ataque enviado a ${target.name}`);
-    scheduleSave(); render();
-    return;
+    scheduleSave(); render(); return;
   }
 
-  // Sin efecto automático: se considera "in-game". Gastamos la carta igualmente.
-spend();
-state.useLog.push({
-  date: new Date().toISOString(),
-  name: `Usaste ${c.name} (efecto en partida) (−1)`
-});
-toast(`🗂️ Usaste ${c.name} (−1)`);
-scheduleSave(); render();
-alert("Esta carta se aplica en la partida ");
-return;
+  // ——— SIN efecto automático: se considera “in-game” y SE GASTA igual ———
+  spend();
+  state.useLog.push({
+    date: new Date().toISOString(),
+    name: `Usaste ${c.name} (efecto en partida) (−1)`
+  });
+  toast(`🗂️ Usaste ${c.name} (−1)`);
+  scheduleSave(); render();
+  alert("Esta carta se aplica en la partida (fuera de la app). Ya se ha descontado de tu inventario.");
+  return;
+}
 
 
 /* ========= Ruleta ========= */
