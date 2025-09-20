@@ -1088,9 +1088,17 @@ async function onUse(){
     return;
   }
 
-  // Sin efecto automático (carta “de reglas”)
-  alert("Esta carta tiene efectos in game. Aplícalo en partida.");
-}
+  // Sin efecto automático: se considera "in-game". Gastamos la carta igualmente.
+spend();
+state.useLog.push({
+  date: new Date().toISOString(),
+  name: `Usaste ${c.name} (efecto en partida) (−1)`
+});
+toast(`🗂️ Usaste ${c.name} (−1)`);
+scheduleSave(); render();
+alert("Esta carta se aplica en la partida ");
+return;
+
 
 /* ========= Ruleta ========= */
 const slotText=$("#slotText");
