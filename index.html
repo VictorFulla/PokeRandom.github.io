@@ -3,15 +3,14 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Randomlock Wobalonga — v4.4 (Firestore-only)</title>
+<title>Randomlock Wobalonga — v4.6 (Firestore-only)</title>
 <style>
 :root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.08);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--good:#22c55e;--bad:#ef4444;--warn:#f59e0b;--br:16px}
 *{box-sizing:border-box}html,body{height:100%}
-body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;transition:.2s filter,.2s background}
-body.spyMode{filter:hue-rotate(-20deg) saturate(1.1)}
+body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
 .wrap{max-width:1240px;margin:0 auto;padding:16px}
 header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(1.2) blur(10px);background:rgba(13,16,22,.75);border-bottom:1px solid var(--edge)}
-header .row{display:flex;gap:12px;align-items:center;flex-wrap:nowrap}
+header .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 h1.logo{margin:0;font-size:22px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#a78bfa,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 18px rgba(124,92,255,.25)}
 .logo .sub{font-size:12px;color:var(--muted);letter-spacing:.5px}
 .btn{background:var(--accent);border:none;color:#fff;border-radius:12px;padding:10px 14px;cursor:pointer;transition:.15s}
@@ -34,15 +33,6 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 .cardSlot img{max-width:100%;max-height:100%}.cardSlot .title{font-weight:800;font-size:14px}
 .qty{position:absolute;top:8px;right:8px;background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.35);padding:2px 8px;border-radius:999px;font-size:12px;font-weight:800}
 .zero{filter:grayscale(1) contrast(.8) opacity(.6)}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
-.modal.show{display:flex}
-.modal .panel{background:var(--panel);border:1px solid var(--edge);border-radius:18px;max-width:780px;width:100%;padding:16px;display:grid;gap:14px;grid-template-columns:1fr 1fr}
-@media(max-width:760px){.modal .panel{grid-template-columns:1fr}}
-.modal .bigImg{aspect-ratio:1/1;border:1px solid var(--edge);border-radius:12px;background:#0e121a;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.modal h3{margin:0}.modal .closeX{position:absolute;top:8px;right:12px;background:#00000066;border:1px solid var(--edge);color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
-.wheelBox{background:#0e121a;border:1px solid var(--edge);border-radius:14px;padding:12px}
-.slot{height:56px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--edge);border-radius:10px;overflow:hidden}
-.slotText{font-weight:800}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px 14px;z-index:120;opacity:0;transition:.3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
 .gain{color:#86efac}.loss{color:#fecaca}
@@ -52,35 +42,29 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 .toolsBtn .coinDot{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--edge);color:#fff;font-weight:800}
 .toolsPanel{position:absolute;right:0;top:44px;min-width:260px;background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px;display:none;z-index:200}
 .toolsPanel.show{display:block}.toolsRow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
-.spyPill{display:inline-flex;align-items:center;gap:8px;background:#0e121a;border:1px dashed var(--edge);border-radius:999px;padding:6px 10px}
-.spyMenu{position:absolute;right:0;top:44px;min-width:260px;background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:8px;display:none;z-index:210}
-.spyMenu.show{display:block}
-.spyItem{width:100%;text-align:left;background:transparent;color:var(--text);border:1px solid transparent;padding:8px 10px;border-radius:10px;cursor:pointer}
-.spyItem:hover{background:rgba(255,255,255,.06);border-color:var(--edge)}
+.slot{height:56px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--edge);border-radius:10px;overflow:hidden}
+.slotText{font-weight:800}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
+.modal.show{display:flex}
+.modal .panel{background:var(--panel);border:1px solid var(--edge);border-radius:18px;max-width:780px;width:100%;padding:16px;display:grid;gap:14px;grid-template-columns:1fr 1fr}
+@media(max-width:760px){.modal .panel{grid-template-columns:1fr}}
+.modal .bigImg{aspect-ratio:1/1;border:1px solid var(--edge);border-radius:12px;background:#0e121a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.modal h3{margin:0}.modal .closeX{position:absolute;top:8px;right:12px;background:#00000066;border:1px solid var(--edge);color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
 </style>
 </head>
 <body>
 <header>
   <div class="wrap row">
-    <h1 class="logo">Randomlock Wobalonga <span class="sub">• v4.4 Firestore-only</span></h1>
+    <h1 class="logo">Randomlock Wobalonga <span class="sub">• v4.6 Firestore-only</span></h1>
 
     <div class="badge" id="whoAmI">Sin sesión</div>
     <button id="btnGoogle" class="btn good">Entrar con Google</button>
     <button id="btnEmail" class="btn alt">Email/Contraseña</button>
     <button id="btnLogout" class="btn warn" style="display:none">Salir</button>
 
-    <div class="tools" id="spyBox" style="display:none;position:relative;">
-      <button id="btnSpy" class="btn alt">👁️ Espiar</button>
-      <div id="spyMenu" class="spyMenu"></div>
-      <div id="spyInfo" style="display:none" class="spyPill">
-        Espiando a: <strong id="spyName"></strong> (solo lectura)
-        <button id="spyExit" class="btn alt">Volver</button>
-      </div>
-    </div>
-
     <div class="spacer"></div>
 
-    <div class="tools" style="display:none;margin-left:auto" id="toolsBox">
+    <div class="tools" id="toolsBox" style="display:none">
       <button id="toolsBtn" class="toolsBtn" title="Herramientas">
         <span class="coinDot">🪙 <span id="coinsMini">0</span></span> ⋯
       </button>
@@ -105,6 +89,9 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 </header>
 
 <main class="wrap" style="padding-top:18px">
+  <!-- Debufos visibles -->
+  <div id="debuffBar" class="flex small" style="margin-bottom:8px;gap:8px;display:none"></div>
+
   <div class="grid">
     <section class="card" id="mainSection">
       <div class="section-title">
@@ -128,16 +115,14 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 
     <aside class="card">
       <div class="section-title">🎰 Ruleta</div>
-      <div class="wheelBox">
-        <div class="small">Incluye <strong>10 monedas</strong> + <strong>Monedero perdido</strong> + 1 legendaria (10/13) + 1 épica (7) + 3 de 4 + 4 de 2.</div>
-        <div class="hr"></div>
-        <div class="slot"><div id="slotText" class="slotText">—</div></div>
-        <div class="flex" style="margin-top:10px">
-          <button id="spinPaid" class="btn">Tirar (gasta 1 “Ruleta”)</button>
-          <button id="spinFree" class="btn good">Tirada gratis (post-gym)</button>
-          <div class="spacer"></div>
-          <span class="badge">Tienes “Ruleta”: <span id="ruletaQty">0</span></span>
-        </div>
+      <div class="small">Incluye <strong>10 monedas</strong> + <strong>Monedero perdido</strong> + 1 legendaria (10/13) + 1 épica (7) + 3 de 4 + 4 de 2.</div>
+      <div class="hr"></div>
+      <div class="slot"><div id="slotText" class="slotText">—</div></div>
+      <div class="flex" style="margin-top:10px">
+        <button id="spinPaid" class="btn">Tirar (gasta 1 “Ruleta”)</button>
+        <button id="spinFree" class="btn good">Tirada gratis (post-gym)</button>
+        <div class="spacer"></div>
+        <span class="badge">Tienes “Ruleta”: <span id="ruletaQty">0</span></span>
       </div>
 
       <div class="hr"></div>
@@ -157,7 +142,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
       </details>
     </aside>
   </div>
-  <div class="footer small">Firestore por usuario. Ataques con defensoras y debufos (Maldición/Regalo). Robos por notificación.</div>
+  <div class="footer small">Firestore por usuario. Robos/ataques con defensas. Exporta tu perfil para backup.</div>
 </main>
 
 <div id="toast" class="toast"></div>
@@ -166,7 +151,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 <div id="coinModal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-label="Ajustar monedas">
     <button class="closeX" id="coinCloseX">Cerrar</button>
-    <div style="grid-column:1/-1"><h3>💰 Ajustar monedas</h3><div class="small">Enteros. No se permite quedar en negativo.</div></div>
+    <div style="grid-column:1/-1"><h3>💰 Ajustar monedas</h3><div class="small">Enteros. No negativos.</div></div>
     <div>
       <label class="small">Cantidad</label>
       <input id="coinAmount" type="number" step="1" min="0" placeholder="0"/>
@@ -181,7 +166,6 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
         <button id="coinClose" class="btn alt right">Cerrar</button>
       </div>
     </div>
-
     <div style="grid-column:1/-1" class="hr"></div>
     <div>
       <div class="small" style="margin-bottom:6px">Atajos de partida</div>
@@ -241,8 +225,9 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     <div class="small" id="inboxText">…</div>
     <div id="inboxPreview" class="cards" style="margin-top:10px"></div>
     <div class="hr"></div>
-    <div class="flex" id="stealDefenseButtons"><!-- Defensas contra robo --></div>
-<div class="flex">
+    <div class="flex" id="stealDefenseButtons"></div>
+    <div class="hr"></div>
+    <div class="flex">
       <button id="inboxApply" class="btn bad">OK (restar de mi inventario)</button>
     </div>
   </div>
@@ -256,9 +241,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     <div class="small" id="attackText">…</div>
     <div id="attackPreview" class="cards" style="margin-top:10px"></div>
     <div class="hr"></div>
-    <div class="flex" id="defenseButtons">
-      <!-- Se rellenan dinámicamente según Reversa/Bloqueo/Protección disponibles -->
-    </div>
+    <div class="flex" id="defenseButtons"></div>
   </div>
 </div>
 
@@ -274,14 +257,6 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     </div>
     <div id="stealGrid" class="cards"></div>
     <div class="hr"></div>
-	<div class="hr"></div>
-	<div class="flex" id="stealDefenseButtons">
-  		<!-- Botones de defensa contra robo se inyectan aquí -->
-	</div>
-	<div class="flex" style="margin-top:8px">
-  	<button id="inboxApply" class="btn bad">OK (restar de mi inventario)</button>
-</div>
-
     <div class="flex"><button id="stealConfirm" class="btn" disabled>Robar carta seleccionada</button><div class="spacer"></div><button id="stealCancel" class="btn alt">Cancelar</button></div>
   </div>
 </div>
@@ -317,14 +292,15 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
   </div>
 </div>
 
-<!-- Modal Elegir Usuario -->
+<!-- Modal selector de usuario reutilizable -->
 <div id="targetModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Elegir jugador" style="grid-template-columns:1fr">
+  <div class="panel" role="dialog" aria-label="Elegir usuario" style="grid-template-columns:1fr">
     <button class="closeX" id="targetCloseX">Cerrar</button>
-    <h3>👥 Elige jugador</h3>
+    <h3 id="targetTitle">Selecciona usuario</h3>
     <div class="flex">
-      <select id="targetSelect" style="min-width:260px"></select>
-      <button id="targetOk" class="btn">Confirmar</button>
+      <select id="targetSelect"><option value="">— Elegir —</option></select>
+      <button id="targetOk" class="btn">Aceptar</button>
+      <button id="targetCancel" class="btn alt">Cancelar</button>
     </div>
   </div>
 </div>
@@ -356,13 +332,12 @@ enableIndexedDbPersistence(db).catch(()=>{});
 
 /* ========= Helpers ========= */
 const $ = s => document.querySelector(s);
-const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;","&gt;":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
 const toast = (m)=>{ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); };
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;","&gt;":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
 const slugType = t => t.trim().toLowerCase().replace("curacion","curación").replace("economia","economía").replace("item","ítem");
 const tierOf = c => (c===13||c===10)?"legendaria": c===7?"épica": c===4?"rara": c===2?"común": (c===0||c===99)?"especial":"otra";
-const capFirst = s => { if(!s) return ""; let t=s.trim(); t=t.replace(/\bpokemon(es)?\b/gi,m=>m.toLowerCase().endsWith("es")?"Pokémones":"Pokémon"); t=t.replace(/\busala\b/gi,"úsala").replace(/\busa la\b/gi,"úsala"); t=t.replace(/\bdeber\b/gi,"deberá").replace(/\bpage\b/gi,"pague"); return t.charAt(0).toUpperCase()+t.slice(1); };
+const capFirst = s => { if(!s) return ""; let t=String(s).trim(); t=t.replace(/\bpokemon(es)?\b/gi,m=>m.toLowerCase().endsWith("es")?"Pokémones":"Pokémon"); t=t.replace(/\busala\b/gi,"úsala").replace(/\busa la\b/gi,"úsala"); t=t.replace(/\bpage\b/gi,"pague"); return t.charAt(0).toUpperCase()+t.slice(1); };
 const randInt = (n)=> Math.floor(Math.random()*n);
-const choice = (arr)=> arr[randInt(arr.length)];
 
 /* ========= Datos base ========= */
 const rawList = [
@@ -419,8 +394,6 @@ const cardsBase = rawList.map((r,i)=>({id:"c"+String(i+1).padStart(2,"0"),cost:+
 let currentUser=null, spyUid=null, unsubInv=null, unsubProfiles=null, unsubInbox=null, unsubAttackInbox=null, unsubDebuffs=null, unsubGiftAlerts=null;
 let profiles=[];
 let state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[],updatedAt:null};
-let activeDebuffs = [];
-let lastDebuffCount = 0;
 
 /* ========= Refs ========= */
 const invRef = uid => doc(db,"inventories",uid);
@@ -428,11 +401,18 @@ const profRef = uid => doc(db,"profiles",uid);
 const stealCol = collection(db,"stealRequests");
 const attackCol = collection(db,"attackRequests");
 const debuffCol = collection(db,"debuffs");
-const giftAlertCol = collection(db,"giftAlerts"); // avisos de "debes 3 curas"
+const giftAlertCol = collection(db,"giftAlerts");
 
 /* ========= UI comunes ========= */
 const coinsEl=$("#coins"), coinsMini=$("#coinsMini"), karmaEl=$("#karma");
-// === Exportar / Importar / Reiniciar ===
+const gridEl=$("#cardsGrid"), walletLogEl=$("#walletLog"), useLogEl=$("#useLog");
+const typeFilter=$("#typeFilter"), hideZero=$("#hideZero");
+const toolsBtn=$("#toolsBtn"), toolsPanel=$("#toolsPanel");
+toolsBtn.onclick=(e)=>{e.stopPropagation();toolsPanel.classList.toggle("show")};
+document.body.addEventListener("click",()=>toolsPanel.classList.remove("show"));
+typeFilter.onchange=render; hideZero.onchange=render;
+
+/* ========= Exportar / Importar / Reiniciar ========= */
 $("#exportBtn").onclick = ()=>{
   const filename = `wobalonga_${(currentUser?.displayName||currentUser?.email||"anon").replace(/[^a-z0-9_-]/gi,"_")}_${new Date().toISOString().slice(0,10)}.json`;
   const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
@@ -442,17 +422,14 @@ $("#exportBtn").onclick = ()=>{
   a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
 };
-
 $("#importFile").onchange = async (e)=>{
   const file = e.target.files?.[0]; if(!file) return;
   try{
     const text = await file.text();
     const data = JSON.parse(text);
-    // importamos solo campos conocidos
     state.coins = Math.max(0, Math.trunc(data.coins||0));
     state.karma = Math.trunc(data.karma||0);
     if(Array.isArray(data.cards)){
-      // conservamos metadatos (desc, tipo, cost) de las cartas de este build y aplicamos qty del fichero
       const map = new Map(data.cards.map(c=>[c.id, Math.max(0, Math.trunc(c.qty||0))]));
       state.cards.forEach(c=>{ c.qty = map.get(c.id)||0; });
     }
@@ -462,32 +439,21 @@ $("#importFile").onchange = async (e)=>{
     scheduleSave(); render();
   }catch(err){ alert("Import inválido"); }
 };
-
 $("#resetBtn").onclick = ()=>{
   if(!confirm("¿Seguro que quieres reiniciar tu inventario?")) return;
-  if(!confirm("Mu mal… esto no tiene deshacer. ¿Confirmas?")) return;
-  state.coins = 0;
-  state.karma = 0;
-  state.cards.forEach(c=> c.qty = 0);
-  state.walletLog = [];
-  state.useLog = [];
+  if(!confirm("Esto no tiene deshacer. ¿Confirmas?")) return;
+  state.coins = 0; state.karma = 0; state.cards.forEach(c=> c.qty = 0);
+  state.walletLog = []; state.useLog = [];
   toast("🧹 Reiniciado");
   scheduleSave(); render();
 };
 
-const gridEl=$("#cardsGrid"), walletLogEl=$("#walletLog"), useLogEl=$("#useLog");
-const typeFilter=$("#typeFilter"), hideZero=$("#hideZero");
-const toolsBox=$("#toolsBox"), toolsBtn=$("#toolsBtn"), toolsPanel=$("#toolsPanel");
-toolsBtn.onclick=(e)=>{e.stopPropagation();toolsPanel.classList.toggle("show")};
-document.body.addEventListener("click",()=>toolsPanel.classList.remove("show"));
-typeFilter.onchange=render; hideZero.onchange=render;
-
 /* ========= Auth ========= */
 const who=$("#whoAmI"), btnGoogle=$("#btnGoogle"), btnEmail=$("#btnEmail"), btnLogout=$("#btnLogout");
+const toolsBox=$("#toolsBox");
 btnGoogle.onclick=async()=>{try{const p=new GoogleAuthProvider();p.setCustomParameters({prompt:"select_account"});await signInWithPopup(auth,p)}catch(e){if(e.code==="auth/popup-blocked"||e.code==="auth/popup-closed-by-user"){try{await signInWithRedirect(auth,new GoogleAuthProvider())}catch(e2){alert("Redirect falló: "+e2.code)}}else if(e.code==="auth/unauthorized-domain"){alert("Dominio no autorizado en Firebase.")}else{alert("Error Google: "+e.code)}}};
 btnEmail.onclick=async()=>{const email=prompt("Email:");if(!email)return;const pass=prompt("Contraseña:");if(!pass)return;try{await signInWithEmailAndPassword(auth,email,pass)}catch(e){if(e.code==="auth/user-not-found"||e.code==="auth/invalid-credential"){if(confirm("No existe ese usuario. ¿Crear cuenta con ese email?")){try{const cred=await createUserWithEmailAndPassword(auth,email,pass);const name=prompt("Nombre para mostrar (opcional):")||"";if(name)await updateProfile(cred.user,{displayName:name});toast("Cuenta creada ✅")}catch(e2){alert("Error creando: "+e2.code)}}return}if(e.code==="auth/unauthorized-domain"){alert("Dominio no autorizado en Firebase.");return}alert("Error email/contraseña: "+e.code)}};
 btnLogout.onclick=()=>signOut(auth);
-
 async function ensureProfile(u){
   const d=await getDoc(profRef(u.uid));
   const payload={displayName:u.displayName||(u.email?u.email.split("@")[0]:"Jugador"),email:u.email||null,updatedAt:serverTimestamp()};
@@ -521,8 +487,12 @@ function subscribeInventory(uid){
 }
 function subscribeInbox(uid){ // robos donde YO soy víctima
   if(unsubInbox){unsubInbox();unsubInbox=null}
-  const qv=query(stealCol, where("victimId","==",uid), where("status","==","pending"));
-  unsubInbox=onSnapshot(qv,(snap)=>{ const docs=snap.docs; if(!docs.length) return; showStealInbox(docs[0].id, docs[0].data()); });
+  const qv = query(stealCol, where("victimId","==",uid), where("status","==","pending"), where("seenByVictim","in",[false,null]));
+  unsubInbox=onSnapshot(qv,(snap)=>{
+    const unseen = snap.docs.filter(d=>!d.data().seenByVictim);
+    if(!unseen.length) return;
+    showStealInbox(unseen[0].id, unseen[0].data());
+  });
 }
 function subscribeAttackInbox(uid){ // ataques donde YO soy víctima
   if(unsubAttackInbox){unsubAttackInbox();unsubAttackInbox=null}
@@ -532,20 +502,18 @@ function subscribeAttackInbox(uid){ // ataques donde YO soy víctima
 function subscribeDebuffs(uid){
   if(unsubDebuffs){unsubDebuffs();unsubDebuffs=null}
   const qv=query(debuffCol, where("targetId","==",uid), where("active","==",true));
+  let initial=true;
   unsubDebuffs=onSnapshot(qv,(snap)=>{
-    const prevCnt = activeDebuffs.length;
-    activeDebuffs = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(activeDebuffs.length > prevCnt){
-      const newest = activeDebuffs[activeDebuffs.length-1];
-      const who = newest?.giverName || "alguien";
-      toast(`🕯️ Debuff recibido de ${who}`);
-    }
-    lastDebuffCount = activeDebuffs.length;
+    if(initial){ initial=false; render(); return; }
+    snap.docChanges().forEach(ch=>{
+      if(ch.type==="added"){
+        const d=ch.doc.data();
+        if(d.type==="curse") toast(`🪄 Te han maldecido (${d.fromName||d.fromId})`);
+        if(d.type==="gift")  toast(`🎁 Te han enviado un Regalo (${d.giverName||d.giverId})`);
+      }
+    });
     render();
   });
-}
-  const qv=query(debuffCol, where("targetId","==",uid), where("active","==",true));
-  unsubDebuffs=onSnapshot(qv,()=>{ render(); }); // solo para re-render badges (lo usamos en header de inventario si quisieras)
 }
 function subscribeGiftAlerts(uid){
   if(unsubGiftAlerts){unsubGiftAlerts();unsubGiftAlerts=null}
@@ -564,7 +532,6 @@ async function saveNow(){ await setDoc(invRef(currentUser.uid), {...state, updat
 
 /* ========= Render ========= */
 function render(){
-  document.body.classList.toggle("spyMode", !!spyUid);
   $("#mainSection").classList.toggle("readonly", !!spyUid);
   coinsEl.textContent=String(state.coins||0);
   coinsMini.textContent=String(state.coins||0);
@@ -600,32 +567,22 @@ function render(){
   }).join("");
 
   const r=state.cards.find(c=>c.name.toLowerCase()==="ruleta"); $("#ruletaQty").textContent=r?(r.qty||0):0;
-// Debuffs badge in header
-try{
-  const headerRow = document.querySelector("header .wrap.row") || document.querySelector("header .wrap .row") || document.querySelector("header .row");
-  if(headerRow){
-    let debuffBadge = document.getElementById("debuffBadge");
-    if(!debuffBadge){
-      debuffBadge = document.createElement("span");
-      debuffBadge.id = "debuffBadge";
-      debuffBadge.className = "badge";
-      headerRow.appendChild(debuffBadge);
-    }
-    if(activeDebuffs.length){
-      const short = activeDebuffs.map(d=>{
-        const t=(d.type||"").toLowerCase();
-        if(/gift|regalo/.test(t)) return "🎁Reg";
-        if(/curse|mald/.test(t)) return "🕯️Mal";
-        if(/heal|cura|sdufo/.test(t)) return "💊Cur";
-        return "⚠️Deb";
-      }).join(" · ");
-      debuffBadge.textContent = `Debuffs: ${activeDebuffs.length} (${short})`;
-      debuffBadge.style.display = "";
-    }else{
-      debuffBadge.style.display = "none";
-    }
-  }
-}catch(e){}
+
+  // Debufos visibles
+  (async ()=>{
+    if(!currentUser){ $("#debuffBar").style.display="none"; return; }
+    const q = query(debuffCol, where("targetId","==",currentUser.uid), where("active","==",true));
+    const snaps = await getDocs(q);
+    const items = snaps.docs.map(d=>({id:d.id, ...d.data()}));
+    const bar = $("#debuffBar");
+    if(!items.length){ bar.style.display="none"; bar.innerHTML=""; return; }
+    bar.style.display="flex";
+    bar.innerHTML = items.map(it=>{
+      if(it.type==="curse") return `<span class="badge">🪄 Maldición de <strong>${esc(it.fromName||it.fromId)}</strong></span>`;
+      if(it.type==="gift")  return `<span class="badge">🎁 Regalo pendiente con <strong>${esc(it.giverName||it.giverId)}</strong></span>`;
+      return "";
+    }).join("");
+  })();
 }
 
 /* ========= Header extra ========= */
@@ -637,27 +594,7 @@ $("#karmaBtn").onclick=async()=>{
 };
 
 /* ========= Modales comunes ========= */
-const modals=[$("#coinModal"),$("#cardModal"),$("#rewardModal"),$("#stealModal"),$("#inboxModal"),$("#shuffleModal"),$("#shuffleResultModal"),$("#attackModal"),$("#targetModal")];
-const targetModal = $("#targetModal"), targetCloseX=$("#targetCloseX"), targetSelect=$("#targetSelect"), targetOk=$("#targetOk");
-if (targetCloseX) targetCloseX.onclick=()=>toggleModal(targetModal,false);
-
-function openUserPicker(excludeUid=null){
-  return new Promise((resolve)=>{
-    const me=currentUser?.uid;
-    const opts=['<option value="">— Elegir usuario —</option>'].concat(
-      profiles.filter(p=>p.id!==me && p.id!==excludeUid).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`)
-    );
-    if (targetSelect) targetSelect.innerHTML=opts.join("");
-    toggleModal(targetModal,true);
-    const onOk=()=>{
-      const v=targetSelect.value;
-      toggleModal(targetModal,false);
-      targetOk.removeEventListener("click", onOk);
-      resolve(v||null);
-    };
-    targetOk.addEventListener("click", onOk);
-  });
-}
+const modals=[...document.querySelectorAll(".modal")];
 function toggleModal(el,show){el.classList.toggle("show",!!show);el.setAttribute("aria-hidden",show?"false":"true")}
 modals.forEach(m=>m.addEventListener("click",(e)=>{if(e.target===m)toggleModal(m,false)}));
 window.addEventListener("keydown",(e)=>{if(e.key==="Escape"){modals.forEach(m=>toggleModal(m,false))}});
@@ -693,7 +630,7 @@ $("#buyBtn").onclick=onBuy; $("#useBtn").onclick=onUse;
 function openCard(id){
   currentCardId=id; const c=state.cards.find(x=>x.id===id); if(!c)return;
   const big=$("#cardImgBig"); big.removeAttribute("data-tried"); big.onerror=null;
-  big.src=`img/${c.id}.png`; big.onerror=()=>{ if(!big.dataset.tried){big.dataset.tried=1; big.src=`img/${c.id}.jpg`;} };
+  big.src=`img/${c.id}.png`; big.onerror=()=>{ if(!big.dataset.tried){ big.dataset.tried=1; big.src=`img/${c.id}.jpg`;} };
   $("#cardTitle").textContent=c.name;
   $("#cardTypeCost").innerHTML=`<span class="badge">${esc(c.type)}</span> · <span class="badge">${c.cost} 🪙 · ${esc(tierOf(c.cost))}</span>`;
   $("#cardDesc").textContent=c.desc||"";
@@ -708,9 +645,7 @@ function onBuy(){
   if(spyUid||!currentUser)return;
   const c=state.cards.find(x=>x.id===currentCardId); if(!c)return;
   const price=Math.trunc(c.cost||0);
-  if(c.name.toLowerCase().startsWith("intercambio") && price<2){ // fuerza coste 2 al “Intercambio”
-    c.cost = 2;
-  }
+  if(c.name.toLowerCase().startsWith("intercambio") && price<2){ c.cost = 2; }
   if(state.coins<price){alert("No tienes suficientes monedas para comprar esta carta.");return}
   state.coins-=price; c.qty=(c.qty||0)+1;
   state.walletLog.push({date:new Date().toISOString(),type:"gasto",amount:price,note:`Compra: ${c.name}`});
@@ -718,7 +653,7 @@ function onBuy(){
   toast(`🛒 Compraste ${c.name} (+1)`); scheduleSave(); render(); openCard(c.id);
 }
 
-/* ========= Utilidades cartas ========= */
+/* ========= Utils ========= */
 function findCardByName(name){ return state.cards.find(c=>c.name.toLowerCase()===name.toLowerCase()); }
 function addCoins(amount,note){ state.coins+=amount; state.walletLog.push({date:new Date().toISOString(),type:"ingreso",amount,note}); }
 
@@ -733,16 +668,13 @@ stealCloseX.onclick=()=>toggleModal(stealModal,false);
 const shuffleModal=$("#shuffleModal"), shufflePickGrid=$("#shufflePickGrid"), shuffleCount=$("#shuffleCount"), shuffleConfirm=$("#shuffleConfirm"), shuffleCancel=$("#shuffleCancel");
 const shuffleResultModal=$("#shuffleResultModal"), shuffleResultClose=$("#shuffleResultClose"), shuffleResultCloseX=$("#shuffleResultCloseX"), shuffleImg1=$("#shuffleImg1"), shuffleNames=$("#shuffleNames");
 let shuffleSelection=[];
-
 shuffleCancel.onclick=()=>toggleModal(shuffleModal,false);
 shuffleResultClose.onclick=()=>toggleModal(shuffleResultModal,false);
 shuffleResultCloseX.onclick=()=>toggleModal(shuffleResultModal,false);
-
 function openShufflePicker(){
   shuffleSelection=[]; shuffleCount.textContent="0"; shufflePickGrid.innerHTML="";
   state.cards.forEach(c=>{
     if((c.qty||0)<=0) return;
-    // Mostrar una "unidad clickable" por cada qty:
     for(let i=0;i<c.qty;i++){
       const slot=document.createElement("div"); slot.className="cardSlot"; slot.dataset.id=c.id;
       const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
@@ -751,7 +683,7 @@ function openShufflePicker(){
       const title=document.createElement("div"); title.className="title"; title.textContent=c.name+" (u)";
       const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(c.type)}</span> · <span class="badge">${c.cost} 🪙</span>`;
       slot.onclick=()=>{
-        if(slot.classList.contains("picked")){ // deseleccionar
+        if(slot.classList.contains("picked")){
           slot.classList.remove("picked");
           const idx=shuffleSelection.indexOf(c.id); if(idx>=0) shuffleSelection.splice(idx,1);
         }else{
@@ -767,25 +699,18 @@ function openShufflePicker(){
   });
   toggleModal(shuffleModal,true);
 }
-
 shuffleConfirm.onclick=()=>{
   if(shuffleSelection.length!==3) return;
-  // Restar 3 seleccionadas (por id)
   shuffleSelection.forEach(id=>{
     const c=state.cards.find(x=>x.id===id);
     if(c && c.qty>0) c.qty -= 1;
   });
-
-  // Ponderación por rareza (3 seleccionadas)
-  const selectedCards = shuffleSelection.map(id=>state.cards.find(c=>c.id===id)).filter(Boolean);
   const weights = {legendaria:5, épica:3, rara:2, común:1, especial:1, otra:1};
-  const sumTier = selectedCards.reduce((acc,c)=> acc + (weights[tierOf(c.cost)]||1), 0);
+  const inputCards = shuffleSelection.map(id=>state.cards.find(c=>c.id===id)).filter(Boolean);
+  const sumTier = inputCards.reduce((acc,c)=> acc + (weights[tierOf(c.cost)]||1), 0);
   function pickWeighted(){
-    let pool = state.cards.filter(c=>true);
-    // Asignar peso por propia rareza + bonus proporcional al input
-    const entries = pool.map(c=>{
+    const entries = state.cards.map(c=>{
       const base=(weights[tierOf(c.cost)]||1);
-      // bonus máximo 2x según sumTier
       const bonus = Math.min(2, 1 + sumTier/10);
       return {c, w: base*bonus};
     });
@@ -797,143 +722,110 @@ shuffleConfirm.onclick=()=>{
   const win1=pickWeighted(), win2=pickWeighted();
   if(win1) win1.qty=(win1.qty||0)+1;
   if(win2) win2.qty=(win2.qty||0)+1;
-
-  // Mostrar resultado
   shuffleImg1.src=`img/${win1.id}.png`; shuffleImg1.onerror=()=>{ shuffleImg1.src=`img/${win1.id}.jpg`; };
   shuffleNames.innerHTML=`<div class="badge">${esc(win1.name)}</div> <div class="badge">${esc(win2.name)}</div>`;
-  toggleModal(shuffleModal,false);
-  toggleModal(shuffleResultModal,true);
-
+  toggleModal(shuffleModal,false); toggleModal(shuffleResultModal,true);
   state.useLog.push({date:new Date().toISOString(), name:`Barajear: −3 ( + ${win1.name}, ${win2.name})`});
-  toast(`🔀 Barajear → ${win1.name} & ${win2.name}`);
-  scheduleSave(); render();
+  toast(`🔀 Barajear → ${win1.name} & ${win2.name}`); scheduleSave(); render();
 };
 
 /* ========= Robos (víctima) ========= */
 const inboxModal=$("#inboxModal"), inboxText=$("#inboxText"), inboxPreview=$("#inboxPreview");
 const inboxApply=$("#inboxApply"), inboxCloseX=$("#inboxCloseX");
-const stealDefenseButtons = $("#stealDefenseButtons");
 let currentInboxId=null, currentInboxData=null;
-inboxCloseX.onclick=async()=>{
-  try{
-    if(currentInboxId){
-      await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"noted", notedAt: serverTimestamp()});
-    }
-  }catch(e){}
-  toggleModal(inboxModal,false);
-  currentInboxId=null; currentInboxData=null;
-};
-    }
-  }catch(e){ /* sin drama */ }
-  toggleModal(inboxModal,false);
-  currentInboxId=null; currentInboxData=null;
-};
 
-function qtyOfName(inv, name){
-  return (inv.cards.find(c=>c.name.toLowerCase()===name.toLowerCase())?.qty||0);
-}
+inboxCloseX.onclick=async()=>{
+  if(currentInboxId){
+    await updateDoc(doc(db,"stealRequests", currentInboxId), {
+      seenByVictim: true,
+      seenAt: serverTimestamp()
+    });
+  }
+  toggleModal(inboxModal,false);
+  currentInboxId=null; currentInboxData=null;
+};
 
 async function showStealInbox(docId, data){
   currentInboxId=docId; currentInboxData=data;
-
   const attacker=data.attackerName||data.attackerId;
-  const robbedName = data.cardName || "una carta";
-  inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(robbedName)}</strong>.`;
+  inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
 
-  // Vista previa
+  // Marca visto para que no reaparezca tras recargar
+  await updateDoc(doc(db,"stealRequests", currentInboxId), {
+    seenByVictim: true,
+    seenAt: serverTimestamp()
+  });
+
   inboxPreview.innerHTML="";
-  const vc=state.cards.find(c=>c.id===data.cardId);
+  const vc = state.cards.find(c=>c.id===data.cardId) || state.cards.find(c=>c.name.toLowerCase()===(data.cardName||"").toLowerCase());
   const block=document.createElement("div"); block.className="cardSlot";
   const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
-  const img=document.createElement("img"); img.alt=vc?.name||robbedName; img.src=`img/${data.cardId}.png`;
-  img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${data.cardId}.jpg`; } };
-  imgWrap.appendChild(img);
-  const title=document.createElement("div"); title.className="title"; title.textContent=vc?.name||robbedName;
-  const meta=document.createElement("div"); meta.className="small";
-  meta.innerHTML = `<span class="badge">${esc(vc?.type||"")}</span> · <span class="badge">${vc?.cost||"?"} 🪙</span>`;
-  const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+(vc?.qty||0);
-  block.appendChild(qty); block.appendChild(imgWrap); block.appendChild(title); block.appendChild(meta);
-  inboxPreview.appendChild(block);
-
-  // Cargar inventario fresco del usuario (por si state está desfasado)
-  let myInv;
-  try{
-    const snap = await getDoc(invRef(currentUser.uid));
-    myInv = snap.exists()? snap.data(): state;
-  }catch{ myInv = state; }
-
-  // Defensas aplicables contra ROBO
-  if (stealDefenseButtons) stealDefenseButtons.innerHTML="";
-  const hasReversa = qtyOfName(myInv,"Reversa")>0;
-  const hasBloqueo = qtyOfName(myInv,"Bloqueo")>0;
-  const hasProtec  = qtyOfName(myInv,"Protección del débil")>0;
-
-  // Reversa
-  if(stealDefenseButtons && hasReversa){
-    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Reversa";
-    b.onclick=async()=>{
-      const c=findCardByName("Reversa"); if(c&&c.qty>0) c.qty-=1;
-      state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa (−1) contra Robo"});
-      await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"defended", defenseUsed:"reversa", resolvedAt: serverTimestamp()});
-      toast("🛡️ Reversa usada: no pierdes la carta.");
-      scheduleSave(); render(); toggleModal(inboxModal,false);
-      currentInboxId=null; currentInboxData=null;
-    };
-    stealDefenseButtons.appendChild(b);
-  }
-  // Bloqueo
-  if(stealDefenseButtons && hasBloqueo){
-    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Bloqueo";
-    b.onclick=async()=>{
-      const c=findCardByName("Bloqueo"); if(c&&c.qty>0) c.qty-=1;
-      state.useLog.push({date:new Date().toISOString(), name:"Usaste Bloqueo (−1) contra Robo"});
-      await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"defended", defenseUsed:"bloqueo", resolvedAt: serverTimestamp()});
-      toast("🛡️ Bloqueo usado: robo cancelado.");
-      scheduleSave(); render(); toggleModal(inboxModal,false);
-      currentInboxId=null; currentInboxData=null;
-    };
-    stealDefenseButtons.appendChild(b);
-  }
-  // Protección del débil 50/50
-  if(stealDefenseButtons && hasProtec){
-    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Protección del débil (50%)";
-    b.onclick=async()=>{
-      const c=findCardByName("Protección del débil"); if(!(c&&c.qty>0)) return;
-      const cara = Math.random()<0.5;
-      if(cara){
-        await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"protected_success", defenseUsed:"proteccion", coin:"cara", resolvedAt: serverTimestamp()});
-        toast("🪙 ¡Cara! Te proteges, robo cancelado.");
-        scheduleSave(); render(); toggleModal(inboxModal,false);
-        currentInboxId=null; currentInboxData=null;
-      }else{
-        c.qty -= 1;
-        await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"protected_fail", defenseUsed:"proteccion", coin:"cruz", resolvedAt: serverTimestamp()});
-        toast("🪙 Cruz. Pierdes la defensa. El robo sigue.");
-        scheduleSave(); render();
-      }
-    };
-    stealDefenseButtons.appendChild(b);
-  }
-
-  toggleModal(inboxModal,true);
-}
-</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>. Pulsa OK para restar 1 de tu inventario.`;
-  inboxPreview.innerHTML="";
-  const vc=state.cards.find(c=>c.id===data.cardId);
-  const block=document.createElement("div"); block.className="cardSlot";
-  const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
-  const img=document.createElement("img"); img.alt=vc?.name||data.cardName; img.src=`img/${data.cardId}.png`; img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${data.cardId}.jpg`; } };
+  const img=document.createElement("img"); img.alt=vc?.name||data.cardName||"Carta"; img.src=`img/${vc?.id||data.cardId}.png`;
+  img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${vc?.id||data.cardId}.jpg`; } };
   imgWrap.appendChild(img);
   const title=document.createElement("div"); title.className="title"; title.textContent=vc?.name||data.cardName||"Carta";
   const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(vc?.type||"")}</span> · <span class="badge">${vc?.cost||"?"} 🪙</span>`;
   const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+(vc?.qty||0); block.appendChild(qty);
   block.appendChild(imgWrap); block.appendChild(title); block.appendChild(meta);
   inboxPreview.appendChild(block);
+
+  // DEFENSAS en robo
+  const stealDefenseButtons = $("#stealDefenseButtons"); stealDefenseButtons.innerHTML="";
+  let myInv; try{ const snap=await getDoc(invRef(currentUser.uid)); myInv=snap.exists()?snap.data():state; }catch{ myInv=state; }
+  const qtyOf = (name)=> (myInv.cards.find(c=>c.name.toLowerCase()===name.toLowerCase())?.qty||0);
+  const hasReversa = qtyOf("Reversa")>0, hasBloqueo = qtyOf("Bloqueo")>0, hasProtec = qtyOf("Protección del débil")>0;
+
+  const okBtn = document.createElement("button"); okBtn.className="btn bad"; okBtn.textContent="OK (aceptar robo)";
+  okBtn.onclick = inboxApply.onclick; stealDefenseButtons.appendChild(okBtn);
+
+  if(hasReversa){
+    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Reversa";
+    b.onclick=async()=>{
+      const c=findCardByName("Reversa"); if(c&&c.qty>0) c.qty-=1;
+      state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa (robo) (−1)"});
+      await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"defended", defenseUsed:"reversa", resolvedAt: serverTimestamp(), seenByVictim:true});
+      toast("🛡️ Reversa usada: robo cancelado"); scheduleSave(); render(); toggleModal(inboxModal,false);
+      currentInboxId=null; currentInboxData=null;
+    };
+    stealDefenseButtons.appendChild(b);
+  }
+  if(hasBloqueo){
+    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Bloqueo";
+    b.onclick=async()=>{
+      const c=findCardByName("Bloqueo"); if(c&&c.qty>0) c.qty-=1;
+      state.useLog.push({date:new Date().toISOString(), name:"Usaste Bloqueo (robo) (−1)"});
+      await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"defended", defenseUsed:"bloqueo", resolvedAt: serverTimestamp(), seenByVictim:true});
+      toast("🛡️ Bloqueo usado: robo cancelado"); scheduleSave(); render(); toggleModal(inboxModal,false);
+      currentInboxId=null; currentInboxData=null;
+    };
+    stealDefenseButtons.appendChild(b);
+  }
+  if(hasProtec){
+    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Protección del débil (50%)";
+    b.onclick=async()=>{
+      const c=findCardByName("Protección del débil"); if(!(c&&c.qty>0)) return;
+      const cara = Math.random()<0.5;
+      if(cara){
+        await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"protected_success_refund", defenseUsed:"proteccion", coin:"cara", resolvedAt: serverTimestamp(), seenByVictim:true});
+        toast("🪙 ¡Cara! Te proteges, rival recupera su carta de robo.");
+      }else{
+        c.qty -= 1;
+        await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"protected_fail", defenseUsed:"proteccion", coin:"cruz", resolvedAt: serverTimestamp(), seenByVictim:true});
+        const vc2 = state.cards.find(x=>x.id===data.cardId);
+        if(vc2 && vc2.qty>0){ vc2.qty -= 1; toast(`🔻 -1 ${vc2.name}`); }
+        state.useLog.push({date:new Date().toISOString(),cardId:data.cardId,name:`Te robaron ${data.cardName} (−1)`,note:`Por ${attacker}`});
+        scheduleSave(); render();
+      }
+      toggleModal(inboxModal,false); currentInboxId=null; currentInboxData=null;
+    };
+    stealDefenseButtons.appendChild(b);
+  }
+
   toggleModal(inboxModal,true);
 }
 let stealingOnce=false;
 inboxApply.onclick=async()=>{
-  if(stealingOnce) return; stealingOnce=true; // evita dobles clics
+  if(stealingOnce) return; stealingOnce=true;
   try{
     if(!currentInboxId||!currentInboxData){toggleModal(inboxModal,false);return}
     const cid=currentInboxData.cardId, cname=currentInboxData.cardName||"Carta";
@@ -941,17 +833,11 @@ inboxApply.onclick=async()=>{
     if(vc && (vc.qty||0)>0){
       vc.qty -= 1;
       state.useLog.push({date:new Date().toISOString(),cardId:cid,name:`Te robaron ${cname} (−1)`,note:`Por ${currentInboxData.attackerName||currentInboxData.attackerId}`});
-      toast(`🔻 -1 ${cname}`);
-      scheduleSave(); render();
-    }else{
-      toast("No tenías esa carta disponible. No se resta.");
-    }
-    await updateDoc(doc(db,"stealRequests",currentInboxId),{status:"applied",appliedAt:serverTimestamp()});
-    toggleModal(inboxModal,false);
-    currentInboxId=null; currentInboxData=null;
-  }finally{
-    setTimeout(()=>{ stealingOnce=false; }, 600);
-  }
+      toast(`🔻 -1 ${cname}`); scheduleSave(); render();
+    }else{ toast("No tenías esa carta disponible. No se resta."); }
+    await updateDoc(doc(db,"stealRequests",currentInboxId),{status:"applied",appliedAt:serverTimestamp(),seenByVictim:true});
+    toggleModal(inboxModal,false); currentInboxId=null; currentInboxData=null;
+  }finally{ setTimeout(()=>{ stealingOnce=false; }, 600); }
 };
 
 /* ========= Ataques (víctima) ========= */
@@ -961,7 +847,6 @@ let currentAttackId=null, currentAttackData=null;
 
 async function showAttackInbox(docId, data){
   currentAttackId=docId; currentAttackData=data;
-
   const attacker=data.attackerName||data.attackerId;
   attackText.innerHTML=`<strong>${esc(attacker)}</strong> te ha atacado con <strong>${esc(data.cardName)}</strong>.`;
   attackPreview.innerHTML="";
@@ -974,58 +859,40 @@ async function showAttackInbox(docId, data){
   block.appendChild(imgWrap); block.appendChild(title);
   attackPreview.appendChild(block);
 
-  // ——— Cargar inventario real del usuario (no confiar en state por si no está aún)
-  let myInv;
-  try{
-    const snap = await getDoc(invRef(currentUser.uid));
-    myInv = snap.exists()? snap.data(): state;
-  }catch{ myInv = state; }
-
+  let myInv; try{ const snap = await getDoc(invRef(currentUser.uid)); myInv = snap.exists()? snap.data(): state; }catch{ myInv=state; }
   const qtyOf = (name)=> (myInv.cards.find(c=>c.name.toLowerCase()===name.toLowerCase())?.qty||0);
 
   defenseButtons.innerHTML="";
   const hasReversa = qtyOf("Reversa")>0;
   const hasBloqueo = qtyOf("Bloqueo")>0;
-  const hasProtec = qtyOf("Protección del débil")>0;
+  const hasProtec  = qtyOf("Protección del débil")>0;
 
-  // Botón "aceptar ataque"
   const okBtn = document.createElement("button"); okBtn.className="btn bad"; okBtn.textContent="OK (recibir ataque)";
   okBtn.onclick = async ()=>{
     state.karma=(state.karma||0)-1;
     await updateDoc(doc(db,"attackRequests",currentAttackId), {status:"applied", resolvedAt: serverTimestamp()});
-    toast("⚡ Ataque recibido: karma −1");
-    scheduleSave(); render();
-    toggleModal(attackModal,false);
+    toast("⚡ Ataque recibido: karma −1"); scheduleSave(); render(); toggleModal(attackModal,false);
   };
   defenseButtons.appendChild(okBtn);
 
-  // Reversa
   if(hasReversa){
     const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Reversa";
     b.onclick=async()=>{
       const c=findCardByName("Reversa"); if(c&&c.qty>0) c.qty-=1;
       await updateDoc(doc(db,"attackRequests",currentAttackId), {status:"defended", defenseUsed:"reversa", resolvedAt: serverTimestamp()});
-      state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa (−1)"});
-      toast("🛡️ Reversa usada. Sin penalización de karma.");
-      scheduleSave(); render(); toggleModal(attackModal,false);
+      state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa (−1)"}); toast("🛡️ Reversa usada."); scheduleSave(); render(); toggleModal(attackModal,false);
     };
     defenseButtons.appendChild(b);
   }
-
-  // Bloqueo
   if(hasBloqueo){
     const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Bloqueo";
     b.onclick=async()=>{
       const c=findCardByName("Bloqueo"); if(c&&c.qty>0) c.qty-=1;
       await updateDoc(doc(db,"attackRequests",currentAttackId), {status:"defended", defenseUsed:"bloqueo", resolvedAt: serverTimestamp()});
-      state.useLog.push({date:new Date().toISOString(), name:"Usaste Bloqueo (−1)"});
-      toast("🛡️ Bloqueo usado. Sin penalización de karma.");
-      scheduleSave(); render(); toggleModal(attackModal,false);
+      state.useLog.push({date:new Date().toISOString(), name:"Usaste Bloqueo (−1)"}); toast("🛡️ Bloqueo usado."); scheduleSave(); render(); toggleModal(attackModal,false);
     };
     defenseButtons.appendChild(b);
   }
-
-  // Protección del débil (50/50)
   if(hasProtec){
     const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Protección del débil (50%)";
     b.onclick=async()=>{
@@ -1033,12 +900,11 @@ async function showAttackInbox(docId, data){
       const cara = Math.random()<0.5;
       if(cara){
         await updateDoc(doc(db,"attackRequests",currentAttackId), {status:"protected_success_refund", defenseUsed:"proteccion", coin:"cara", resolvedAt: serverTimestamp()});
-        toast("🪙 ¡Cara! Te proteges, rival recupera su carta. Sin karma −1.");
+        toast("🪙 ¡Cara! Te proteges; el rival recupera su carta.");
       }else{
-        c.qty -= 1;
-        state.karma=(state.karma||0)-1;
+        c.qty -= 1; state.karma=(state.karma||0)-1;
         await updateDoc(doc(db,"attackRequests",currentAttackId), {status:"protected_fail", defenseUsed:"proteccion", coin:"cruz", resolvedAt: serverTimestamp()});
-        toast("🪙 Cruz. Pierdes la carta y recibes el ataque (karma −1).");
+        toast("🪙 Cruz. Pierdes la carta y recibes el ataque (karma −1)."); scheduleSave(); render();
       }
       scheduleSave(); render(); toggleModal(attackModal,false);
     };
@@ -1049,60 +915,55 @@ async function showAttackInbox(docId, data){
 }
 
 /* ========= Espiar ========= */
-const btnSpy=$("#btnSpy"), spyMenu=$("#spyMenu"), spyInfo=$("#spyInfo"), spyName=$("#spyName"), spyExit=$("#spyExit");
 function renderSpyMenu(){
   const me=currentUser?.uid;
-  const items=profiles.filter(p=>p.id!==me).map(p=>`<button class="spyItem" data-uid="${p.id}">${esc(p.displayName||p.email||p.id)}</button>`);
+  const items=profiles.filter(p=>p.id!==me).map(p=>`<button class="spyItem" data-uid="${p.id}" style="width:100%;text-align:left;background:transparent;color:var(--text);border:1px solid transparent;padding:8px 10px;border-radius:10px;cursor:pointer">${esc(p.displayName||p.email||p.id)}</button>`);
+  let box = $("#spyMenu");
+  if(!box){
+    const tools = document.createElement("div");
+    tools.className="tools";
+    tools.innerHTML = `<button id="btnSpy" class="btn alt">👁️ Espiar</button><div id="spyMenu" class="toolsPanel" style="right:auto"></div><div id="spyInfo" style="display:none" class="badge">Espiando a: <strong id="spyName"></strong> <button id="spyExit" class="btn alt" style="margin-left:8px">Volver</button></div>`;
+    document.querySelector("header .row").insertBefore(tools, document.querySelector("#toolsBox"));
+    box = $("#spyMenu");
+    $("#btnSpy").onclick=(e)=>{e.stopPropagation();box.classList.toggle("show")};
+    document.body.addEventListener("click",()=>box.classList.remove("show"));
+    box.addEventListener("click",(e)=>{
+      const btn=e.target.closest(".spyItem"); if(!btn)return;
+      const uid=btn.getAttribute("data-uid"); box.classList.remove("show"); if(!uid)return;
+      spyUid=uid; $("#spyInfo").style.display="inline-flex";
+      const profile=profiles.find(p=>p.id===uid); $("#spyName").textContent=profile?.displayName||profile?.email||uid;
+      subscribeInventory(uid);
+    });
+    $("#spyExit").onclick=()=>{spyUid=null;$("#spyInfo").style.display="none";if(currentUser)subscribeInventory(currentUser.uid)};
+  }
   $("#spyMenu").innerHTML=items.length?items.join(""):'<div class="small">No hay otros usuarios aún.</div>';
 }
-btnSpy.onclick=(e)=>{e.stopPropagation();renderSpyMenu();$("#spyMenu").classList.toggle("show")};
-document.body.addEventListener("click",()=>$("#spyMenu").classList.remove("show"));
-$("#spyMenu").addEventListener("click",(e)=>{
-  const btn=e.target.closest(".spyItem"); if(!btn)return;
-  const uid=btn.getAttribute("data-uid"); $("#spyMenu").classList.remove("show"); if(!uid)return;
-  spyUid=uid; $("#spyInfo").style.display="inline-flex";
-  const profile=profiles.find(p=>p.id===uid); $("#spyName").textContent=profile?.displayName||profile?.email||uid;
-  subscribeInventory(uid);
-});
-spyExit.onclick=()=>{spyUid=null;$("#spyInfo").style.display="none";if(currentUser)subscribeInventory(currentUser.uid)};
 
-/* ========= Auth state ========= */
-onAuthStateChanged(auth, async (u)=>{
-  if(u){
-    currentUser=u;
-    who.innerHTML=`Conectado como <strong>${esc(u.displayName||u.email||u.uid)}</strong>`;
-    btnGoogle.style.display="none"; btnEmail.style.display="none"; btnLogout.style.display="inline-block";
-    toolsBox.style.display="block"; $("#spyBox").style.display="block";
-    await ensureProfile(u); await initInventoryIfMissing(u.uid);
-    spyUid=null; $("#spyInfo").style.display="none";
-    subscribeInventory(u.uid);
-    subscribeProfiles();
-    subscribeInbox(u.uid);
-    subscribeAttackInbox(u.uid);
-    subscribeDebuffs(u.uid);
-    subscribeGiftAlerts(u.uid);
-  }else{
-    currentUser=null; spyUid=null;
-    who.textContent="Sin sesión";
-    btnGoogle.style.display="inline-block"; btnEmail.style.display="inline-block"; btnLogout.style.display="none";
-    toolsBox.style.display="none"; $("#spyBox").style.display="none";
-    if(unsubInv){unsubInv();unsubInv=null} if(unsubProfiles){unsubProfiles();unsubProfiles=null}
-    if(unsubInbox){unsubInbox();unsubInbox=null} if(unsubAttackInbox){unsubAttackInbox();unsubAttackInbox=null}
-    if(unsubDebuffs){unsubDebuffs();unsubDebuffs=null} if(unsubGiftAlerts){unsubGiftAlerts();unsubGiftAlerts=null}
-    state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[]}; render();
-  }
-});
+/* ========= Selector de usuario reutilizable ========= */
+function pickUser(title="Selecciona usuario"){
+  return new Promise((resolve)=>{
+    const m=$("#targetModal"), sel=$("#targetSelect"), ok=$("#targetOk"), cancel=$("#targetCancel"), titleEl=$("#targetTitle"), closeX=$("#targetCloseX");
+    titleEl.textContent = title;
+    const me=currentUser?.uid;
+    sel.innerHTML = ['<option value="">— Elegir —</option>'].concat(
+      profiles.filter(p=>p.id!==me).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`)
+    ).join("");
+    function done(val){ toggleModal(m,false); ok.onclick=cancel.onclick=closeX.onclick=null; resolve(val); }
+    ok.onclick=()=>{ const v=sel.value; if(!v) return; const p=profiles.find(x=>x.id===v); done({uid:v,name:p?.displayName||p?.email||v}); };
+    cancel.onclick=()=>done(null);
+    closeX.onclick=()=>done(null);
+    toggleModal(m,true);
+  });
+}
 
 /* ========= USAR carta ========= */
 async function onUse(){
   if(spyUid||!currentUser)return;
   const c=state.cards.find(x=>x.id===currentCardId); if(!c)return;
   if((c.qty||0)<=0){alert("No tienes esta carta.");return}
-
-  // Flujos especiales
   const nm=c.name.toLowerCase();
 
-  // --- Robo sigiloso: UI de robo por notificación
+  // Robo sigiloso
   if(nm==="robo sigiloso"){
     stealSelectedCardId=null; stealSelectedCardName=null; victimSnapshot=null;
     stealGrid.innerHTML=""; stealConfirm.disabled=true; toggleModal(stealModal,true);
@@ -1129,112 +990,71 @@ async function onUse(){
 
     stealConfirm.onclick=async()=>{
       const victimId=$("#stealTarget").value; if(!victimId||!stealSelectedCardId)return;
-      // Gastas tu "Robo sigiloso"
       c.qty -= 1;
       state.useLog.push({date:new Date().toISOString(), name:`Usaste ${c.name} (−1)`});
-      // Te sumas la robada ya
       const myCard=state.cards.find(x=>x.id===stealSelectedCardId); if(myCard){ myCard.qty=(myCard.qty||0)+1; }
       state.karma=(state.karma||0)+1;
       state.useLog.push({date:new Date().toISOString(), name:`Robaste ${stealSelectedCardName} (+1) (pendiente)`, note:`A ${profiles.find(p=>p.id===victimId)?.displayName||victimId}`});
       toast(`🕵️ Robaste ${stealSelectedCardName} (+1)`);
-
-      await addDoc(stealCol,{
-  attackerId: currentUser.uid,
-  attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
-  victimId,
-  victimName: profiles.find(p=>p.id===victimId)?.displayName||null,
-  cardId: stealSelectedCardId,
-  cardName: stealSelectedCardName,   // ← ESTO IMPORTA
-  status: "pending",
-  createdAt: serverTimestamp()
-});
-
+      await addDoc(stealCol,{ attackerId: currentUser.uid, attackerName: currentUser.displayName||currentUser.email||currentUser.uid, victimId, victimName: profiles.find(p=>p.id===victimId)?.displayName||null, cardId: stealSelectedCardId, cardName: stealSelectedCardName, status: "pending", createdAt: serverTimestamp(), seenByVictim:false });
       scheduleSave(); render(); toggleModal(stealModal,false); toggleModal(cardModal,false);
     };
     return;
   }
 
-  // --- Barajear cartas
-  if(nm==="barajear cartas"){
-    toggleModal(cardModal,false);
-    openShufflePicker();
-    return;
-  }
+  // Barajear cartas
+  if(nm==="barajear cartas"){ toggleModal(cardModal,false); openShufflePicker(); return; }
 
-  // --- Regalo: aplicar debuff gift (giver=currentUser, receiver=seleccionado)
+  // Regalo → picker
   if(nm==="regalo"){
-  const victimId = await openUserPicker();
-  if(!victimId) return;
-  const pr = profiles.find(p=>p.id===victimId);
-  c.qty -= 1;
-  await addDoc(debuffCol, {
-    type:"gift", active:true,
-    giverId: currentUser.uid,
-    giverName: currentUser.displayName||currentUser.email||currentUser.uid,
-    receiverId: pr.id, receiverName: pr.displayName||pr.email||pr.id,
-    targetId: pr.id, createdAt: serverTimestamp()
-  });
-  state.useLog.push({date:new Date().toISOString(), name:`Usaste Regalo → ${pr.displayName||pr.email||pr.id}`});
-  toast("🎁 Regalo aplicado");
-  scheduleSave(); render(); toggleModal(cardModal,false);
-  return;
-}
+    const pick = await pickUser("¿A quién envías Regalo?");
+    if(!pick) return;
+    const pr = profiles.find(p=>p.id===pick.uid);
     c.qty -= 1;
     await addDoc(debuffCol, { type:"gift", active:true, giverId: currentUser.uid, giverName: currentUser.displayName||currentUser.email||currentUser.uid, receiverId: pr.id, receiverName: pr.displayName||pr.email||pr.id, targetId: pr.id, createdAt: serverTimestamp() });
     state.useLog.push({date:new Date().toISOString(), name:`Usaste Regalo → ${pr.displayName||pr.email||pr.id}`});
-    toast("🎁 Regalo aplicado");
-    scheduleSave(); render(); toggleModal(cardModal,false);
-    return;
+    toast("🎁 Regalo aplicado"); scheduleSave(); render(); toggleModal(cardModal,false); return;
   }
 
-  // --- Maldición: debuff + si karma de víctima ≤ −3 ⇒ robo
+  // Maldición → picker + robo si karma ≤ -3
   if(nm==="maldición" || nm==="maldicion"){
-    const victimId = prompt("¿A quién maldices? (nombre o uid)");
-    if(!victimId) return;
-    const pr = profiles.find(p=> (p.displayName||p.email||p.id)===victimId) || profiles.find(p=>p.id===victimId);
-    if(!pr){ alert("Usuario no encontrado."); return; }
+    const pick = await pickUser("¿A quién maldices?");
+    if(!pick) return;
+    const pr = profiles.find(p=>p.id===pick.uid);
     c.qty -= 1;
     state.useLog.push({date:new Date().toISOString(), name:`Maldición → ${pr.displayName||pr.email||pr.id}`});
-    toast("🪄 Maldición aplicada (debuff)");
+    toast("🪄 Maldición aplicada");
     await addDoc(debuffCol,{ type:"curse", active:true, fromId: currentUser.uid, fromName: currentUser.displayName||currentUser.email||currentUser.uid, targetId: pr.id, targetName: pr.displayName||pr.email||pr.id, createdAt: serverTimestamp() });
     scheduleSave(); render();
 
-    // comprobar karma
     const inv=await getDoc(invRef(pr.id)); if(inv.exists()){
-      const v=inv.data(); const vk=(v.karma||0);
-      if(vk<=-3){
-        // permitir robo como flujo de robo sigiloso (notificación)
-        const d=await getDoc(invRef(pr.id));
-        if(d.exists()){
-          const victimData=d.data();
-          // elegir carta a robar (versión rápida: robamos la primera que tenga; si quieres UI, se podría abrir el modal de robo)
-          // Abrimos el modal de robo para elegir (reutilizamos)
-          toggleModal(cardModal,false);
-          stealSelectedCardId=null; stealSelectedCardName=null;
-          stealGrid.innerHTML=""; stealConfirm.disabled=true; toggleModal(stealModal,true);
-          $("#stealTarget").value = pr.id;
-          victimSnapshot=victimData;
-          victimSnapshot.cards.forEach(vc=>{
-            if((vc.qty||0)<=0) return;
-            const slot=document.createElement("div"); slot.className="cardSlot"; slot.dataset.id=vc.id;
-            const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
-            const img=document.createElement("img"); img.alt=vc.name; img.src=`img/${vc.id}.png`; img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${vc.id}.jpg`; } };
-            imgWrap.appendChild(img);
-            const title=document.createElement("div"); title.className="title"; title.textContent=vc.name;
-            const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(vc.type)}</span> · <span class="badge">${vc.cost} 🪙</span>`;
-            const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+vc.qty; slot.appendChild(qty);
-            slot.appendChild(imgWrap); slot.appendChild(title); slot.appendChild(meta);
-            slot.onclick=()=>{ [...stealGrid.children].forEach(ch=>ch.style.outline="none"); slot.style.outline="2px solid #7c5cff"; stealSelectedCardId=vc.id; stealSelectedCardName=vc.name; stealConfirm.disabled=false; };
-            stealGrid.appendChild(slot);
-          });
-          stealConfirm.onclick=async()=>{
-            if(!stealSelectedCardId) return;
-            const myCard=state.cards.find(x=>x.id===stealSelectedCardId); if(myCard){ myCard.qty=(myCard.qty||0)+1; }
-            state.useLog.push({date:new Date().toISOString(), name:`Robaste (Maldición) ${stealSelectedCardName} (+1)`, note:`A ${pr.displayName||pr.email||pr.id}`});
-            await addDoc(stealCol,{ attackerId: currentUser.uid, attackerName: currentUser.displayName||currentUser.email||currentUser.uid, victimId: pr.id, victimName: pr.displayName||pr.email||pr.id, cardId: stealSelectedCardId, cardName: stealSelectedCardName, status: "pending", createdAt: serverTimestamp() });
-            scheduleSave(); render(); toggleModal(stealModal,false);
-          };
-        }
+      const v=inv.data(); if((v.karma||0)<=-3){
+        // abrir modal de robo contra ese usuario
+        toggleModal(cardModal,false);
+        stealSelectedCardId=null; stealSelectedCardName=null;
+        stealGrid.innerHTML=""; stealConfirm.disabled=true; toggleModal(stealModal,true);
+        $("#stealTarget").value = pr.id;
+        victimSnapshot=v;
+        victimSnapshot.cards.forEach(vc=>{
+          if((vc.qty||0)<=0) return;
+          const slot=document.createElement("div"); slot.className="cardSlot"; slot.dataset.id=vc.id;
+          const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
+          const img=document.createElement("img"); img.alt=vc.name; img.src=`img/${vc.id}.png`; img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${vc.id}.jpg`; } };
+          imgWrap.appendChild(img);
+          const title=document.createElement("div"); title.className="title"; title.textContent=vc.name;
+          const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(vc.type)}</span> · <span class="badge">${vc.cost} 🪙</span>`;
+          const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+vc.qty; slot.appendChild(qty);
+          slot.appendChild(imgWrap); slot.appendChild(title); slot.appendChild(meta);
+          slot.onclick=()=>{ [...stealGrid.children].forEach(ch=>ch.style.outline="none"); slot.style.outline="2px solid #7c5cff"; stealSelectedCardId=vc.id; stealSelectedCardName=vc.name; stealConfirm.disabled=false; };
+          stealGrid.appendChild(slot);
+        });
+        stealConfirm.onclick=async()=>{
+          if(!stealSelectedCardId) return;
+          const myCard=state.cards.find(x=>x.id===stealSelectedCardId); if(myCard){ myCard.qty=(myCard.qty||0)+1; }
+          state.useLog.push({date:new Date().toISOString(), name:`Robaste (Maldición) ${stealSelectedCardName} (+1)`, note:`A ${pr.displayName||pr.email||pr.id}`});
+          await addDoc(stealCol,{ attackerId: currentUser.uid, attackerName: currentUser.displayName||currentUser.email||currentUser.uid, victimId: pr.id, victimName: pr.displayName||pr.email||pr.id, cardId: stealSelectedCardId, cardName: stealSelectedCardName, status: "pending", createdAt: serverTimestamp(), seenByVictim:false });
+          scheduleSave(); render(); toggleModal(stealModal,false);
+        };
       }else{
         toast("El objetivo no tiene karma ≤ −3. No hay robo.");
       }
@@ -1243,43 +1063,34 @@ async function onUse(){
     return;
   }
 
-  // --- Ataques genéricos: elegir rival, crear attackRequest, gastar carta, karma+1
+  // Ataques genéricos → picker + notificación
   if(c.type==="ataque"){
-    const victimName = prompt("¿A qué usuario atacas? (nombre o uid)");
-    if(!victimName) return;
-    const pr = profiles.find(p=> (p.displayName||p.email||p.id)===victimName) || profiles.find(p=>p.id===victimName);
-    if(!pr){ alert("Usuario no encontrado."); return; }
+    const pick = await pickUser(`¿A quién atacas con ${c.name}?`);
+    if(!pick) return; const pr = profiles.find(p=>p.id===pick.uid);
 
-    // Regalo pendiente: si hay debuff gift donde giverId==victim y receiverId==yo
-    // avisamos y anulamos
+    // Regalo pendiente (si me lo hizo ese rival)
     const giftQ = query(debuffCol, where("type","==","gift"), where("active","==",true), where("receiverId","==",currentUser.uid), where("giverId","==",pr.id));
-   const gSnap = await getDocs(giftQ);
+    const gSnap = await getDocs(giftQ);
     if(gSnap.docs.length){
-      // notificarme y cerrar gift
       await addDoc(giftAlertCol,{ receiverId: currentUser.uid, creditorId: pr.id, creditorName: pr.displayName||pr.email||pr.id, status:"pending", createdAt: serverTimestamp() });
-      // marcar todos inactivos
       await Promise.all(gSnap.docs.map(d=> updateDoc(doc(db,"debuffs", d.id), {active:false, consumedAt: serverTimestamp()})));
     }
 
-    // gastar carta de ataque
     c.qty -= 1;
     state.karma=(state.karma||0)+1;
     state.useLog.push({date:new Date().toISOString(), name:`Usaste ${c.name} (−1) → ${pr.displayName||pr.email||pr.id}`});
     toast(`⚔️ Ataque: ${c.name} → ${pr.displayName||pr.email||pr.id}`);
-
-    // efectos económicos que ya tenías
     if(nm==="robo de monedas"){ addCoins(5,"Carta: Robo de monedas"); toast("🪙 +5 monedas"); }
 
     await addDoc(attackCol,{ attackerId: currentUser.uid, attackerName: currentUser.displayName||currentUser.email||currentUser.uid, victimId: pr.id, victimName: pr.displayName||pr.email||pr.id, cardId: c.id, cardName: c.name, status:"pending", createdAt: serverTimestamp() });
-
     scheduleSave(); render(); toggleModal(cardModal,false);
     return;
   }
 
-  // --- Uso normal de otras cartas
+  // Uso normal
   c.qty -= 1;
   state.useLog.push({date:new Date().toISOString(), name:`Usaste ${c.name} (−1)`});
-  toast(`🎴 Usaste ${c.name} (−1)`); if(c.type==="ataque"){state.karma=(state.karma||0)+1}
+  toast(`🎴 Usaste ${c.name} (−1)`);
   if(nm==="10 monedas"){addCoins(10,"Carta: 10 monedas");toast("🪙 +10 monedas")}
   if(nm==="venta ilegal"){addCoins(2,"Carta: Venta ilegal");toast("🪙 +2 monedas")}
   if(nm==="monedero perdido"){const g=(Math.floor(Math.random()*5)+1);addCoins(g,`Carta: Monedero perdido (+${g})`);toast(`🪙 Monedero perdido: +${g}`)}
@@ -1332,25 +1143,61 @@ function showReward(win){
   toggleModal(rewardModal,true);
 }
 
-/* ========= Listeners de “ataques enviados” (feedback al atacante) ========= */
+/* ========= Feedback al atacante (ataques y robos) ========= */
 onSnapshot(query(attackCol, where("attackerId","==",()=>currentUser?.uid||"zz")), (snap)=>{
   snap.docChanges().forEach(ch=>{
     if(ch.type!=="modified") return;
     const d=ch.doc.data();
+    if(d.status==="defended"){ toast(`🛡️ Rival defendió con ${d.defenseUsed}.`); }
+    if(d.status==="protected_success_refund"){
+      const my = state.cards.find(c=>c.name.toLowerCase()===d.cardName.toLowerCase());
+      if(my){ my.qty=(my.qty||0)+1; toast(`🪙 Protección (cara): te devuelven ${my.name}.`); scheduleSave(); render(); }
+    }
+  });
+});
+onSnapshot(query(stealCol, where("attackerId","==",()=>currentUser?.uid||"zz")), (snap)=>{
+  snap.docChanges().forEach(ch=>{
+    if(ch.type!=="modified") return;
+    const d=ch.doc.data();
     if(d.status==="defended"){
-      toast(`🛡️ Rival defendió con ${d.defenseUsed}.`);
+      const stolen = state.cards.find(c=>c.id===d.cardId);
+      if(stolen && stolen.qty>0){ stolen.qty -= 1; toast(`🛡️ Robo bloqueado: −1 ${stolen.name}`); scheduleSave(); render(); }
     }
     if(d.status==="protected_success_refund"){
-      // devolvemos la carta al atacante
-      const my = state.cards.find(c=>c.name.toLowerCase()===d.cardName.toLowerCase());
-      if(my){ my.qty=(my.qty||0)+1; toast(`🪙 Protección del débil: te devuelven ${my.name}.`); scheduleSave(); render(); }
+      const stolen = state.cards.find(c=>c.id===d.cardId);
+      if(stolen && stolen.qty>0){ stolen.qty -= 1; }
+      const rs = state.cards.find(c=>c.name.toLowerCase()==="robo sigiloso");
+      if(rs){ rs.qty=(rs.qty||0)+1; }
+      toast("🪙 Protección (cara): te devuelven 'Robo sigiloso'.");
+      scheduleSave(); render();
     }
   });
 });
 
-/* ========= Ataque: colecciones etc. ========= */
-
-/* ========= FIN ========= */
+/* ========= Auth state ========= */
+onAuthStateChanged(auth, async (u)=>{
+  if(u){
+    currentUser=u;
+    who.innerHTML=`Conectado como <strong>${esc(u.displayName||u.email||u.uid)}</strong>`;
+    btnGoogle.style.display="none"; btnEmail.style.display="none"; btnLogout.style.display="inline-block";
+    toolsBox.style.display="block";
+    await ensureProfile(u); await initInventoryIfMissing(u.uid);
+    spyUid=null;
+    subscribeInventory(u.uid);
+    subscribeProfiles();
+    subscribeInbox(u.uid);
+    subscribeAttackInbox(u.uid);
+    subscribeDebuffs(u.uid);
+    subscribeGiftAlerts(u.uid);
+  }else{
+    currentUser=null; spyUid=null;
+    who.textContent="Sin sesión";
+    btnGoogle.style.display="inline-block"; btnEmail.style.display="inline-block"; btnLogout.style.display="none";
+    toolsBox.style.display="none";
+    [unsubInv,unsubProfiles,unsubInbox,unsubAttackInbox,unsubDebuffs,unsubGiftAlerts].forEach(fn=>{try{fn&&fn()}catch{}});
+    state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[]}; render();
+  }
+});
 </script>
 </body>
 </html>
