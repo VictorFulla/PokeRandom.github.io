@@ -409,6 +409,49 @@ const giftAlertCol = collection(db,"giftAlerts"); // avisos de "debes 3 curas"
 
 /* ========= UI comunes ========= */
 const coinsEl=$("#coins"), coinsMini=$("#coinsMini"), karmaEl=$("#karma");
+// === Exportar / Importar / Reiniciar ===
+$("#exportBtn").onclick = ()=>{
+  const filename = `wobalonga_${(currentUser?.displayName||currentUser?.email||"anon").replace(/[^a-z0-9_-]/gi,"_")}_${new Date().toISOString().slice(0,10)}.json`;
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+};
+
+$("#importFile").onchange = async (e)=>{
+  const file = e.target.files?.[0]; if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    // importamos solo campos conocidos
+    state.coins = Math.max(0, Math.trunc(data.coins||0));
+    state.karma = Math.trunc(data.karma||0);
+    if(Array.isArray(data.cards)){
+      // conservamos metadatos (desc, tipo, cost) de las cartas de este build y aplicamos qty del fichero
+      const map = new Map(data.cards.map(c=>[c.id, Math.max(0, Math.trunc(c.qty||0))]));
+      state.cards.forEach(c=>{ c.qty = map.get(c.id)||0; });
+    }
+    state.walletLog = Array.isArray(data.walletLog)?data.walletLog:[];
+    state.useLog    = Array.isArray(data.useLog)?data.useLog:[];
+    toast("📥 Importado");
+    scheduleSave(); render();
+  }catch(err){ alert("Import inválido"); }
+};
+
+$("#resetBtn").onclick = ()=>{
+  if(!confirm("¿Seguro que quieres reiniciar tu inventario?")) return;
+  if(!confirm("Mu mal… esto no tiene deshacer. ¿Confirmas?")) return;
+  state.coins = 0;
+  state.karma = 0;
+  state.cards.forEach(c=> c.qty = 0);
+  state.walletLog = [];
+  state.useLog = [];
+  toast("🧹 Reiniciado");
+  scheduleSave(); render();
+};
+
 const gridEl=$("#cardsGrid"), walletLogEl=$("#walletLog"), useLogEl=$("#useLog");
 const typeFilter=$("#typeFilter"), hideZero=$("#hideZero");
 const toolsBox=$("#toolsBox"), toolsBtn=$("#toolsBtn"), toolsPanel=$("#toolsPanel");
@@ -734,8 +777,9 @@ const attackModal=$("#attackModal"), attackText=$("#attackText"), attackPreview=
 attackCloseX.onclick=()=>toggleModal(attackModal,false);
 let currentAttackId=null, currentAttackData=null;
 
-function showAttackInbox(docId, data){
+async function showAttackInbox(docId, data){
   currentAttackId=docId; currentAttackData=data;
+
   const attacker=data.attackerName||data.attackerId;
   attackText.innerHTML=`<strong>${esc(attacker)}</strong> te ha atacado con <strong>${esc(data.cardName)}</strong>.`;
   attackPreview.innerHTML="";
@@ -748,15 +792,23 @@ function showAttackInbox(docId, data){
   block.appendChild(imgWrap); block.appendChild(title);
   attackPreview.appendChild(block);
 
-  // Botones de defensa según tengas
-  defenseButtons.innerHTML="";
-  const hasReversa = (findCardByName("Reversa")?.qty||0)>0;
-  const hasBloqueo = (findCardByName("Bloqueo")?.qty||0)>0;
-  const hasProtec = (findCardByName("Protección del débil")?.qty||0)>0;
+  // ——— Cargar inventario real del usuario (no confiar en state por si no está aún)
+  let myInv;
+  try{
+    const snap = await getDoc(invRef(currentUser.uid));
+    myInv = snap.exists()? snap.data(): state;
+  }catch{ myInv = state; }
 
+  const qtyOf = (name)=> (myInv.cards.find(c=>c.name.toLowerCase()===name.toLowerCase())?.qty||0);
+
+  defenseButtons.innerHTML="";
+  const hasReversa = qtyOf("Reversa")>0;
+  const hasBloqueo = qtyOf("Bloqueo")>0;
+  const hasProtec = qtyOf("Protección del débil")>0;
+
+  // Botón "aceptar ataque"
   const okBtn = document.createElement("button"); okBtn.className="btn bad"; okBtn.textContent="OK (recibir ataque)";
   okBtn.onclick = async ()=>{
-    // karma -1
     state.karma=(state.karma||0)-1;
     await updateDoc(doc(db,"attackRequests",currentAttackId), {status:"applied", resolvedAt: serverTimestamp()});
     toast("⚡ Ataque recibido: karma −1");
@@ -765,6 +817,7 @@ function showAttackInbox(docId, data){
   };
   defenseButtons.appendChild(okBtn);
 
+  // Reversa
   if(hasReversa){
     const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Reversa";
     b.onclick=async()=>{
@@ -776,6 +829,8 @@ function showAttackInbox(docId, data){
     };
     defenseButtons.appendChild(b);
   }
+
+  // Bloqueo
   if(hasBloqueo){
     const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Bloqueo";
     b.onclick=async()=>{
@@ -787,23 +842,21 @@ function showAttackInbox(docId, data){
     };
     defenseButtons.appendChild(b);
   }
+
+  // Protección del débil (50/50)
   if(hasProtec){
     const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Protección del débil (50%)";
     b.onclick=async()=>{
       const c=findCardByName("Protección del débil"); if(!(c&&c.qty>0)) return;
-      // Tirada
       const cara = Math.random()<0.5;
       if(cara){
-        // protegido; el atacante "recupera" su carta (señal por status)
         await updateDoc(doc(db,"attackRequests",currentAttackId), {status:"protected_success_refund", defenseUsed:"proteccion", coin:"cara", resolvedAt: serverTimestamp()});
         toast("🪙 ¡Cara! Te proteges, rival recupera su carta. Sin karma −1.");
       }else{
-        // falla: pierdes esta carta, recibes el ataque y karma -1
         c.qty -= 1;
         state.karma=(state.karma||0)-1;
         await updateDoc(doc(db,"attackRequests",currentAttackId), {status:"protected_fail", defenseUsed:"proteccion", coin:"cruz", resolvedAt: serverTimestamp()});
         toast("🪙 Cruz. Pierdes la carta y recibes el ataque (karma −1).");
-        scheduleSave(); render();
       }
       scheduleSave(); render(); toggleModal(attackModal,false);
     };
@@ -903,7 +956,17 @@ async function onUse(){
       state.useLog.push({date:new Date().toISOString(), name:`Robaste ${stealSelectedCardName} (+1) (pendiente)`, note:`A ${profiles.find(p=>p.id===victimId)?.displayName||victimId}`});
       toast(`🕵️ Robaste ${stealSelectedCardName} (+1)`);
 
-      await addDoc(stealCol,{ attackerId: currentUser.uid, attackerName: currentUser.displayName||currentUser.email||currentUser.uid, victimId, victimName: profiles.find(p=>p.id===victimId)?.displayName||null, cardId: stealSelectedCardId, cardName: stealSelectedCardName, status: "pending", createdAt: serverTimestamp() });
+      await addDoc(stealCol,{
+  attackerId: currentUser.uid,
+  attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+  victimId,
+  victimName: profiles.find(p=>p.id===victimId)?.displayName||null,
+  cardId: stealSelectedCardId,
+  cardName: stealSelectedCardName,   // ← ESTO IMPORTA
+  status: "pending",
+  createdAt: serverTimestamp()
+});
+
       scheduleSave(); render(); toggleModal(stealModal,false); toggleModal(cardModal,false);
     };
     return;
