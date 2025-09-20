@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PokeRandom — Inventario Randomlock Wobalonga v4.2 (Firebase)</title>
+<title>Randomlock Wobalonga — v4.2 (Firebase)</title>
 <style>
 :root{
   --bg:#0d0f14; --panel:#151922; --edge:rgba(255,255,255,.08);
@@ -14,9 +14,13 @@
 html,body{height:100%}
 body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
 .wrap{max-width:1240px;margin:0 auto;padding:16px}
+
+/* Header */
 header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(1.2) blur(10px);background:rgba(13,16,22,.75);border-bottom:1px solid var(--edge)}
-header .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-h1.logo{margin:0;font-size:22px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#a78bfa,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 18px rgba(124,92,255,.25)}
+header .row{display:flex;gap:12px;align-items:center;flex-wrap:nowrap} /* no wrap: el chip no baja */
+h1.logo{margin:0;font-size:22px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;
+  background:linear-gradient(90deg,#a78bfa,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 18px rgba(124,92,255,.25)}
 .logo .sub{font-size:12px;color:var(--muted);letter-spacing:.5px}
 
 .btn{background:var(--accent);border:none;color:white;border-radius:12px;padding:10px 14px;cursor:pointer;transition:.15s transform}
@@ -71,24 +75,31 @@ select{min-width:180px} .right{margin-left:auto} .flex{display:flex;gap:10px;ali
 /* Tools (top-right) */
 .tools{position:relative}
 .toolsBtn{
-  background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;gap:8px;align-items:center
+  background:#0e121a;border:1px solid var(--edge);border-radius:12px;
+  padding:10px 14px; cursor:pointer; display:flex; gap:10px; align-items:center;
+  font-size:15px;
 }
 .toolsBtn .coinDot{
-  display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;
-  background:rgba(255,255,255,.06); border:1px solid var(--edge);
-  color:#fff; /* <-- visible en fondo oscuro */
-  font-weight:700;
+  display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px;
+  background:rgba(255,255,255,.08); border:1px solid var(--edge);
+  color:#fff; font-weight:800;
 }
-.toolsPanel{position:absolute;right:0;top:40px;min-width:260px;background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px;display:none;z-index:200}
+.toolsPanel{position:absolute;right:0;top:44px;min-width:260px;background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px;display:none;z-index:200}
 .toolsPanel.show{display:block}
 .toolsRow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+
+/* Espiar: menú emergente */
 .spyPill{display:inline-flex;align-items:center;gap:8px;background:#0e121a;border:1px dashed var(--edge);border-radius:999px;padding:6px 10px}
+.spyMenu{position:absolute;right:0;top:44px;min-width:260px;background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:8px;display:none;z-index:210}
+.spyMenu.show{display:block}
+.spyItem{width:100%;text-align:left;background:transparent;color:var(--text);border:1px solid transparent;padding:8px 10px;border-radius:10px;cursor:pointer}
+.spyItem:hover{background:rgba(255,255,255,.06);border-color:var(--edge)}
 </style>
 </head>
 <body>
 <header>
   <div class="wrap row">
-    <h1 class="logo">PokeRandom — Inventario Randomlock Wobalonga <span class="sub">• v4.2 Firebase</span></h1>
+    <h1 class="logo">Randomlock Wobalonga <span class="sub">• v4.2 Firebase</span></h1>
 
     <!-- Auth -->
     <div class="badge" id="whoAmI">Sin sesión</div>
@@ -96,19 +107,20 @@ select{min-width:180px} .right{margin-left:auto} .flex{display:flex;gap:10px;ali
     <button id="btnEmail" class="btn alt">Email/Contraseña</button>
     <button id="btnLogout" class="btn warn" style="display:none">Salir</button>
 
-    <!-- Espiar -->
-    <div id="spyWrap" class="flex" style="display:none">
-      <select id="spySelect" title="Elige a quién espiar">
-        <option value="">— Elegir usuario —</option>
-      </select>
-      <button id="btnSpy" class="btn alt" title="Espiar seleccionado">👁️ Espiar</button>
-      <div id="spyInfo" style="display:none" class="spyPill">Espiando a: <strong id="spyName"></strong> (solo lectura) <button id="spyExit" class="btn alt">Volver</button></div>
+    <!-- Espiar (botón -> menú con usuarios) -->
+    <div class="tools" id="spyBox" style="display:none;position:relative;">
+      <button id="btnSpy" class="btn alt">👁️ Espiar</button>
+      <div id="spyMenu" class="spyMenu"></div>
+      <div id="spyInfo" style="display:none" class="spyPill">
+        Espiando a: <strong id="spyName"></strong> (solo lectura)
+        <button id="spyExit" class="btn alt">Volver</button>
+      </div>
     </div>
 
     <div class="spacer"></div>
 
-    <!-- Herramientas compactas a la derecha -->
-    <div class="tools" style="display:none" id="toolsBox">
+    <!-- Herramientas compactas (SIEMPRE a la derecha) -->
+    <div class="tools" style="display:none;margin-left:auto" id="toolsBox">
       <button id="toolsBtn" class="toolsBtn" title="Herramientas">
         <span class="coinDot">🪙 <span id="coinsMini">0</span></span> ⋯
       </button>
@@ -182,7 +194,7 @@ select{min-width:180px} .right{margin-left:auto} .flex{display:flex;gap:10px;ali
       </details>
     </aside>
   </div>
-  <div class="footer small">Datos en Firestore por usuario. Para ruleta/robos multiusuario reales se usa Cloud Function.</div>
+  <div class="footer small">Datos en Firestore por usuario. Para “Robo sigiloso” se usa Cloud Function (atómico y seguro).</div>
 </main>
 
 <!-- Toast -->
@@ -259,7 +271,7 @@ select{min-width:180px} .right{margin-left:auto} .flex{display:flex;gap:10px;ali
   </div>
 </div>
 
-<!-- Modal Robo sigiloso: seleccionar objetivo y carta -->
+<!-- Modal Robo sigiloso -->
 <div id="stealModal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-label="Robo sigiloso" style="grid-template-columns:1fr">
     <button class="closeX" id="stealCloseX">Cerrar</button>
@@ -300,7 +312,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const functions = getFunctions(app);
+
+/* Región de Functions (cámbiala si desplegaste en otra, p.ej. "europe-west1") */
+const FUNCTIONS_REGION = "us-central1";
+const functions = getFunctions(app, FUNCTIONS_REGION);
+
 enableIndexedDbPersistence(db).catch(()=>{}); // offline cache opcional
 
 /* ========= Helpers ========= */
@@ -353,7 +369,7 @@ const rawList = [
   [10,"ataque","Cambio repentino","Un pokémon de un rival cambiará su habilidad al menos que el rival page 15 monedas"],
   [0,"item","Intercambio","Intercambia un pokémon con un rival si ambos quieren."],
   [2,"defensa","Regalo","Envías un objeto curativo aleatorio a un rival. A cambio, si te lanza una carta negativa, tendrás que devolver el regalo por 3 de su propio inventario."],
-  [10,"defensa","Maldición","Maldices a un rival, si ese jugar te a echado alguna vez una carta de ataque, puedes robar una carta de su inventario"],
+  [10,"defensa","Maldición","Maldices a un rival, si ese jugador tiene 3 o mas de mal karma, puedes robar una carta de su inventario"],
   [7,"Ataque","Robo sigiloso","Robas una carta del rival"],
   [7,"defensa","Buff permanente","subes 8 puntos todos los IVS de un pokémon a tu elección"],
   [2,"defensa","Protección del débil","usa cuando te tiren una carta de ataque, tira una moneda, si sale cara, te protegerás de la carta pero el rival no la gastara. El rival no podra volver a usar esa carta contigo hasta completar un líder de gimnasio."],
@@ -377,24 +393,20 @@ toolsBtn.onclick=(e)=>{ e.stopPropagation(); toolsPanel.classList.toggle("show")
 document.body.addEventListener("click", ()=> toolsPanel.classList.remove("show"));
 typeFilter.onchange=render; hideZero.onchange=render;
 
+// Auth & Espiar UI
 const who=$("#whoAmI"), btnGoogle=$("#btnGoogle"), btnEmail=$("#btnEmail"), btnLogout=$("#btnLogout");
-const spyWrap=$("#spyWrap"), spySelect=$("#spySelect"), btnSpy=$("#btnSpy"), spyInfo=$("#spyInfo"), spyName=$("#spyName"), spyExit=$("#spyExit");
+const spyBox=$("#spyBox"), btnSpy=$("#btnSpy"), spyMenu=$("#spyMenu"), spyInfo=$("#spyInfo"), spyName=$("#spyName"), spyExit=$("#spyExit");
 
-/* ========= Auth handlers (mejorados) ========= */
+/* ========= Auth handlers ========= */
 btnGoogle.onclick = async () => {
   try {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     await signInWithPopup(auth, provider);
   } catch (e) {
-    console.warn("Google popup error:", e);
-    if (e.code === "auth/unauthorized-domain") {
-      alert("Dominio no autorizado en Firebase.\nAñade tu dominio de GitHub Pages en Authentication → Settings → Authorized domains.");
-      return;
-    }
+    if (e.code === "auth/unauthorized-domain") { alert("Dominio no autorizado en Firebase."); return; }
     if (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user") {
-      try { await signInWithRedirect(auth, new GoogleAuthProvider()); }
-      catch (e2) { alert("No se pudo completar con redirect: " + e2.code); }
+      try { await signInWithRedirect(auth, new GoogleAuthProvider()); } catch (e2) { alert("No se pudo completar con redirect: " + e2.code); }
       return;
     }
     alert("Error Google: " + e.code);
@@ -418,10 +430,7 @@ btnEmail.onclick = async () => {
       }
       return;
     }
-    if (e.code === "auth/unauthorized-domain") {
-      alert("Dominio no autorizado en Firebase.\nAñade tu dominio de GitHub Pages en Authentication → Settings → Authorized domains.");
-      return;
-    }
+    if (e.code === "auth/unauthorized-domain") { alert("Dominio no autorizado en Firebase."); return; }
     alert("Error email/contraseña: " + e.code);
   }
 };
@@ -438,9 +447,7 @@ async function ensureProfile(u){
     email: u.email || null,
     updatedAt: serverTimestamp()
   };
-  if(!d.exists()){
-    payload.createdAt = serverTimestamp();
-  }
+  if(!d.exists()){ payload.createdAt = serverTimestamp(); }
   await setDoc(profileDocRef(u.uid), payload, {merge:true});
 }
 
@@ -453,22 +460,21 @@ async function initInventoryIfMissing(uid){
   }
 }
 
-// Listado de perfiles para el desplegable de espiar
+// Listado de perfiles para el menú Espiar
 function subscribeProfiles(){
   if(unsubProfiles) { unsubProfiles(); unsubProfiles=null; }
   unsubProfiles = onSnapshot(collection(db,"profiles"), (snap)=>{
     profiles = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    // refrescar dropdown (excluye al propio user)
-    const me = currentUser?.uid;
-    const opts = ['<option value="">— Elegir usuario —</option>']
+    renderSpyMenu();
+    // también llena el select del robo
+    const me=currentUser?.uid;
+    const opts=['<option value="">— Elegir usuario —</option>']
       .concat(profiles.filter(p=>p.id!==me).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`));
-    spySelect.innerHTML = opts.join("");
-    const tsel = $("#stealTarget");
-    if(tsel){ tsel.innerHTML = opts.join(""); }
+    const tsel = $("#stealTarget"); if(tsel) tsel.innerHTML = opts.join("");
   });
 }
 
-// Suscripción / carga en vivo
+// Suscripción inventario
 function subscribeInventory(uid){
   if(unsubInv) { unsubInv(); unsubInv=null; }
   unsubInv = onSnapshot(invDocRef(uid), (snap)=>{
@@ -495,7 +501,7 @@ onAuthStateChanged(auth, async (u)=>{
     currentUser = u;
     who.innerHTML = `Conectado como <strong>${esc(u.displayName||u.email||u.uid)}</strong>`;
     btnGoogle.style.display="none"; btnEmail.style.display="none"; btnLogout.style.display="inline-block";
-    toolsBox.style.display="block"; spyWrap.style.display="flex";
+    toolsBox.style.display="block"; spyBox.style.display="block";
     await ensureProfile(u);
     await initInventoryIfMissing(u.uid);
     spyUid = null; spyInfo.style.display="none";
@@ -505,7 +511,7 @@ onAuthStateChanged(auth, async (u)=>{
     currentUser = null; spyUid = null;
     who.textContent = "Sin sesión";
     btnGoogle.style.display="inline-block"; btnEmail.style.display="inline-block"; btnLogout.style.display="none";
-    toolsBox.style.display="none"; spyWrap.style.display="none";
+    toolsBox.style.display="none"; spyBox.style.display="none";
     if(unsubInv){ unsubInv(); unsubInv=null; }
     if(unsubProfiles){ unsubProfiles(); unsubProfiles=null; }
     state = { coins:0, karma:0, cards:cardsBase, walletLog:[], useLog:[] };
@@ -643,27 +649,21 @@ async function onUse(){
   const c=state.cards.find(x=>x.id===currentCardId); if(!c) return;
   if((c.qty||0)<=0){ alert("No tienes esta carta."); return; }
 
-  // Robo sigiloso (flujo especial)
+  // Flujo especial: Robo sigiloso
   if(c.name.toLowerCase()==="robo sigiloso"){
-    // abrir modal de robo
     stealSelectedCardId=null; stealSelectedCardName=null; victimSnapshot=null;
-    // refrescar dropdown con perfiles (ya está suscrito, solo pintamos)
-    const me=currentUser.uid;
-    const opts=['<option value="">— Elegir usuario —</option>']
-      .concat(profiles.filter(p=>p.id!==me).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`));
-    stealTarget.innerHTML = opts.join("");
+
+    // Dropdown objetivo ya lo puebla subscribeProfiles(); pintamos grid al cargar
     stealGrid.innerHTML = "";
     stealConfirm.disabled = true;
     toggleModal(stealModal,true);
 
-    // cargar inventario objetivo
     stealLoad.onclick = async ()=>{
       const uid = stealTarget.value;
       if(!uid){ alert("Elige un usuario."); return; }
       const d = await getDoc(invDocRef(uid));
       if(!d.exists()){ alert("El objetivo no tiene inventario inicializado."); return; }
       victimSnapshot = d.data();
-      // pintar cartas seleccionables (qty>0)
       stealGrid.innerHTML = "";
       victimSnapshot.cards.forEach(vc=>{
         if((vc.qty||0)<=0) return;
@@ -675,25 +675,23 @@ async function onUse(){
         const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(vc.type)}</span> · <span class="badge">${vc.cost} 🪙</span>`;
         const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+vc.qty; slot.appendChild(qty);
         slot.appendChild(imgWrap); slot.appendChild(title); slot.appendChild(meta);
-        slot.onclick=()=>{ // seleccionar
-          [...stealGrid.children].forEach(ch=>ch.style.outline="none");
-          slot.style.outline="2px solid #7c5cff";
-          stealSelectedCardId = vc.id; stealSelectedCardName = vc.name;
-          stealConfirm.disabled = false;
-        };
+        slot.onclick=()=>{ [...stealGrid.children].forEach(ch=>ch.style.outline="none"); slot.style.outline="2px solid #7c5cff";
+          stealSelectedCardId = vc.id; stealSelectedCardName = vc.name; stealConfirm.disabled = false; };
         stealGrid.appendChild(slot);
       });
-      if(!stealGrid.children.length){
-        stealGrid.innerHTML = '<div class="small">Este jugador no tiene cartas disponibles para robar.</div>';
-        stealConfirm.disabled = true;
-      }
+      if(!stealGrid.children.length){ stealGrid.innerHTML = '<div class="small">Este jugador no tiene cartas disponibles para robar.</div>'; stealConfirm.disabled = true; }
     };
 
-    // confirmar robo (llama a Cloud Function)
+    // confirmar robo (Cloud Function)
     stealConfirm.onclick = async ()=>{
       const victimUid = stealTarget.value;
       if(!victimUid || !stealSelectedCardId) return;
-      // primero consumimos TU carta de Robo sigiloso (−1)
+
+      // Asegura sesión y token fresco
+      if(!auth.currentUser){ alert("Inicia sesión primero."); return; }
+      try { await auth.currentUser.getIdToken(true); } catch(_) {}
+
+      // consumir TU carta
       c.qty -= 1;
       state.useLog.push({date:new Date().toISOString(), cardId:c.id, name:`Usaste ${c.name} (−1)`, note:"Robo sigiloso"});
       toast(`🎴 Usaste ${c.name} (−1)`);
@@ -701,7 +699,7 @@ async function onUse(){
       try{
         const callable = httpsCallable(functions, "stealCard");
         const res = await callable({ victimUid, cardId: stealSelectedCardId });
-        // en éxito: +1 carta robada, karma +1
+        // éxito → +1 carta robada, karma +1
         const myCard = state.cards.find(x=>x.id===stealSelectedCardId);
         if(myCard){ myCard.qty=(myCard.qty||0)+1; }
         state.karma=(state.karma||0)+1;
@@ -716,7 +714,7 @@ async function onUse(){
       }
     };
 
-    return; // salimos: el resto del uso normal no aplica
+    return;
   }
 
   // Uso normal
@@ -725,7 +723,7 @@ async function onUse(){
   toast(`🎴 Usaste ${c.name} (−1)`);
   if(c.type==="ataque"){ state.karma=(state.karma||0)+1; }
 
-  // Efectos automáticos economía
+  // Efectos auto economía
   const nm=c.name.toLowerCase();
   if(nm==="10 monedas"){ addCoins(10,"Carta: 10 monedas"); toast("🪙 +10 monedas"); }
   if(nm==="venta ilegal"){ addCoins(2,"Carta: Venta ilegal"); toast("🪙 +2 monedas"); }
@@ -821,19 +819,27 @@ $("#resetBtn").onclick=()=>{
   if(confirm("¿Borrar todos tus datos (en la nube)?")){ state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[]}; scheduleSave(); render(); }
 };
 
-/* ========= Espiar ========= */
-btnSpy.onclick=()=>{
-  const uid = spySelect.value;
-  if(!uid){ alert("Elige un usuario del desplegable."); return; }
+/* ========= Espiar: botón -> menú ========= */
+function renderSpyMenu(){
+  const me = currentUser?.uid;
+  const items = profiles.filter(p=>p.id!==me)
+    .map(p=>`<button class="spyItem" data-uid="${p.id}">${esc(p.displayName||p.email||p.id)}</button>`);
+  spyMenu.innerHTML = items.length ? items.join("") : '<div class="small">No hay otros usuarios aún.</div>';
+}
+btnSpy.onclick=(e)=>{ e.stopPropagation(); renderSpyMenu(); spyMenu.classList.toggle("show"); };
+document.body.addEventListener("click", ()=> spyMenu.classList.remove("show"));
+spyMenu.addEventListener("click",(e)=>{
+  const btn = e.target.closest(".spyItem"); if(!btn) return;
+  const uid = btn.getAttribute("data-uid");
+  spyMenu.classList.remove("show");
+  if(!uid) return;
   spyUid = uid;
   spyInfo.style.display="inline-flex";
   const profile = profiles.find(p=>p.id===uid);
   spyName.textContent = profile?.displayName || profile?.email || uid;
-  subscribeInventory(uid); // read-only
-};
+  subscribeInventory(uid);
+});
 spyExit.onclick=()=>{ spyUid=null; spyInfo.style.display="none"; if(currentUser) subscribeInventory(currentUser.uid); };
-/* ========= END ========= */
 </script>
 </body>
 </html>
-
