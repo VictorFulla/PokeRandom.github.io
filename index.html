@@ -241,7 +241,8 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     <div class="small" id="inboxText">…</div>
     <div id="inboxPreview" class="cards" style="margin-top:10px"></div>
     <div class="hr"></div>
-    <div class="flex">
+    <div class="flex" id="stealDefenseButtons"><!-- Defensas contra robo --></div>
+<div class="flex">
       <button id="inboxApply" class="btn bad">OK (restar de mi inventario)</button>
     </div>
   </div>
@@ -273,6 +274,14 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     </div>
     <div id="stealGrid" class="cards"></div>
     <div class="hr"></div>
+	<div class="hr"></div>
+	<div class="flex" id="stealDefenseButtons">
+  		<!-- Botones de defensa contra robo se inyectan aquí -->
+	</div>
+	<div class="flex" style="margin-top:8px">
+  	<button id="inboxApply" class="btn bad">OK (restar de mi inventario)</button>
+</div>
+
     <div class="flex"><button id="stealConfirm" class="btn" disabled>Robar carta seleccionada</button><div class="spacer"></div><button id="stealCancel" class="btn alt">Cancelar</button></div>
   </div>
 </div>
@@ -304,6 +313,18 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
       <div id="shuffleNames" class="small"></div>
       <div class="hr"></div>
       <button id="shuffleResultClose" class="btn alt right">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Elegir Usuario -->
+<div id="targetModal" class="modal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-label="Elegir jugador" style="grid-template-columns:1fr">
+    <button class="closeX" id="targetCloseX">Cerrar</button>
+    <h3>👥 Elige jugador</h3>
+    <div class="flex">
+      <select id="targetSelect" style="min-width:260px"></select>
+      <button id="targetOk" class="btn">Confirmar</button>
     </div>
   </div>
 </div>
@@ -398,6 +419,8 @@ const cardsBase = rawList.map((r,i)=>({id:"c"+String(i+1).padStart(2,"0"),cost:+
 let currentUser=null, spyUid=null, unsubInv=null, unsubProfiles=null, unsubInbox=null, unsubAttackInbox=null, unsubDebuffs=null, unsubGiftAlerts=null;
 let profiles=[];
 let state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[],updatedAt:null};
+let activeDebuffs = [];
+let lastDebuffCount = 0;
 
 /* ========= Refs ========= */
 const invRef = uid => doc(db,"inventories",uid);
@@ -509,6 +532,19 @@ function subscribeAttackInbox(uid){ // ataques donde YO soy víctima
 function subscribeDebuffs(uid){
   if(unsubDebuffs){unsubDebuffs();unsubDebuffs=null}
   const qv=query(debuffCol, where("targetId","==",uid), where("active","==",true));
+  unsubDebuffs=onSnapshot(qv,(snap)=>{
+    const prevCnt = activeDebuffs.length;
+    activeDebuffs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(activeDebuffs.length > prevCnt){
+      const newest = activeDebuffs[activeDebuffs.length-1];
+      const who = newest?.giverName || "alguien";
+      toast(`🕯️ Debuff recibido de ${who}`);
+    }
+    lastDebuffCount = activeDebuffs.length;
+    render();
+  });
+}
+  const qv=query(debuffCol, where("targetId","==",uid), where("active","==",true));
   unsubDebuffs=onSnapshot(qv,()=>{ render(); }); // solo para re-render badges (lo usamos en header de inventario si quisieras)
 }
 function subscribeGiftAlerts(uid){
@@ -564,6 +600,32 @@ function render(){
   }).join("");
 
   const r=state.cards.find(c=>c.name.toLowerCase()==="ruleta"); $("#ruletaQty").textContent=r?(r.qty||0):0;
+// Debuffs badge in header
+try{
+  const headerRow = document.querySelector("header .wrap.row") || document.querySelector("header .wrap .row") || document.querySelector("header .row");
+  if(headerRow){
+    let debuffBadge = document.getElementById("debuffBadge");
+    if(!debuffBadge){
+      debuffBadge = document.createElement("span");
+      debuffBadge.id = "debuffBadge";
+      debuffBadge.className = "badge";
+      headerRow.appendChild(debuffBadge);
+    }
+    if(activeDebuffs.length){
+      const short = activeDebuffs.map(d=>{
+        const t=(d.type||"").toLowerCase();
+        if(/gift|regalo/.test(t)) return "🎁Reg";
+        if(/curse|mald/.test(t)) return "🕯️Mal";
+        if(/heal|cura|sdufo/.test(t)) return "💊Cur";
+        return "⚠️Deb";
+      }).join(" · ");
+      debuffBadge.textContent = `Debuffs: ${activeDebuffs.length} (${short})`;
+      debuffBadge.style.display = "";
+    }else{
+      debuffBadge.style.display = "none";
+    }
+  }
+}catch(e){}
 }
 
 /* ========= Header extra ========= */
@@ -575,7 +637,27 @@ $("#karmaBtn").onclick=async()=>{
 };
 
 /* ========= Modales comunes ========= */
-const modals=[$("#coinModal"),$("#cardModal"),$("#rewardModal"),$("#stealModal"),$("#inboxModal"),$("#shuffleModal"),$("#shuffleResultModal"),$("#attackModal")];
+const modals=[$("#coinModal"),$("#cardModal"),$("#rewardModal"),$("#stealModal"),$("#inboxModal"),$("#shuffleModal"),$("#shuffleResultModal"),$("#attackModal"),$("#targetModal")];
+const targetModal = $("#targetModal"), targetCloseX=$("#targetCloseX"), targetSelect=$("#targetSelect"), targetOk=$("#targetOk");
+if (targetCloseX) targetCloseX.onclick=()=>toggleModal(targetModal,false);
+
+function openUserPicker(excludeUid=null){
+  return new Promise((resolve)=>{
+    const me=currentUser?.uid;
+    const opts=['<option value="">— Elegir usuario —</option>'].concat(
+      profiles.filter(p=>p.id!==me && p.id!==excludeUid).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`)
+    );
+    if (targetSelect) targetSelect.innerHTML=opts.join("");
+    toggleModal(targetModal,true);
+    const onOk=()=>{
+      const v=targetSelect.value;
+      toggleModal(targetModal,false);
+      targetOk.removeEventListener("click", onOk);
+      resolve(v||null);
+    };
+    targetOk.addEventListener("click", onOk);
+  });
+}
 function toggleModal(el,show){el.classList.toggle("show",!!show);el.setAttribute("aria-hidden",show?"false":"true")}
 modals.forEach(m=>m.addEventListener("click",(e)=>{if(e.target===m)toggleModal(m,false)}));
 window.addEventListener("keydown",(e)=>{if(e.key==="Escape"){modals.forEach(m=>toggleModal(m,false))}});
@@ -730,12 +812,112 @@ shuffleConfirm.onclick=()=>{
 /* ========= Robos (víctima) ========= */
 const inboxModal=$("#inboxModal"), inboxText=$("#inboxText"), inboxPreview=$("#inboxPreview");
 const inboxApply=$("#inboxApply"), inboxCloseX=$("#inboxCloseX");
+const stealDefenseButtons = $("#stealDefenseButtons");
 let currentInboxId=null, currentInboxData=null;
-inboxCloseX.onclick=()=>toggleModal(inboxModal,false);
-function showStealInbox(docId, data){
+inboxCloseX.onclick=async()=>{
+  try{
+    if(currentInboxId){
+      await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"noted", notedAt: serverTimestamp()});
+    }
+  }catch(e){}
+  toggleModal(inboxModal,false);
+  currentInboxId=null; currentInboxData=null;
+};
+    }
+  }catch(e){ /* sin drama */ }
+  toggleModal(inboxModal,false);
+  currentInboxId=null; currentInboxData=null;
+};
+
+function qtyOfName(inv, name){
+  return (inv.cards.find(c=>c.name.toLowerCase()===name.toLowerCase())?.qty||0);
+}
+
+async function showStealInbox(docId, data){
   currentInboxId=docId; currentInboxData=data;
+
   const attacker=data.attackerName||data.attackerId;
-  inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>. Pulsa OK para restar 1 de tu inventario.`;
+  const robbedName = data.cardName || "una carta";
+  inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(robbedName)}</strong>.`;
+
+  // Vista previa
+  inboxPreview.innerHTML="";
+  const vc=state.cards.find(c=>c.id===data.cardId);
+  const block=document.createElement("div"); block.className="cardSlot";
+  const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
+  const img=document.createElement("img"); img.alt=vc?.name||robbedName; img.src=`img/${data.cardId}.png`;
+  img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${data.cardId}.jpg`; } };
+  imgWrap.appendChild(img);
+  const title=document.createElement("div"); title.className="title"; title.textContent=vc?.name||robbedName;
+  const meta=document.createElement("div"); meta.className="small";
+  meta.innerHTML = `<span class="badge">${esc(vc?.type||"")}</span> · <span class="badge">${vc?.cost||"?"} 🪙</span>`;
+  const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+(vc?.qty||0);
+  block.appendChild(qty); block.appendChild(imgWrap); block.appendChild(title); block.appendChild(meta);
+  inboxPreview.appendChild(block);
+
+  // Cargar inventario fresco del usuario (por si state está desfasado)
+  let myInv;
+  try{
+    const snap = await getDoc(invRef(currentUser.uid));
+    myInv = snap.exists()? snap.data(): state;
+  }catch{ myInv = state; }
+
+  // Defensas aplicables contra ROBO
+  if (stealDefenseButtons) stealDefenseButtons.innerHTML="";
+  const hasReversa = qtyOfName(myInv,"Reversa")>0;
+  const hasBloqueo = qtyOfName(myInv,"Bloqueo")>0;
+  const hasProtec  = qtyOfName(myInv,"Protección del débil")>0;
+
+  // Reversa
+  if(stealDefenseButtons && hasReversa){
+    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Reversa";
+    b.onclick=async()=>{
+      const c=findCardByName("Reversa"); if(c&&c.qty>0) c.qty-=1;
+      state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa (−1) contra Robo"});
+      await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"defended", defenseUsed:"reversa", resolvedAt: serverTimestamp()});
+      toast("🛡️ Reversa usada: no pierdes la carta.");
+      scheduleSave(); render(); toggleModal(inboxModal,false);
+      currentInboxId=null; currentInboxData=null;
+    };
+    stealDefenseButtons.appendChild(b);
+  }
+  // Bloqueo
+  if(stealDefenseButtons && hasBloqueo){
+    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Bloqueo";
+    b.onclick=async()=>{
+      const c=findCardByName("Bloqueo"); if(c&&c.qty>0) c.qty-=1;
+      state.useLog.push({date:new Date().toISOString(), name:"Usaste Bloqueo (−1) contra Robo"});
+      await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"defended", defenseUsed:"bloqueo", resolvedAt: serverTimestamp()});
+      toast("🛡️ Bloqueo usado: robo cancelado.");
+      scheduleSave(); render(); toggleModal(inboxModal,false);
+      currentInboxId=null; currentInboxData=null;
+    };
+    stealDefenseButtons.appendChild(b);
+  }
+  // Protección del débil 50/50
+  if(stealDefenseButtons && hasProtec){
+    const b=document.createElement("button"); b.className="btn alt"; b.textContent="Usar Protección del débil (50%)";
+    b.onclick=async()=>{
+      const c=findCardByName("Protección del débil"); if(!(c&&c.qty>0)) return;
+      const cara = Math.random()<0.5;
+      if(cara){
+        await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"protected_success", defenseUsed:"proteccion", coin:"cara", resolvedAt: serverTimestamp()});
+        toast("🪙 ¡Cara! Te proteges, robo cancelado.");
+        scheduleSave(); render(); toggleModal(inboxModal,false);
+        currentInboxId=null; currentInboxData=null;
+      }else{
+        c.qty -= 1;
+        await updateDoc(doc(db,"stealRequests",currentInboxId), {status:"protected_fail", defenseUsed:"proteccion", coin:"cruz", resolvedAt: serverTimestamp()});
+        toast("🪙 Cruz. Pierdes la defensa. El robo sigue.");
+        scheduleSave(); render();
+      }
+    };
+    stealDefenseButtons.appendChild(b);
+  }
+
+  toggleModal(inboxModal,true);
+}
+</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>. Pulsa OK para restar 1 de tu inventario.`;
   inboxPreview.innerHTML="";
   const vc=state.cards.find(c=>c.id===data.cardId);
   const block=document.createElement("div"); block.className="cardSlot";
@@ -981,11 +1163,22 @@ async function onUse(){
 
   // --- Regalo: aplicar debuff gift (giver=currentUser, receiver=seleccionado)
   if(nm==="regalo"){
-    const victimId = prompt("¿A qué usuario envías el Regalo? (escribe exacto como en lista de perfiles)");
-    if(!victimId) return;
-    // buscar por nombre visible
-    const pr = profiles.find(p=> (p.displayName||p.email||p.id)===victimId) || profiles.find(p=>p.id===victimId);
-    if(!pr){ alert("Usuario no encontrado."); return; }
+  const victimId = await openUserPicker();
+  if(!victimId) return;
+  const pr = profiles.find(p=>p.id===victimId);
+  c.qty -= 1;
+  await addDoc(debuffCol, {
+    type:"gift", active:true,
+    giverId: currentUser.uid,
+    giverName: currentUser.displayName||currentUser.email||currentUser.uid,
+    receiverId: pr.id, receiverName: pr.displayName||pr.email||pr.id,
+    targetId: pr.id, createdAt: serverTimestamp()
+  });
+  state.useLog.push({date:new Date().toISOString(), name:`Usaste Regalo → ${pr.displayName||pr.email||pr.id}`});
+  toast("🎁 Regalo aplicado");
+  scheduleSave(); render(); toggleModal(cardModal,false);
+  return;
+}
     c.qty -= 1;
     await addDoc(debuffCol, { type:"gift", active:true, giverId: currentUser.uid, giverName: currentUser.displayName||currentUser.email||currentUser.uid, receiverId: pr.id, receiverName: pr.displayName||pr.email||pr.id, targetId: pr.id, createdAt: serverTimestamp() });
     state.useLog.push({date:new Date().toISOString(), name:`Usaste Regalo → ${pr.displayName||pr.email||pr.id}`});
@@ -1161,3 +1354,4 @@ onSnapshot(query(attackCol, where("attackerId","==",()=>currentUser?.uid||"zz"))
 </script>
 </body>
 </html>
+
