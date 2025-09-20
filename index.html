@@ -1,55 +1,839 @@
-// functions/index.js
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-admin.initializeApp();
-const db = admin.firestore();
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PokeRandom — Inventario Randomlock Wobalonga v4.2 (Firebase)</title>
+<style>
+:root{
+  --bg:#0d0f14; --panel:#151922; --edge:rgba(255,255,255,.08);
+  --text:#e7ecf5; --muted:#9aa4b2; --accent:#7c5cff; --good:#22c55e; --bad:#ef4444; --warn:#f59e0b;
+  --br:16px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu}
+.wrap{max-width:1240px;margin:0 auto;padding:16px}
+header{position:sticky;top:0;z-index:50;backdrop-filter:saturate(1.2) blur(10px);background:rgba(13,16,22,.75);border-bottom:1px solid var(--edge)}
+header .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+h1.logo{margin:0;font-size:22px;letter-spacing:.3px;display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#a78bfa,#60a5fa);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 18px rgba(124,92,255,.25)}
+.logo .sub{font-size:12px;color:var(--muted);letter-spacing:.5px}
 
-exports.stealCard = functions.https.onCall(async (data, context) => {
-  const attackerUid = context.auth?.uid;
-  if (!attackerUid) throw new functions.https.HttpsError("unauthenticated", "Debes estar autenticado.");
-  const victimUid = String(data?.victimUid||"");
-  const cardId = String(data?.cardId||"");
-  if (!victimUid || !cardId) throw new functions.https.HttpsError("invalid-argument","Faltan parámetros.");
+.btn{background:var(--accent);border:none;color:white;border-radius:12px;padding:10px 14px;cursor:pointer;transition:.15s transform}
+.btn:hover{transform:translateY(-1px)} .btn.alt{background:#0e121a;border:1px solid var(--edge)}
+.btn.good{background:var(--good);color:#07240f} .btn.bad{background:var(--bad)} .btn.warn{background:var(--warn);color:#2d1500}
 
-  const attackerRef = db.collection("inventories").doc(attackerUid);
-  const victimRef = db.collection("inventories").doc(victimUid);
-  const victimProfileRef = db.collection("profiles").doc(victimUid);
+.kpi{font-weight:900;font-size:26px} .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.grid{display:grid;gap:16px;grid-template-columns:2fr 1fr}
+@media(max-width:1040px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.section-title{margin:0 0 12px 0;font-size:18px;display:flex;align-items:center;gap:8px}
+.small{font-size:12px;color:var(--muted)} .hr{height:1px;background:var(--edge);margin:12px 0}
+input,select{background:#0e121a;color:var(--text);border:1px solid var(--edge);border-radius:12px;padding:10px}
+select{min-width:180px} .right{margin-left:auto} .flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap} .spacer{flex:1}
+.badge{display:inline-flex;gap:6px;align-items:center;padding:2px 8px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-size:12px}
 
-  return await db.runTransaction(async (tx)=>{
-    const [attSnap, vicSnap, profSnap] = await Promise.all([tx.get(attackerRef), tx.get(victimRef), tx.get(victimProfileRef)]);
-    if(!attSnap.exists) throw new functions.https.HttpsError("failed-precondition","Inventario atacante inexistente.");
-    if(!vicSnap.exists) throw new functions.https.HttpsError("failed-precondition","Inventario víctima inexistente.");
-    const attacker = attSnap.data();
-    const victim = vicSnap.data();
+/* Cards grid */
+.cards{display:grid;gap:12px;grid-template-columns:repeat(5,minmax(150px,1fr))}
+@media(max-width:1200px){.cards{grid-template-columns:repeat(4,minmax(140px,1fr))}}
+@media(max-width:900px){.cards{grid-template-columns:repeat(3,minmax(130px,1fr))}}
+@media(max-width:640px){.cards{grid-template-columns:repeat(2,minmax(120px,1fr))}}
+.cardSlot{position:relative;background:#0e121a;border:1px solid var(--edge);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:8px;transition:.15s transform,.15s box-shadow;cursor:pointer;min-height:200px}
+.cardSlot:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.cardSlot .imgWrap{background:linear-gradient(180deg,#0b0e13,#10141c);border:1px solid var(--edge);border-radius:10px;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cardSlot img{max-width:100%;max-height:100%}
+.cardSlot .title{font-weight:800;font-size:14px}
+.qty{position:absolute;top:8px;right:8px;background:rgba(34,197,94,.15);color:#86efac;border:1px solid rgba(34,197,94,.35);padding:2px 8px;border-radius:999px;font-size:12px;font-weight:800}
+.zero{filter:grayscale(1) contrast(.8) opacity(.6)}
 
-    // Buscar carta en víctima
-    const vIdx = (victim.cards||[]).findIndex(c=>c.id===cardId);
-    if(vIdx<0) throw new functions.https.HttpsError("failed-precondition","La víctima no posee esa carta.");
-    const vCard = victim.cards[vIdx];
-    if((vCard.qty||0)<=0) throw new functions.https.HttpsError("failed-precondition","La víctima no tiene unidades disponibles.");
+/* Modals */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
+.modal.show{display:flex}
+.modal .panel{background:var(--panel);border:1px solid var(--edge);border-radius:18px;max-width:780px;width:100%;padding:16px;display:grid;gap:14px;grid-template-columns:1fr 1fr}
+@media(max-width:760px){.modal .panel{grid-template-columns:1fr}}
+.modal .bigImg{aspect-ratio:1/1;border:1px solid var(--edge);border-radius:12px;background:#0e121a;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.modal h3{margin:0}
+.modal .closeX{position:absolute;top:8px;right:12px;background:#00000066;border:1px solid var(--edge);color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
 
-    // Restar 1 a víctima
-    vCard.qty = (vCard.qty||0)-1;
+/* Roulette */
+.wheelBox{background:#0e121a;border:1px solid var(--edge);border-radius:14px;padding:12px}
+.slot{height:56px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--edge);border-radius:10px;overflow:hidden}
+.slotText{font-weight:800}
 
-    // Sumar 1 al atacante (crear entrada si no existe)
-    const aCards = attacker.cards||[];
-    let aCard = aCards.find(c=>c.id===cardId);
-    if(!aCard){
-      // Copiamos metadatos desde víctima para mantener consistencia
-      aCard = {id:vCard.id, name:vCard.name, type:vCard.type, cost:vCard.cost, desc:vCard.desc, qty:0};
-      aCards.push(aCard);
+/* Toasts */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px 14px;z-index:120;opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+.gain{color:#86efac} .loss{color:#fecaca}
+
+/* Read-only */
+.readonly{opacity:.82;filter:saturate(.9)}
+
+/* Tools (top-right) */
+.tools{position:relative}
+.toolsBtn{
+  background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:8px 10px;cursor:pointer;display:flex;gap:8px;align-items:center
+}
+.toolsBtn .coinDot{
+  display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:999px;
+  background:rgba(255,255,255,.06); border:1px solid var(--edge);
+  color:#fff; /* <-- visible en fondo oscuro */
+  font-weight:700;
+}
+.toolsPanel{position:absolute;right:0;top:40px;min-width:260px;background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px;display:none;z-index:200}
+.toolsPanel.show{display:block}
+.toolsRow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+.spyPill{display:inline-flex;align-items:center;gap:8px;background:#0e121a;border:1px dashed var(--edge);border-radius:999px;padding:6px 10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap row">
+    <h1 class="logo">PokeRandom — Inventario Randomlock Wobalonga <span class="sub">• v4.2 Firebase</span></h1>
+
+    <!-- Auth -->
+    <div class="badge" id="whoAmI">Sin sesión</div>
+    <button id="btnGoogle" class="btn good">Entrar con Google</button>
+    <button id="btnEmail" class="btn alt">Email/Contraseña</button>
+    <button id="btnLogout" class="btn warn" style="display:none">Salir</button>
+
+    <!-- Espiar -->
+    <div id="spyWrap" class="flex" style="display:none">
+      <select id="spySelect" title="Elige a quién espiar">
+        <option value="">— Elegir usuario —</option>
+      </select>
+      <button id="btnSpy" class="btn alt" title="Espiar seleccionado">👁️ Espiar</button>
+      <div id="spyInfo" style="display:none" class="spyPill">Espiando a: <strong id="spyName"></strong> (solo lectura) <button id="spyExit" class="btn alt">Volver</button></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- Herramientas compactas a la derecha -->
+    <div class="tools" style="display:none" id="toolsBox">
+      <button id="toolsBtn" class="toolsBtn" title="Herramientas">
+        <span class="coinDot">🪙 <span id="coinsMini">0</span></span> ⋯
+      </button>
+      <div id="toolsPanel" class="toolsPanel">
+        <div class="toolsRow">
+          <div><span class="small">Monedas:</span> <span class="kpi mono" id="coins">0</span></div>
+          <button id="coinMenuBtn" class="btn alt" style="padding:6px 10px">±</button>
+        </div>
+        <div class="toolsRow"><div><span class="small">Karma 😈:</span> <span class="kpi mono" id="karma">0</span></div></div>
+        <div class="hr"></div>
+        <div class="toolsRow">
+          <button id="exportBtn" class="btn alt" style="padding:6px 10px">Exportar</button>
+          <label class="btn alt" style="padding:6px 10px">Importar <input id="importFile" type="file" accept="application/json" style="display:none"></label>
+          <button id="resetBtn" class="btn warn" style="padding:6px 10px">Reiniciar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" style="padding-top:18px">
+  <div class="grid">
+    <section class="card" id="mainSection">
+      <div class="section-title">
+        🃏 Inventario de cartas
+        <span class="small">(clic para ver y comprar/usar)</span>
+        <div class="spacer"></div>
+        <label class="small" style="display:flex;gap:8px;align-items:center">
+          <select id="typeFilter">
+            <option value="">Todas las categorías</option>
+            <option value="curación">Curación</option><option value="ataque">Ataque</option>
+            <option value="defensa">Defensa</option><option value="economía">Economía</option>
+            <option value="gacha">Gacha</option><option value="ítem">Ítem</option><option value="captura">Captura</option>
+          </select>
+          <label style="display:flex;gap:6px;align-items:center">
+            <input type="checkbox" id="hideZero"/> Ocultar sin tener
+          </label>
+        </label>
+      </div>
+      <div id="cardsGrid" class="cards"></div>
+    </section>
+
+    <aside class="card">
+      <div class="section-title">🎰 Ruleta</div>
+      <div class="wheelBox">
+        <div class="small">Incluye <strong>10 monedas</strong> + <strong>Monedero perdido</strong> + 1 legendaria (10/13) + 1 épica (7) + 3 de 4 + 4 de 2.</div>
+        <div class="hr"></div>
+        <div class="slot"><div id="slotText" class="slotText">—</div></div>
+        <div class="flex" style="margin-top:10px">
+          <button id="spinPaid" class="btn">Tirar (gasta 1 “Ruleta”)</button>
+          <button id="spinFree" class="btn good">Tirada gratis (post-gym)</button>
+          <div class="spacer"></div>
+          <span class="badge">Tienes “Ruleta”: <span id="ruletaQty">0</span></span>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="section-title">📒 Registros</div>
+      <details>
+        <summary class="flex"><span class="chev">▶</span> Historial de monedas</summary>
+        <div class="details" style="border:1px dashed var(--edge);border-radius:12px;padding:10px;margin-top:8px">
+          <div id="walletLog" class="small"></div>
+        </div>
+      </details>
+      <div class="hr"></div>
+      <details>
+        <summary class="flex"><span class="chev">▶</span> Historial de cartas</summary>
+        <div class="details" style="border:1px dashed var(--edge);border-radius:12px;padding:10px;margin-top:8px">
+          <div id="useLog" class="small"></div>
+        </div>
+      </details>
+    </aside>
+  </div>
+  <div class="footer small">Datos en Firestore por usuario. Para ruleta/robos multiusuario reales se usa Cloud Function.</div>
+</main>
+
+<!-- Toast -->
+<div id="toast" class="toast"></div>
+
+<!-- Modal Monedas -->
+<div id="coinModal" class="modal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-label="Ajustar monedas">
+    <button class="closeX" id="coinCloseX">Cerrar</button>
+    <div style="grid-column:1/-1"><h3>💰 Ajustar monedas</h3><div class="small">Enteros. No se permite quedar en negativo.</div></div>
+    <div>
+      <label class="small">Cantidad</label>
+      <input id="coinAmount" type="number" step="1" min="0" placeholder="0"/>
+      <label class="small" style="margin-top:8px;display:block">Motivo (opcional)</label>
+      <input id="coinReason" type="text" placeholder="p. ej. Recompensa del juego X"/>
+    </div>
+    <div>
+      <label class="small">Acción</label>
+      <div class="flex" style="margin-top:8px">
+        <button id="coinAdd" class="btn good">+ Ingreso</button>
+        <button id="coinSub" class="btn bad">− Gasto</button>
+        <button id="coinClose" class="btn alt right">Cerrar</button>
+      </div>
+    </div>
+
+    <div style="grid-column:1/-1" class="hr"></div>
+    <div>
+      <div class="small" style="margin-bottom:6px">Atajos de partida</div>
+      <div class="flex">
+        <button id="btnLeader" class="btn">🏆 Líder completado</button>
+        <button id="btnBoss" class="btn alt">⚔️ Combate importante</button>
+      </div>
+      <div class="small" style="margin-top:6px">Líder: +6 (o +9 sin bajas). Importante: +5 (o +7 sin bajas).</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Carta -->
+<div id="cardModal" class="modal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-label="Detalle de carta">
+    <button class="closeX" id="cardCloseX">Cerrar</button>
+    <div class="bigImg"><img id="cardImgBig" alt="Carta" style="max-width:100%;max-height:100%"></div>
+    <div>
+      <h3 id="cardTitle">Carta</h3>
+      <div class="small" id="cardTypeCost"></div>
+      <div id="cardDesc" class="small" style="margin-top:8px"></div>
+      <div class="hr"></div>
+      <div class="flex">
+        <span class="badge">Precio: <span id="cardPrice">0</span> 🪙</span>
+        <span class="badge">Tienes: <span id="cardQty">0</span></span>
+      </div>
+      <div class="hr"></div>
+      <div class="flex">
+        <button id="buyBtn" class="btn">Comprar</button>
+        <button id="useBtn" class="btn alt">Usar</button>
+        <button id="closeCard" class="btn right alt">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Recompensa (ruleta) -->
+<div id="rewardModal" class="modal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-label="Recompensa de ruleta">
+    <button class="closeX" id="rewardCloseX">Cerrar</button>
+    <div class="bigImg"><img id="rewardImg" alt="Carta ganada" style="max-width:100%;max-height:100%"></div>
+    <div>
+      <h3 class="rewardTitle">🎉 ¡Has obtenido <span id="rewardName"></span>!</h3>
+      <div class="small" id="rewardMeta"></div>
+      <div style="margin-top:8px" id="rewardDesc" class="small"></div>
+      <div class="hr"></div>
+      <button id="rewardClose" class="btn alt right">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Robo sigiloso: seleccionar objetivo y carta -->
+<div id="stealModal" class="modal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-label="Robo sigiloso" style="grid-template-columns:1fr">
+    <button class="closeX" id="stealCloseX">Cerrar</button>
+    <h3>🕵️‍♂️ Robo sigiloso</h3>
+    <div class="small">Elige un usuario y selecciona UNA carta que le robarás. Se restará de su inventario y se sumará al tuyo.</div>
+    <div class="flex">
+      <select id="stealTarget"><option value="">— Elegir usuario —</option></select>
+      <button id="stealLoad" class="btn alt">Ver inventario</button>
+    </div>
+    <div id="stealGrid" class="cards"></div>
+    <div class="hr"></div>
+    <div class="flex"><button id="stealConfirm" class="btn" disabled>Robar carta seleccionada</button><div class="spacer"></div><button id="stealCancel" class="btn alt">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- Firebase + App -->
+<script type="module">
+/* ========= Firebase ========= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  getAuth, onAuthStateChanged, signInWithPopup, signInWithRedirect, GoogleAuthProvider,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence,
+  collection, query, where, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
+  authDomain: "pokerandom-ce300.firebaseapp.com",
+  projectId: "pokerandom-ce300",
+  storageBucket: "pokerandom-ce300.firebasestorage.app",
+  messagingSenderId: "637348459448",
+  appId: "1:637348459448:web:4ab19e68bcce734692554d"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const functions = getFunctions(app);
+enableIndexedDbPersistence(db).catch(()=>{}); // offline cache opcional
+
+/* ========= Helpers ========= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;","&gt;":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+const toast = (m)=>{ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); };
+const slugType = t => t.trim().toLowerCase().replace("curacion","curación").replace("economia","economía").replace("item","ítem");
+const tierOf = c => (c===13||c===10)?"legendaria": c===7?"épica": c===4?"rara": c===2?"común": (c===0||c===99)?"especial":"otra";
+const capFirst = s => { if(!s) return ""; let t=s.trim(); t=t.replace(/\bpokemon(es)?\b/gi,m=>m.toLowerCase().endsWith("es")?"Pokémones":"Pokémon"); t=t.replace(/\busala\b/gi,"úsala").replace(/\busa la\b/gi,"úsala"); t=t.replace(/\bdeber\b/gi,"deberá").replace(/\bpage\b/gi,"pague"); return t.charAt(0).toUpperCase()+t.slice(1); };
+
+/* ========= Data base ========= */
+const rawList = [
+  [2,"Curacion","Objeto curativo","permite comprar un objeto curativo de una tienda."],
+  [7,"Curacion","Dama curativa","Puedes comprar hasta 5 objetos curativos en la misma tienda."],
+  [4,"Gacha","Ruleta","Puedes tirar ruleta en la que obtendrás una carta aleatoria."],
+  [99,"Ataque","Robo de monedas","Puedes robar 5 monedas a otro jugador en cualquier momento."],
+  [0,"economia","Venta ilegal","libera un pokemon y recibe 2 monedas."],
+  [10,"economia","10 monedas","recibes 10 monedas al instante."],
+  [3,"economia","Monedero perdido","recibes de 1 a 5 monedas aleatorias."],
+  [2,"economia","Apuesta","Recibes 3 monedas más si no pierdes pokemon contra el siguiente líder de gimnasio."],
+  [10,"captura","Captura shiny","puedes capturar una vez más en ruta y ese pokemon se volverá shiny."],
+  [2,"captura","Skip pokemon","al usarla antes de capturar, puedes decidir si skipear el primer pokémon que salga. Esto no contará como primer pokémon de ruta y píldoras volver a intentar capturar."],
+  [10,"captura","Recaptura","puedes recapturar"],
+  [4,"captura","Reroll","puedes usarla tras aparecer el primer pokémon y podrás skipearlo e ir a por el siguiente."],
+  [4,"item","Masterball","obtienes una masterball."],
+  [7,"item","Compra MT","úsala para poder comprar una MT en una tienda del juego"],
+  [10,"item","Capsula habilidad","úsala para obtener una cápsula habilidad."],
+  [10,"item","Piedra Evolutiva","Úsala para canjearla por una piedra evolutiva a tu elección."],
+  [10,"item","MegaPiedra","Úsala para obtener una mega piedra a tu elección."],
+  [4,"Gacha","Caja sorpresa","Cambia un item por otro random del mismo tipo."],
+  [10,"item","Objeto fuerte","obtienes un objeto competitivo a tu elección."],
+  [10,"Curacion","Revivir Pokemon","revive un pokemon"],
+  [10,"Curacion","Revivir Inicial","Revive a tu inicial una vez (no cuenta para el uso de revivir, es decir, píldoras  revivir a un inicial que haya sido revivido por la carta revivir)"],
+  [7,"Curacion","Cambio de inicial","puedes designar a otro pokémon vivo de tu elección como inicial"],
+  [10,"defensa","Reversa","bloqueas y devuelves la carta de ataque del rival"],
+  [7,"defensa","Bloqueo","bloquear la carta del rival"],
+  [10,"curacion","Bendición de Arceus","usala antes de un combate y el primer pokemon muerto, no morirá realmente."],
+  [7,"ataque","Robo Curativo","robas 3 objetos curativos a un rival"],
+  [4,"ataque","Desgaste","Obligas a un rival a no poder sacar ni meter pokemons antes del siguiente combate contra un líder."],
+  [7,"ataque","Liberación","escoge dos pokemons del rival y él decidirá uno al que liberar."],
+  [10,"ataque","Robo de caja","roba el pokémon a tu elección de la caja del rival"],
+  [13,"ataque","Robo de equipo","roba un pokémon aleatorio del equipo del rival"],
+  [7,"ataque","bloqueo pokemon","bloquea un pokémon rival hasta el siguiente líder (en los combates también estaba bloqueado y por tanto no lo podrá usar)"],
+  [7,"ataque","destructor","obligas al rival a jugar con solo 5 pokemons hasta el siguiente líder"],
+  [5,"ataque","Mismo destino","tu liberas un pokemon y el rival deberá liberar otro que comparta uno de los tipos"],
+  [4,"ataque","envenenamiento","el rival deber tirar 2 curas de su inventario"],
+  [10,"gacha","Prime","si tu pokémon elegido con la carta no muere en los combates contra los demás, recibirá 31 IVS en todo, si lo vuelves a usar, se volverá shiny"],
+  [4,"defensa","Venganza","si te han tirado 2 o más cartas el mismo jugador, puedes tirar de ruleta o robarle un pokémon aleatorio de su caja."],
+  [4,"gacha","Apuesta Segura","Apuesta que vas a ganar los combates contra los demás jugadores. si Ganas, recibes 15 monedas, si pierdes, debes dar 5 monedas a cada jugador que te gano."],
+  [10,"ataque","Cambio repentino","Un pokémon de un rival cambiará su habilidad al menos que el rival page 15 monedas"],
+  [0,"item","Intercambio","Intercambia un pokémon con un rival si ambos quieren."],
+  [2,"defensa","Regalo","Envías un objeto curativo aleatorio a un rival. A cambio, si te lanza una carta negativa, tendrás que devolver el regalo por 3 de su propio inventario."],
+  [10,"defensa","Maldición","Maldices a un rival, si ese jugar te a echado alguna vez una carta de ataque, puedes robar una carta de su inventario"],
+  [7,"Ataque","Robo sigiloso","Robas una carta del rival"],
+  [7,"defensa","Buff permanente","subes 8 puntos todos los IVS de un pokémon a tu elección"],
+  [2,"defensa","Protección del débil","usa cuando te tiren una carta de ataque, tira una moneda, si sale cara, te protegerás de la carta pero el rival no la gastara. El rival no podra volver a usar esa carta contigo hasta completar un líder de gimnasio."],
+];
+const cardsBase = rawList.map((r,i)=>({id:"c"+String(i+1).padStart(2,"0"),cost:+r[0],type:slugType(r[1]),name:r[2].trim(),desc:capFirst(r[3]||""),qty:0}));
+
+/* ========= State ========= */
+let currentUser = null;   // auth user
+let spyUid = null;        // ver inventario de otro
+let unsubInv = null;      // snapshot unsub
+let unsubProfiles = null; // profiles dropdown
+let profiles = [];        // [{id, displayName, email}]
+let state = { coins:0, karma:0, cards:cardsBase, walletLog:[], useLog:[], updatedAt:null };
+
+/* ========= Elements ========= */
+const coinsEl=$("#coins"), coinsMini=$("#coinsMini"), karmaEl=$("#karma");
+const gridEl=$("#cardsGrid"), walletLogEl=$("#walletLog"), useLogEl=$("#useLog");
+const typeFilter=$("#typeFilter"), hideZero=$("#hideZero");
+const toolsBox=$("#toolsBox"), toolsBtn=$("#toolsBtn"), toolsPanel=$("#toolsPanel");
+toolsBtn.onclick=(e)=>{ e.stopPropagation(); toolsPanel.classList.toggle("show"); };
+document.body.addEventListener("click", ()=> toolsPanel.classList.remove("show"));
+typeFilter.onchange=render; hideZero.onchange=render;
+
+const who=$("#whoAmI"), btnGoogle=$("#btnGoogle"), btnEmail=$("#btnEmail"), btnLogout=$("#btnLogout");
+const spyWrap=$("#spyWrap"), spySelect=$("#spySelect"), btnSpy=$("#btnSpy"), spyInfo=$("#spyInfo"), spyName=$("#spyName"), spyExit=$("#spyExit");
+
+/* ========= Auth handlers (mejorados) ========= */
+btnGoogle.onclick = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    console.warn("Google popup error:", e);
+    if (e.code === "auth/unauthorized-domain") {
+      alert("Dominio no autorizado en Firebase.\nAñade tu dominio de GitHub Pages en Authentication → Settings → Authorized domains.");
+      return;
     }
-    aCard.qty = (aCard.qty||0)+1;
+    if (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user") {
+      try { await signInWithRedirect(auth, new GoogleAuthProvider()); }
+      catch (e2) { alert("No se pudo completar con redirect: " + e2.code); }
+      return;
+    }
+    alert("Error Google: " + e.code);
+  }
+};
 
-    // Karma +1 atacante
-    attacker.karma = (attacker.karma||0)+1;
+btnEmail.onclick = async () => {
+  const email = prompt("Email:"); if (!email) return;
+  const pass = prompt("Contraseña:"); if (!pass) return;
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch (e) {
+    if (e.code === "auth/user-not-found" || e.code === "auth/invalid-credential") {
+      if (confirm("No existe ese usuario. ¿Crear cuenta con ese email?")) {
+        try {
+          const cred = await createUserWithEmailAndPassword(auth, email, pass);
+          const name = prompt("Nombre para mostrar (opcional):") || "";
+          if (name) await updateProfile(cred.user, { displayName: name });
+          toast("Cuenta creada ✅");
+        } catch (e2) { alert("Error creando cuenta: " + e2.code); }
+      }
+      return;
+    }
+    if (e.code === "auth/unauthorized-domain") {
+      alert("Dominio no autorizado en Firebase.\nAñade tu dominio de GitHub Pages en Authentication → Settings → Authorized domains.");
+      return;
+    }
+    alert("Error email/contraseña: " + e.code);
+  }
+};
+btnLogout.onclick=()=>signOut(auth);
 
-    // Logs
-    (attacker.useLog ||= []).push({date:new Date().toISOString(), cardId, name:`Robaste ${vCard.name} (+1)`, note:`A ${profSnap.data()?.displayName||victimUid}`});
-    (victim.useLog ||= []).push({date:new Date().toISOString(), cardId, name:`Te robaron ${vCard.name} (−1)`, note:`Por ${context.auth.token.email || attackerUid}`});
+/* ========= Firestore ========= */
+function invDocRef(uid){ return doc(db,"inventories", uid); }
+function profileDocRef(uid){ return doc(db,"profiles", uid); }
 
-    tx.update(attackerRef, {cards:aCards, karma: attacker.karma, useLog: attacker.useLog, updatedAt: admin.firestore.FieldValue.serverTimestamp()});
-    tx.update(victimRef, {cards:victim.cards, useLog: victim.useLog, updatedAt: admin.firestore.FieldValue.serverTimestamp()});
-    return {victimName: profSnap.data()?.displayName || null};
+async function ensureProfile(u){
+  const d = await getDoc(profileDocRef(u.uid));
+  const payload = {
+    displayName: u.displayName || (u.email ? u.email.split("@")[0] : "Jugador"),
+    email: u.email || null,
+    updatedAt: serverTimestamp()
+  };
+  if(!d.exists()){
+    payload.createdAt = serverTimestamp();
+  }
+  await setDoc(profileDocRef(u.uid), payload, {merge:true});
+}
+
+async function initInventoryIfMissing(uid){
+  const d = await getDoc(invDocRef(uid));
+  if(!d.exists()){
+    await setDoc(invDocRef(uid), {
+      coins:0, karma:0, cards:cardsBase, walletLog:[], useLog:[], updatedAt: serverTimestamp()
+    });
+  }
+}
+
+// Listado de perfiles para el desplegable de espiar
+function subscribeProfiles(){
+  if(unsubProfiles) { unsubProfiles(); unsubProfiles=null; }
+  unsubProfiles = onSnapshot(collection(db,"profiles"), (snap)=>{
+    profiles = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    // refrescar dropdown (excluye al propio user)
+    const me = currentUser?.uid;
+    const opts = ['<option value="">— Elegir usuario —</option>']
+      .concat(profiles.filter(p=>p.id!==me).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`));
+    spySelect.innerHTML = opts.join("");
+    const tsel = $("#stealTarget");
+    if(tsel){ tsel.innerHTML = opts.join(""); }
   });
+}
+
+// Suscripción / carga en vivo
+function subscribeInventory(uid){
+  if(unsubInv) { unsubInv(); unsubInv=null; }
+  unsubInv = onSnapshot(invDocRef(uid), (snap)=>{
+    if(!snap.exists()) return;
+    state = snap.data() || state;
+    render();
+  });
+}
+
+// Guardar (debounce)
+let saveTimer=null;
+function scheduleSave(){
+  if(spyUid || !currentUser) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=> saveNow().catch(()=>{}), 350);
+}
+async function saveNow(){
+  await setDoc(invDocRef(currentUser.uid), {...state, updatedAt: serverTimestamp() }, {merge:true});
+}
+
+/* ========= Auth state ========= */
+onAuthStateChanged(auth, async (u)=>{
+  if(u){
+    currentUser = u;
+    who.innerHTML = `Conectado como <strong>${esc(u.displayName||u.email||u.uid)}</strong>`;
+    btnGoogle.style.display="none"; btnEmail.style.display="none"; btnLogout.style.display="inline-block";
+    toolsBox.style.display="block"; spyWrap.style.display="flex";
+    await ensureProfile(u);
+    await initInventoryIfMissing(u.uid);
+    spyUid = null; spyInfo.style.display="none";
+    subscribeInventory(u.uid);
+    subscribeProfiles();
+  }else{
+    currentUser = null; spyUid = null;
+    who.textContent = "Sin sesión";
+    btnGoogle.style.display="inline-block"; btnEmail.style.display="inline-block"; btnLogout.style.display="none";
+    toolsBox.style.display="none"; spyWrap.style.display="none";
+    if(unsubInv){ unsubInv(); unsubInv=null; }
+    if(unsubProfiles){ unsubProfiles(); unsubProfiles=null; }
+    state = { coins:0, karma:0, cards:cardsBase, walletLog:[], useLog:[] };
+    render();
+  }
 });
+
+/* ========= Monetario / botones rápidos ========= */
+const coinModal=$("#coinModal");
+const modals=[coinModal,$("#cardModal"),$("#rewardModal"),$("#stealModal")];
+function toggleModal(el,show){ el.classList.toggle("show",!!show); el.setAttribute("aria-hidden",show?"false":"true"); }
+// cerrar por clic fuera
+modals.forEach(m=>m.addEventListener("click",(e)=>{ if(e.target===m) toggleModal(m,false);}));
+// ESC
+window.addEventListener("keydown",(e)=>{ if(e.key==="Escape"){ modals.forEach(m=>toggleModal(m,false)); }});
+
+// coin modal
+$("#coinMenuBtn").onclick=()=> toggleModal(coinModal,true);
+$("#coinClose").onclick=()=> toggleModal(coinModal,false);
+$("#coinCloseX").onclick=()=> toggleModal(coinModal,false);
+$("#coinAdd").onclick=()=> coinOp("ingreso");
+$("#coinSub").onclick=()=> coinOp("gasto");
+$("#btnLeader").onclick=quickLeader;
+$("#btnBoss").onclick=quickBoss;
+
+function coinOp(kind){
+  if(spyUid || !currentUser) return;
+  const amt=Math.max(0,Math.trunc(Number($("#coinAmount").value))); if(!amt){ alert("Cantidad inválida (enteros)"); return; }
+  const note=($("#coinReason").value||"").trim();
+  if(kind==="ingreso"){ state.coins += amt; toast(`🪙 +${amt} monedas`); }
+  else{ if(state.coins < amt){ alert("No tienes suficientes monedas para ese gasto."); return; } state.coins -= amt; toast(`💸 -${amt} monedas`); }
+  state.walletLog.push({date:new Date().toISOString(), type:kind, amount:amt, note});
+  $("#coinAmount").value=""; $("#coinReason").value="";
+  scheduleSave(); toggleModal(coinModal,false); render();
+}
+function quickLeader(){
+  if(spyUid || !currentUser) return;
+  const lost=confirm("¿Has perdido algún Pokémon contra el líder?\nAceptar = SÍ · Cancelar = NO");
+  const total= lost?6:9; state.coins+=total; toast(`🏆 +${total} monedas (${lost?"con":"sin"} bajas)`);
+  state.walletLog.push({date:new Date().toISOString(), type:"ingreso", amount:total, note:`Líder completado (${lost?"con":"sin"} bajas)`});
+  scheduleSave(); render();
+}
+function quickBoss(){
+  if(spyUid || !currentUser) return;
+  const lost=confirm("¿Has perdido algún Pokémon en el combate importante?\nAceptar = SÍ · Cancelar = NO");
+  const total= lost?5:7; state.coins+=total; toast(`⚔️ +${total} monedas (${lost?"con":"sin"} bajas)`);
+  state.walletLog.push({date:new Date().toISOString(), type:"ingreso", amount:total, note:`Combate importante (${lost?"con":"sin"} bajas)`});
+  scheduleSave(); render();
+}
+
+/* ========= Render ========= */
+function render(){
+  $("#mainSection").classList.toggle("readonly", !!spyUid);
+  coinsEl.textContent=String(state.coins||0);
+  coinsMini.textContent=String(state.coins||0);
+  karmaEl.textContent=String(state.karma||0);
+
+  // Grid
+  gridEl.innerHTML="";
+  const f=(typeFilter.value||"").trim(), hide=hideZero.checked;
+  state.cards.forEach(card=>{
+    if(f && card.type!==f) return; if(hide && (card.qty||0)<=0) return;
+    const slot=document.createElement("div"); slot.className="cardSlot"+((card.qty||0)<=0?" zero":""); slot.dataset.id=card.id;
+    const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
+    const img=document.createElement("img"); img.alt=card.name; img.src=`img/${card.id}.png`; img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${card.id}.jpg`; } };
+    imgWrap.appendChild(img);
+    const title=document.createElement("div"); title.className="title"; title.textContent=card.name;
+    const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(card.type)}</span> · <span class="badge">${card.cost} 🪙 · ${esc(tierOf(card.cost))}</span>`;
+    if(card.qty>0){ const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+card.qty; slot.appendChild(qty); }
+    slot.appendChild(imgWrap); slot.appendChild(title); slot.appendChild(meta);
+    slot.onclick=()=> openCard(card.id);
+    gridEl.appendChild(slot);
+  });
+
+  // Historiales
+  walletLogEl.innerHTML = (state.walletLog||[]).slice().reverse().map(l=>{
+    const gain = l.type==="ingreso"; const cls=gain?"gain":"loss"; const sign=gain?"+":"−";
+    const note = l.note?` — <span class="small">${esc(l.note)}</span>`:"";
+    return `<div class="${cls}"><span class="small">${new Date(l.date).toLocaleString()}</span> · <strong>${esc(l.type)}</strong> · <span class="mono">${sign} ${Math.trunc(l.amount)}</span>${note}</div>`;
+  }).join("");
+  useLogEl.innerHTML = (state.useLog||[]).slice().reverse().map(u=>{
+    const gain = /Compraste|Ganaste por ruleta|Añadida|añadida|\(\+1\)/i.test(u.name);
+    const cls = gain? "gain":"loss";
+    const note = u.note?` — <span class="small">${esc(u.note)}</span>`:"";
+    return `<div class="${cls}"><span class="small">${new Date(u.date).toLocaleString()}</span> · ${esc(u.name)}${note}</div>`;
+  }).join("");
+
+  // ruleta qty
+  const r=state.cards.find(c=>c.name.toLowerCase()==="ruleta"); $("#ruletaQty").textContent = r ? (r.qty||0) : 0;
+}
+
+/* ========= Carta modal ========= */
+const cardModal=$("#cardModal");
+$("#closeCard").onclick=()=> toggleModal(cardModal,false);
+$("#cardCloseX").onclick=()=> toggleModal(cardModal,false);
+let currentCardId=null;
+$("#buyBtn").onclick=onBuy; $("#useBtn").onclick=onUse;
+
+function openCard(id){
+  currentCardId=id; const c=state.cards.find(x=>x.id===id); if(!c) return;
+  const big=$("#cardImgBig"); big.removeAttribute("data-tried"); big.onerror=null;
+  big.src=`img/${c.id}.png`; big.onerror=()=>{ if(!big.dataset.tried){ big.dataset.tried=1; big.src=`img/${c.id}.jpg`; } };
+  $("#cardTitle").textContent=c.name;
+  $("#cardTypeCost").innerHTML=`<span class="badge">${esc(c.type)}</span> · <span class="badge">${c.cost} 🪙 · ${esc(tierOf(c.cost))}</span>`;
+  $("#cardDesc").textContent=c.desc||"";
+  $("#cardPrice").textContent=Math.trunc(c.cost||0);
+  $("#cardQty").textContent=Math.trunc(c.qty||0);
+  $("#useBtn").disabled=(c.qty||0)<=0 || !!spyUid || !currentUser;
+  $("#buyBtn").disabled=!!spyUid || !currentUser;
+  toggleModal(cardModal,true);
+}
+
+function onBuy(){
+  if(spyUid || !currentUser) return;
+  const c=state.cards.find(x=>x.id===currentCardId); if(!c) return;
+  const price=Math.trunc(c.cost||0);
+  if(state.coins < price){ alert("No tienes suficientes monedas para comprar esta carta."); return; }
+  state.coins -= price; c.qty=(c.qty||0)+1;
+  state.walletLog.push({date:new Date().toISOString(), type:"gasto", amount:price, note:`Compra: ${c.name}`});
+  state.useLog.push({date:new Date().toISOString(), cardId:c.id, name:`Compraste ${c.name} (+1)`, note:"Compra"});
+  toast(`🛒 Compraste ${c.name} (+1)`);
+  scheduleSave(); render(); openCard(c.id);
+}
+
+/* ========= Usar carta (incluye Robo sigiloso) ========= */
+const stealModal=$("#stealModal"), stealTarget=$("#stealTarget"), stealLoad=$("#stealLoad"), stealGrid=$("#stealGrid");
+const stealConfirm=$("#stealConfirm"), stealCancel=$("#stealCancel"), stealCloseX=$("#stealCloseX");
+let stealSelectedCardId=null, stealSelectedCardName=null, victimSnapshot=null;
+
+stealCancel.onclick=()=> toggleModal(stealModal,false);
+stealCloseX.onclick=()=> toggleModal(stealModal,false);
+
+async function onUse(){
+  if(spyUid || !currentUser) return;
+  const c=state.cards.find(x=>x.id===currentCardId); if(!c) return;
+  if((c.qty||0)<=0){ alert("No tienes esta carta."); return; }
+
+  // Robo sigiloso (flujo especial)
+  if(c.name.toLowerCase()==="robo sigiloso"){
+    // abrir modal de robo
+    stealSelectedCardId=null; stealSelectedCardName=null; victimSnapshot=null;
+    // refrescar dropdown con perfiles (ya está suscrito, solo pintamos)
+    const me=currentUser.uid;
+    const opts=['<option value="">— Elegir usuario —</option>']
+      .concat(profiles.filter(p=>p.id!==me).map(p=>`<option value="${p.id}">${esc(p.displayName||p.email||p.id)}</option>`));
+    stealTarget.innerHTML = opts.join("");
+    stealGrid.innerHTML = "";
+    stealConfirm.disabled = true;
+    toggleModal(stealModal,true);
+
+    // cargar inventario objetivo
+    stealLoad.onclick = async ()=>{
+      const uid = stealTarget.value;
+      if(!uid){ alert("Elige un usuario."); return; }
+      const d = await getDoc(invDocRef(uid));
+      if(!d.exists()){ alert("El objetivo no tiene inventario inicializado."); return; }
+      victimSnapshot = d.data();
+      // pintar cartas seleccionables (qty>0)
+      stealGrid.innerHTML = "";
+      victimSnapshot.cards.forEach(vc=>{
+        if((vc.qty||0)<=0) return;
+        const slot=document.createElement("div"); slot.className="cardSlot"; slot.dataset.id=vc.id;
+        const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
+        const img=document.createElement("img"); img.alt=vc.name; img.src=`img/${vc.id}.png`; img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${vc.id}.jpg`; } };
+        imgWrap.appendChild(img);
+        const title=document.createElement("div"); title.className="title"; title.textContent=vc.name;
+        const meta=document.createElement("div"); meta.className="small"; meta.innerHTML=`<span class="badge">${esc(vc.type)}</span> · <span class="badge">${vc.cost} 🪙</span>`;
+        const qty=document.createElement("div"); qty.className="qty"; qty.textContent="× "+vc.qty; slot.appendChild(qty);
+        slot.appendChild(imgWrap); slot.appendChild(title); slot.appendChild(meta);
+        slot.onclick=()=>{ // seleccionar
+          [...stealGrid.children].forEach(ch=>ch.style.outline="none");
+          slot.style.outline="2px solid #7c5cff";
+          stealSelectedCardId = vc.id; stealSelectedCardName = vc.name;
+          stealConfirm.disabled = false;
+        };
+        stealGrid.appendChild(slot);
+      });
+      if(!stealGrid.children.length){
+        stealGrid.innerHTML = '<div class="small">Este jugador no tiene cartas disponibles para robar.</div>';
+        stealConfirm.disabled = true;
+      }
+    };
+
+    // confirmar robo (llama a Cloud Function)
+    stealConfirm.onclick = async ()=>{
+      const victimUid = stealTarget.value;
+      if(!victimUid || !stealSelectedCardId) return;
+      // primero consumimos TU carta de Robo sigiloso (−1)
+      c.qty -= 1;
+      state.useLog.push({date:new Date().toISOString(), cardId:c.id, name:`Usaste ${c.name} (−1)`, note:"Robo sigiloso"});
+      toast(`🎴 Usaste ${c.name} (−1)`);
+
+      try{
+        const callable = httpsCallable(functions, "stealCard");
+        const res = await callable({ victimUid, cardId: stealSelectedCardId });
+        // en éxito: +1 carta robada, karma +1
+        const myCard = state.cards.find(x=>x.id===stealSelectedCardId);
+        if(myCard){ myCard.qty=(myCard.qty||0)+1; }
+        state.karma=(state.karma||0)+1;
+        state.useLog.push({date:new Date().toISOString(), cardId:stealSelectedCardId, name:`Robaste ${stealSelectedCardName} (+1)`, note:`A ${res.data?.victimName||"jugador"}`});
+        toast(`🕵️ Robaste ${stealSelectedCardName} (+1)`);
+        scheduleSave(); render();
+      }catch(e){
+        alert("No se pudo robar: " + (e.message||e.code||"error"));
+      }finally{
+        toggleModal(stealModal,false);
+        toggleModal(cardModal,false);
+      }
+    };
+
+    return; // salimos: el resto del uso normal no aplica
+  }
+
+  // Uso normal
+  c.qty -= 1;
+  state.useLog.push({date:new Date().toISOString(), cardId:c.id, name:`Usaste ${c.name} (−1)`, note:"Uso"});
+  toast(`🎴 Usaste ${c.name} (−1)`);
+  if(c.type==="ataque"){ state.karma=(state.karma||0)+1; }
+
+  // Efectos automáticos economía
+  const nm=c.name.toLowerCase();
+  if(nm==="10 monedas"){ addCoins(10,"Carta: 10 monedas"); toast("🪙 +10 monedas"); }
+  if(nm==="venta ilegal"){ addCoins(2,"Carta: Venta ilegal"); toast("🪙 +2 monedas"); }
+  if(nm==="monedero perdido"){ const gain=(Math.floor(Math.random()*5)+1); addCoins(gain,`Carta: Monedero perdido (+${gain})`); toast(`🪙 Monedero perdido: +${gain}`); }
+  if(nm==="robo de monedas"){ addCoins(5,"Carta: Robo de monedas"); toast("🪙 +5 monedas"); }
+
+  scheduleSave(); render(); openCard(c.id);
+}
+
+function addCoins(amount,note){
+  state.coins += amount;
+  state.walletLog.push({date:new Date().toISOString(), type:"ingreso", amount, note});
+}
+
+/* ========= Ruleta ========= */
+const slotText=$("#slotText");
+$("#spinPaid").onclick=()=> spin({paid:true});
+$("#spinFree").onclick=()=> spin({paid:false});
+
+function buildPool(){
+  const fixed10=state.cards.find(c=>c.name.toLowerCase()==="10 monedas");
+  const fixedMono=state.cards.find(c=>c.name.toLowerCase()==="monedero perdido");
+  const pool=[]; if(fixed10) pool.push(fixed10); if(fixedMono) pool.push(fixedMono);
+  const pick=(arr,n)=>{const a=arr.slice();const out=[];while(a.length&&out.length<n){const i=Math.floor(Math.random()*a.length);out.push(a[i]);a.splice(i,1);}return out;};
+  const all=state.cards, legend=all.filter(c=>c.cost===10||c.cost===13), epic=all.filter(c=>c.cost===7), rare3=all.filter(c=>c.cost===4), common4=all.filter(c=>c.cost===2);
+  pool.push(...pick(legend,1),...pick(epic,1),...pick(rare3,3),...pick(common4,4));
+  return pool.slice(0,10);
+}
+
+function spin({paid}){
+  if(spyUid || !currentUser) return;
+  if(paid){
+    if(!confirm("¿Gastar 1 tirada de Ruleta?\nRecuerda: el RNG no te debe nada 😅")) return;
+    const ru=state.cards.find(c=>c.name.toLowerCase()==="ruleta");
+    if(!ru || (ru.qty||0)<=0){ alert("No tienes carta 'Ruleta'."); return; }
+    ru.qty -= 1;
+    state.useLog.push({date:new Date().toISOString(), cardId:ru?.id, name:"Usaste Ruleta (−1)", note:"Tirada pagada"});
+    toast("🎰 Usaste 1 Ruleta (−1)");
+  }else{
+    const ok=confirm("¿Has vencido a un líder de gimnasio? (Solo entonces procede la tirada gratis)");
+    if(!ok) return;
+    state.useLog.push({date:new Date().toISOString(), cardId:null, name:"Tirada gratis post-gym", note:"+1 tirada"});
+    toast("🎁 Tirada gratis post-gym");
+  }
+  scheduleSave(); render();
+
+  const candidates=buildPool(); if(!candidates.length){ alert("No hay cartas para la ruleta."); return; }
+  let t=0, idx=0; slotText.textContent="—";
+  const it=setInterval(()=>{ idx=(idx+1)%candidates.length; slotText.textContent=candidates[idx].name; t+=60;
+    if(t>=2000){ clearInterval(it);
+      const win=candidates[Math.floor(Math.random()*candidates.length)];
+      slotText.textContent="🎉 "+win.name;
+      const card=state.cards.find(c=>c.id===win.id); if(card){ card.qty=(card.qty||0)+1; }
+      state.useLog.push({date:new Date().toISOString(), cardId:win.id, name:`Ganaste por ruleta: ${win.name}`, note:"+1 carta"});
+      toast(`🎉 +1 ${win.name}`);
+      scheduleSave(); render(); showReward(win);
+    }
+  },60);
+}
+
+const rewardModal=$("#rewardModal");
+$("#rewardClose").onclick=()=> toggleModal(rewardModal,false);
+$("#rewardCloseX").onclick=()=> toggleModal(rewardModal,false);
+function showReward(win){
+  const img=$("#rewardImg"); img.removeAttribute("data-tried"); img.onerror=null;
+  img.src=`img/${win.id}.png`; img.onerror=()=>{ if(!img.dataset.tried){ img.dataset.tried=1; img.src=`img/${win.id}.jpg`; } };
+  $("#rewardName").textContent=win.name;
+  $("#rewardMeta").innerHTML=`<span class="badge">${esc(win.type)}</span> · <span class="badge">${win.cost} 🪙 · ${esc(tierOf(win.cost))}</span>`;
+  $("#rewardDesc").textContent=win.desc;
+  toggleModal(rewardModal,true);
+}
+
+/* ========= Export/Import/Reset ========= */
+$("#exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  const name=currentUser?(currentUser.displayName||currentUser.email||currentUser.uid):"perfil";
+  a.download=`inventario-${name}.json`; a.click(); URL.revokeObjectURL(a.href);
+};
+$("#importFile").addEventListener("change",(e)=>{
+  const f=e.target.files[0]; if(!f || spyUid || !currentUser) return;
+  const fr=new FileReader();
+  fr.onload=()=>{ try{
+    const data=JSON.parse(fr.result);
+    if(!data || typeof data!=="object") throw new Error("JSON inválido");
+    if(!Array.isArray(data.cards)) throw new Error("Falta 'cards'");
+    state = {...state, ...data}; scheduleSave(); render(); toast("📥 Importado");
+  }catch(err){ alert("Error importando: "+err.message); } };
+  fr.readAsText(f);
+});
+$("#resetBtn").onclick=()=>{
+  if(spyUid || !currentUser) return;
+  if(confirm("¿Borrar todos tus datos (en la nube)?")){ state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[]}; scheduleSave(); render(); }
+};
+
+/* ========= Espiar ========= */
+btnSpy.onclick=()=>{
+  const uid = spySelect.value;
+  if(!uid){ alert("Elige un usuario del desplegable."); return; }
+  spyUid = uid;
+  spyInfo.style.display="inline-flex";
+  const profile = profiles.find(p=>p.id===uid);
+  spyName.textContent = profile?.displayName || profile?.email || uid;
+  subscribeInventory(uid); // read-only
+};
+spyExit.onclick=()=>{ spyUid=null; spyInfo.style.display="none"; if(currentUser) subscribeInventory(currentUser.uid); };
+/* ========= END ========= */
+</script>
+</body>
+</html>
+
