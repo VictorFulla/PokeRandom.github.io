@@ -801,6 +801,14 @@ stealConfirm.onclick = async () => {
     name:`Robo sigiloso: añadida ${stealSelectedCardName} (+1)`,
     note:`de ${uid}`
   });
+// Gastar la carta "Robo sigiloso" del atacante y sumar karma +1
+const stealCard = findCardByName("Robo sigiloso");
+if(stealCard && (stealCard.qty||0)>0){
+  stealCard.qty = Math.max(0, (stealCard.qty||0)-1);
+  state.useLog.push({date:new Date().toISOString(), name:"Usaste Robo sigiloso (−1)"});
+}
+state.karma = (state.karma||0) + 1;
+
   scheduleSave(); render(); toggleModal(stealModal,false);
 
   // Notificación a la víctima (pendiente)
@@ -1000,54 +1008,61 @@ async function onUse(){
   const c=state.cards.find(x=>x.id===currentCardId); if(!c)return;
   if((c.qty||0)<=0){alert("No tienes esta carta.");return}
 
-  // ——— ECONOMÍA: efectos automáticos ———
-  // 10 monedas
+  // helper para gastar la carta actual de forma segura
+  const spend = ()=>{
+    c.qty = Math.max(0, (c.qty||0) - 1);
+    $("#cardQty").textContent = Math.trunc(c.qty||0); // refresco rápido del modal
+  };
+
+  // ——— ECONOMÍA: efectos automáticos (SIEMPRE gastan la carta) ———
   if(c.name.toLowerCase()==="10 monedas"){
+    spend();
     addCoins(10,"Carta 10 monedas");
-    state.useLog.push({date:new Date().toISOString(),name:"Usaste 10 monedas (+10)"});
+    state.useLog.push({date:new Date().toISOString(),name:"Usaste 10 monedas (+10) y gastaste la carta (−1)"});
     toast("💰 +10 monedas");
     scheduleSave(); render(); return;
   }
-  // Venta ilegal: +2 monedas
+
   if(c.name.toLowerCase()==="venta ilegal"){
+    spend();
     addCoins(2,"Venta ilegal");
-    state.useLog.push({date:new Date().toISOString(),name:"Usaste Venta ilegal (+2)"});
+    state.useLog.push({date:new Date().toISOString(),name:"Usaste Venta ilegal (+2) y gastaste la carta (−1)"});
     toast("🪙 +2 por Venta ilegal");
     scheduleSave(); render(); return;
   }
-  // Monedero perdido: +1..+5 aleatorio (con mini-popup/aviso)
+
   if(c.name.toLowerCase()==="monedero perdido"){
+    spend();
     const n = 1 + Math.floor(Math.random()*5);
     addCoins(n,"Monedero perdido");
-    state.useLog.push({date:new Date().toISOString(),name:`Usaste Monedero perdido (+${n})`});
+    state.useLog.push({date:new Date().toISOString(),name:`Usaste Monedero perdido (+${n}) y gastaste la carta (−1)`});
     toast(`🎲 Monedero perdido: +${n}`);
     scheduleSave(); render(); return;
   }
-  // Robo de monedas (la de 99): +5 monedas
+
+  // la de 99 "Robo de monedas": +5 y SE GASTA
   if(c.name.toLowerCase()==="robo de monedas"){
+    spend();
     addCoins(5,"Robo de monedas");
-    state.useLog.push({date:new Date().toISOString(),name:"Usaste Robo de monedas (+5)"}); 
+    state.useLog.push({date:new Date().toISOString(),name:"Usaste Robo de monedas (+5) y gastaste la carta (−1)"}); 
     toast("💸 +5 por Robo de monedas");
     scheduleSave(); render(); return;
   }
 
   // ——— ESPECIALES ———
-  // Robo sigiloso -> abre modal de robo (notificación a la víctima)
+  // Robo sigiloso: abrimos el modal de robo; la carta se gastará cuando CONFIRMES el robo (ver parche #2)
   if(c.name.toLowerCase()==="robo sigiloso"){
-    openSteal();    // el resto del flujo está en la sección de “Robo sigiloso”
+    openSteal();
     return;
   }
 
-  // Barajear cartas -> abre modal de barajar
+  // Barajear cartas: abrimos modal; la carta se gasta al confirmar el barajeo (ver parche #3)
   if(c.name.toLowerCase()==="barajear cartas"){
     openShuffle();
     return;
   }
 
-  // Intercambio: NO cambia efecto ahora, pero cuesta 2 (ya ajustado arriba en cardsBase)
-  // Si en el futuro le damos lógica, la pondremos aquí.
-
-  // ——— ATAQUES genéricos: enviar notificación + karma +1 ———
+  // ——— ATAQUES genéricos: notifican y GASTAN la carta ———
   if(c.type==="ataque"){
     const target = await pickUser(`¿A quién quieres atacar con “${c.name}”?`);
     if(!target) return;
@@ -1055,7 +1070,6 @@ async function onUse(){
     // Karma del atacante +1
     state.karma = (state.karma||0) + 1;
 
-    // Notificación al rival
     await addDoc(attackCol, {
       attackerId: currentUser.uid,
       attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
@@ -1065,14 +1079,20 @@ async function onUse(){
       createdAt: serverTimestamp()
     });
 
-    state.useLog.push({date:new Date().toISOString(),name:`Ataque enviado: ${c.name} → ${target.name}`});
+    // GASTAR la carta usada
+    spend();
+
+    state.useLog.push({date:new Date().toISOString(),name:`Ataque enviado: ${c.name} → ${target.name} (gastada −1)`});
     toast(`⚔️ Ataque enviado a ${target.name}`);
     scheduleSave(); render();
     return;
   }
 
+  alert("Esta carta aún no tiene efecto automático. Úsala según las reglas de la partida (y si procede, descuéntala manualmente).");
+}
+
   // Si llega aquí y no hay efecto programado:
-  alert("Esta carta aún no tiene efecto automático. Úsala según las reglas de la partida.");
+  alert("Esta carta Tiene efectos in game y tendras la obligación de cumplirlos");
 }
 
 /* ========= Ruleta ========= */
@@ -1177,6 +1197,13 @@ $("#shuffleConfirm").onclick=async()=>{
   Object.entries(shufflePick).forEach(([id, n])=>{
     const c=state.cards.find(x=>x.id===id);
     c.qty = Math.max(0, (c.qty||0) - n);
+// Gastar la carta "Barajear cartas" que activó el modal
+const shuffleCard = findCardByName("Barajear cartas");
+if(shuffleCard && (shuffleCard.qty||0)>0){
+  shuffleCard.qty = Math.max(0,(shuffleCard.qty||0)-1);
+  state.useLog.push({date:new Date().toISOString(), name:"Usaste Barajear cartas (−1)"});
+}
+
   });
 
   // Dar 2 aleatorias ponderadas por rareza (según qué metiste)
