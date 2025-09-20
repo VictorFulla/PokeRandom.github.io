@@ -80,6 +80,20 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 /* Oculta separadores dentro de pop-ups */
 /* Oculta separadores dentro de pop-ups */
 #inboxModal .hr, #attackModal .hr { display: none; }
+/* FAB admin flotante */
+.fab{
+  position:fixed; right:16px; bottom:16px;
+  padding:12px 16px; border-radius:999px; border:1px solid var(--edge);
+  background:#111; color:#fff; box-shadow:0 6px 18px rgba(0,0,0,.35);
+  cursor:pointer; z-index:9999;
+}
+.fab:hover{ transform:translateY(-1px); }
+
+/* Tag admin en logs */
+.admin-tag{ background:#633cff; color:#fff; border-radius:6px; padding:2px 6px; font-size:12px; margin-right:6px }
+
+/* Color especial para entradas de admin en la lista (si el render pone la clase) */
+.log-admin{ color:#b19cff; }
 </style>
 </head>
 <body>
@@ -257,7 +271,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 
 <!-- Modal Notificación de ROBO (víctima) -->
 <div id="inboxModal" class="modal" aria-hidden="true">
-  <div class="panel" role="dialog" aria-label="Notificación de robo" style="grid-template-columns:1fr">
+  <div class="panel" role="dialog" aria-label="Notificación de robo" style="grid-template-columns:1fr;max-width:720px">
     <button class="closeX" id="inboxCloseX">Cerrar</button>
     <h3>⚠️ Te han robado una carta</h3>
     <div class="small" id="inboxText">…</div>
@@ -267,6 +281,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     </div>
   </div>
 </div>
+
 
 <!-- Modal Notificación de ATAQUE (víctima) -->
 <div id="attackModal" class="modal" aria-hidden="true">
@@ -372,7 +387,7 @@ enableIndexedDbPersistence(db).catch(()=>{});
 /* ========= Helpers ========= */
 const $ = s => document.querySelector(s);
 const toast = (m)=>{ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); };
-const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
 const slugType = t => t.trim().toLowerCase().replace("curacion","curación").replace("economia","economía").replace("item","ítem");
 const tierOf = c => (c===13||c===10)?"legendaria": c===7?"épica": c===4?"rara": c===2?"común": (c===0||c===99)?"especial":"otra";
 const capFirst = s => { if(!s) return ""; let t=String(s).trim(); t=t.replace(/\bpokemon(es)?\b/gi,m=>m.toLowerCase().endsWith("es")?"Pokémones":"Pokémon"); t=t.replace(/\busala\b/gi,"úsala").replace(/\busa la\b/gi,"úsala"); t=t.replace(/\bpage\b/gi,"pague"); return t.charAt(0).toUpperCase()+t.slice(1); };
@@ -826,7 +841,93 @@ state.karma = (state.karma||0) + 1;
   toast("🕵️ Robo enviado. El rival confirmará la resta.");
 };
 
-/* ========= Robos (víctima) ========= */
+/* ========= ADMIN CARTAS ========= */
+const adminFab = $("#adminFab");
+const adminModal = $("#adminModal");
+const adminCloseX = $("#adminCloseX");
+const adminCardSelect = $("#adminCardSelect");
+const adminQty = $("#adminQty");
+const adminAddBtn = $("#adminAddBtn");
+const adminRemoveBtn = $("#adminRemoveBtn");
+
+// Abre modal admin (requiere estar logueado y NO estar espiando)
+if (adminFab) {
+  adminFab.onclick = ()=>{
+    if(!currentUser || spyUid){
+      alert("Necesitas estar autenticado y no estar en modo espiar.");
+      return;
+    }
+    fillAdminSelect();
+    adminQty.value = "1";
+    toggleModal(adminModal, true);
+  };
+}
+
+if (adminCloseX) {
+  adminCloseX.onclick = ()=> toggleModal(adminModal,false);
+}
+
+// Rellena el select con TODAS las cartas ordenadas por tipo y nombre
+function fillAdminSelect(){
+  const cards = [...(state.cards||[])];
+  cards.sort((a,b)=>{
+    const t = (a.type||"").localeCompare(b.type||"");
+    if(t!==0) return t;
+    return (a.name||"").localeCompare(b.name||"");
+  });
+  adminCardSelect.innerHTML = "";
+  for(const c of cards){
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = `${c.name} — ${c.type} · ${c.cost}🪙`;
+    adminCardSelect.appendChild(opt);
+  }
+}
+
+// Registrar en historial con etiqueta [ADMIN]
+function logAdmin(delta, card){
+  const sign = delta>0? "+" : "−";
+  const abs = Math.abs(delta);
+  (state.useLog ||= []).push({
+    date: new Date().toISOString(),
+    name: `[ADMIN] ${sign}${abs} ${card.name}`,
+    admin: true,
+    delta
+  });
+}
+
+// Click en Añadir
+if (adminAddBtn) {
+  adminAddBtn.onclick = ()=>{
+    if(!currentUser || spyUid){ alert("No puedes usar admin ahora."); return; }
+    const id = adminCardSelect.value;
+    const n = Math.max(1, Math.trunc(Number(adminQty.value)||1));
+    const card = (state.cards||[]).find(c=>c.id===id);
+    if(!card){ alert("Carta no encontrada"); return; }
+    card.qty = (card.qty||0) + n;
+    logAdmin(+n, card);
+    toast(`✅ [ADMIN] Añadidas ${n} × ${card.name}`);
+    scheduleSave(); render();
+  };
+}
+
+// Click en Retirar
+if (adminRemoveBtn) {
+  adminRemoveBtn.onclick = ()=>{
+    if(!currentUser || spyUid){ alert("No puedes usar admin ahora."); return; }
+    const id = adminCardSelect.value;
+    const n = Math.max(1, Math.trunc(Number(adminQty.value)||1));
+    const card = (state.cards||[]).find(c=>c.id===id);
+    if(!card){ alert("Carta no encontrada"); return; }
+    const before = (card.qty||0);
+    const real = Math.min(before, n);
+    card.qty = Math.max(0, before - real);
+    logAdmin(-real, card);
+    toast(`🗑️ [ADMIN] Retiradas ${real} × ${card.name}`);
+    scheduleSave(); render();
+  };
+}
+
 /* ========= Robos (víctima) ========= */
 const inboxModal=$("#inboxModal"), inboxText=$("#inboxText"), inboxPreview=$("#inboxPreview");
 const inboxApply=$("#inboxApply"), inboxCloseX=$("#inboxCloseX");
@@ -1243,6 +1344,35 @@ if(shuffleCard && (shuffleCard.qty||0)>0){
 };
 $("#shuffleResultCloseX").onclick=()=>toggleModal($("#shuffleResultModal"),false);
 $("#shuffleResultClose").onclick=()=>toggleModal($("#shuffleResultModal"),false);
+<!-- ========= FAB ADMIN CARTAS ========= -->
+<button id="adminFab" class="fab" title="Admin cartas">Admin</button>
+
+<!-- ========= Modal ADMIN CARTAS ========= -->
+<div id="adminModal" class="modal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-label="Administrador de cartas" style="grid-template-columns:1fr;max-width:720px">
+    <button class="closeX" id="adminCloseX">Cerrar</button>
+    <h3>🛠️ Administrador de cartas</h3>
+    <div class="small">Selecciona una carta y una cantidad. Puedes <strong>añadir</strong> o <strong>retirar</strong> del inventario actual. Queda registrado como <span class="admin-tag">[ADMIN]</span>.</div>
+
+    <div class="grid2" style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-top:8px">
+      <div>
+        <label class="small" for="adminCardSelect">Carta</label>
+        <select id="adminCardSelect" class="input"></select>
+      </div>
+      <div>
+        <label class="small" for="adminQty">Cantidad</label>
+        <input id="adminQty" type="number" min="1" value="1" class="input">
+      </div>
+    </div>
+
+    <div class="flex" style="gap:10px;margin-top:10px">
+      <button id="adminAddBtn" class="btn good">Añadir</button>
+      <button id="adminRemoveBtn" class="btn bad">Retirar</button>
+    </div>
+
+    <div class="small muted">Consejo: usa este menú sólo para corregir errores o aplicar acordado por mesa.</div>
+  </div>
+</div>
 
 /* ========= Cerrar modales generales ========= */
 $("#rewardClose").onclick=()=>toggleModal($("#rewardModal"),false);
