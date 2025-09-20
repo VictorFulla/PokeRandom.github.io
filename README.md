@@ -1,0 +1,2 @@
+# PokeRandom.github.io
+PokemonRandomlockPrivateApp
