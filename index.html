@@ -73,6 +73,13 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 /* spy tint */
 .spyTint body, .spyTint main{filter:hue-rotate(-25deg) saturate(1.1)}
 #inboxModal .hr, #attackModal .hr { display: none; }
+/* Popups: 1 columna, carta centrada y más grande */
+#inboxModal .panel, #attackModal .panel { grid-template-columns: 1fr; max-width: 720px; }
+#inboxPreview.cards, #attackPreview.cards { grid-template-columns: 1fr; justify-items: center; }
+#inboxPreview .cardSlot, #attackPreview .cardSlot { width: 260px; }
+
+/* Oculta separadores dentro de pop-ups */
+#inboxModal .hr, #attackModal .hr { display: none; }
 </style>
 </head>
 <body>
@@ -255,9 +262,6 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     <h3>⚠️ Te han robado una carta</h3>
     <div class="small" id="inboxText">…</div>
     <div id="inboxPreview" class="cards" style="margin-top:10px"></div>
-    <div class="hr"></div>
-    <div class="flex" id="stealDefenseButtons"></div>
-    <div class="hr"></div>
     <div class="flex">
       <button id="inboxApply" class="btn bad">OK (restar de mi inventario)</button>
     </div>
@@ -909,41 +913,46 @@ async function showAttackInbox(docId, data){
   const attacker = data.attackerName || data.attackerId || "Alguien";
   attackText.innerHTML = `<strong>${esc(attacker)}</strong> te ha atacado con <strong>${esc(data.cardName)}</strong>.`;
 
+  // Preview centrada con 1 carta
   attackPreview.innerHTML = "";
   const block = document.createElement("div"); block.className="cardSlot";
   const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
-  const img=document.createElement("img"); img.alt=data.cardName; img.src=`img/${state.cards.find(c=>c.name.toLowerCase()===data.cardName.toLowerCase())?.id||"c01"}.png`;
-  img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${state.cards.find(c=>c.name.toLowerCase()===data.cardName.toLowerCase())?.id||"c01"}.jpg`; } };
+  const idGuess = state.cards.find(c=>c.name.toLowerCase()===data.cardName.toLowerCase())?.id || "c01";
+  const img=document.createElement("img"); img.alt=data.cardName; img.src=`img/${idGuess}.png`;
+  img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${idGuess}.jpg`; } };
   imgWrap.appendChild(img);
   const title=document.createElement("div"); title.className="title"; title.textContent=data.cardName;
   block.appendChild(imgWrap); block.appendChild(title);
   attackPreview.appendChild(block);
 
-  // Simplificamos: un único botón OK que aplica el ataque (karma −1)
+  // Botón único OK: cierra ya y aplica karma -1
   defenseButtons.innerHTML = "";
-const okBtn = document.createElement("button");
-okBtn.className = "btn bad";
-okBtn.textContent = "OK (recibir ataque)";
-okBtn.onclick = async () => {
-  // Cierra inmediatamente
-  toggleModal(attackModal,false);
-  const _docId = currentAttackId;
-  currentAttackId = null; currentAttackData = null;
+  const okBtn = document.createElement("button");
+  okBtn.className = "btn bad";
+  okBtn.textContent = "OK (recibir ataque)";
+  okBtn.onclick = async () => {
+    // Cerrar al instante
+    toggleModal(attackModal,false);
+    const _docId = currentAttackId;
+    currentAttackId = null; currentAttackData = null;
 
-  try{
-    state.karma = (state.karma||0) - 1;
-    await updateDoc(doc(db,"attackRequests", _docId), {
-      status: "applied",
-      resolvedAt: serverTimestamp()
-    });
-    toast("⚡ Ataque aplicado: karma −1");
-    scheduleSave(); render();
-  } catch(e){
-    console.error("Error aplicando ataque:", e);
-  }
-};
-defenseButtons.appendChild(okBtn);
+    try{
+      state.karma = (state.karma||0) - 1;
+      await updateDoc(doc(db,"attackRequests", _docId), {
+        status: "applied",
+        resolvedAt: serverTimestamp()
+      });
+      toast("⚡ Ataque aplicado: karma −1");
+      scheduleSave(); render();
+    } catch(e){
+      console.error("Error aplicando ataque:", e);
+    }
+  };
+  defenseButtons.appendChild(okBtn);
 
+  // ¡ESTAS 2 LÍNEAS FALTABAN! (mostrar y CERRAR función)
+  toggleModal(attackModal,true);
+}
 
 /* ========= Espiar ========= */
 function renderSpyMenu(){
