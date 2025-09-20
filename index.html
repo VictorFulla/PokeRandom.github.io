@@ -372,7 +372,7 @@ enableIndexedDbPersistence(db).catch(()=>{});
 /* ========= Helpers ========= */
 const $ = s => document.querySelector(s);
 const toast = (m)=>{ const t=$("#toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1800); };
-const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;","&gt;":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
 const slugType = t => t.trim().toLowerCase().replace("curacion","curación").replace("economia","economía").replace("item","ítem");
 const tierOf = c => (c===13||c===10)?"legendaria": c===7?"épica": c===4?"rara": c===2?"común": (c===0||c===99)?"especial":"otra";
 const capFirst = s => { if(!s) return ""; let t=String(s).trim(); t=t.replace(/\bpokemon(es)?\b/gi,m=>m.toLowerCase().endsWith("es")?"Pokémones":"Pokémon"); t=t.replace(/\busala\b/gi,"úsala").replace(/\busa la\b/gi,"úsala"); t=t.replace(/\bpage\b/gi,"pague"); return t.charAt(0).toUpperCase()+t.slice(1); };
@@ -1050,13 +1050,13 @@ async function onUse(){
   }
 
   // ——— ESPECIALES ———
-  // Robo sigiloso: abrimos el modal de robo; la carta se gastará cuando CONFIRMES el robo (ver parche #2)
+  // Robo sigiloso: abre modal (se gasta al confirmar el robo)
   if(c.name.toLowerCase()==="robo sigiloso"){
     openSteal();
     return;
   }
 
-  // Barajear cartas: abrimos modal; la carta se gasta al confirmar el barajeo (ver parche #3)
+  // Barajear cartas: abre modal (se gasta al confirmar el barajeo)
   if(c.name.toLowerCase()==="barajear cartas"){
     openShuffle();
     return;
@@ -1088,11 +1088,8 @@ async function onUse(){
     return;
   }
 
-  alert("Esta carta aún no tiene efecto automático. Úsala según las reglas de la partida (y si procede, descuéntala manualmente).");
-}
-
-  // Si llega aquí y no hay efecto programado:
-  alert("Esta carta Tiene efectos in game y tendras la obligación de cumplirlos");
+  // Sin efecto automático (carta “de reglas”)
+  alert("Esta carta tiene efectos in game. Aplícalo en partida.");
 }
 
 /* ========= Ruleta ========= */
