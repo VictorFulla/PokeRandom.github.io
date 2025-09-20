@@ -301,6 +301,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-functions.js";
 
+/* Asegura que apuntas al MISMO proyecto y región que tu deploy */
+const FUNCTIONS_REGION = "us-central1"; // si desplegaste en otra, cámbialo
+const functions = getFunctions(app, FUNCTIONS_REGION);
+
 const firebaseConfig = {
   apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
   authDomain: "pokerandom-ce300.firebaseapp.com",
@@ -458,6 +462,20 @@ async function initInventoryIfMissing(uid){
       coins:0, karma:0, cards:cardsBase, walletLog:[], useLog:[], updatedAt: serverTimestamp()
     });
   }
+}
+async function ensureSignedIn() {
+  // Espera a que Auth se estabilice (por si el popup acaba de cerrar)
+  if (!auth.currentUser) {
+    await new Promise(res => {
+      const t = setTimeout(res, 800);
+      const unsub = onAuthStateChanged(auth, () => { clearTimeout(t); unsub(); res(); });
+    });
+  }
+  if (!auth.currentUser) throw new Error("no-user");
+
+  // Fuerza token fresco (evita context.auth = null)
+  try { await auth.currentUser.getIdToken(true); } catch (e) {}
+  return auth.currentUser;
 }
 
 // Listado de perfiles para el menú Espiar
@@ -684,35 +702,41 @@ async function onUse(){
 
     // confirmar robo (Cloud Function)
     stealConfirm.onclick = async ()=>{
-      const victimUid = stealTarget.value;
-      if(!victimUid || !stealSelectedCardId) return;
+  const victimUid = stealTarget.value;
+  if(!victimUid || !stealSelectedCardId) return;
 
-      // Asegura sesión y token fresco
-      if(!auth.currentUser){ alert("Inicia sesión primero."); return; }
-      try { await auth.currentUser.getIdToken(true); } catch(_) {}
+  let me;
+  try {
+    me = await ensureSignedIn(); // 👈 garantiza user + token
+  } catch {
+    alert("Inicia sesión primero.");
+    return;
+  }
 
-      // consumir TU carta
-      c.qty -= 1;
-      state.useLog.push({date:new Date().toISOString(), cardId:c.id, name:`Usaste ${c.name} (−1)`, note:"Robo sigiloso"});
-      toast(`🎴 Usaste ${c.name} (−1)`);
+  // consumir TU carta
+  c.qty -= 1;
+  state.useLog.push({date:new Date().toISOString(), cardId:c.id, name:`Usaste ${c.name} (−1)`, note:"Robo sigiloso"});
+  toast(`🎴 Usaste ${c.name} (−1)`);
 
-      try{
-        const callable = httpsCallable(functions, "stealCard");
-        const res = await callable({ victimUid, cardId: stealSelectedCardId });
-        // éxito → +1 carta robada, karma +1
-        const myCard = state.cards.find(x=>x.id===stealSelectedCardId);
-        if(myCard){ myCard.qty=(myCard.qty||0)+1; }
-        state.karma=(state.karma||0)+1;
-        state.useLog.push({date:new Date().toISOString(), cardId:stealSelectedCardId, name:`Robaste ${stealSelectedCardName} (+1)`, note:`A ${res.data?.victimName||"jugador"}`});
-        toast(`🕵️ Robaste ${stealSelectedCardName} (+1)`);
-        scheduleSave(); render();
-      }catch(e){
-        alert("No se pudo robar: " + (e.message||e.code||"error"));
-      }finally{
-        toggleModal(stealModal,false);
-        toggleModal(cardModal,false);
-      }
-    };
+  try{
+    const callable = httpsCallable(functions, "stealCard");
+    // 👇 llamada con auth implícito (el SDK adjunta tu ID token)
+    const res = await callable({ victimUid, cardId: stealSelectedCardId });
+    const myCard = state.cards.find(x=>x.id===stealSelectedCardId);
+    if(myCard){ myCard.qty=(myCard.qty||0)+1; }
+    state.karma=(state.karma||0)+1;
+    state.useLog.push({date:new Date().toISOString(), cardId:stealSelectedCardId, name:`Robaste ${stealSelectedCardName} (+1)`, note:`A ${res.data?.victimName||"jugador"}`});
+    toast(`🕵️ Robaste ${stealSelectedCardName} (+1)`);
+    scheduleSave(); render();
+  }catch(e){
+    console.warn("stealCard error:", e);
+    alert("No se pudo robar: " + (e.code || e.message || "error"));
+  }finally{
+    toggleModal(stealModal,false);
+    toggleModal(cardModal,false);
+  }
+};
+
 
     return;
   }
