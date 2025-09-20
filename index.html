@@ -549,18 +549,40 @@ function subscribeInventory(uid){
 }
 function subscribeStealInbox(uid){
   if(unsubInbox){unsubInbox();unsubInbox=null}
-  const qv = query(stealCol, where("victimId","==",uid), where("status","==","pending"), where("seenByVictim","in",[false,null]));
-  unsubInbox=onSnapshot(qv,(snap)=>{
-    const unseen = snap.docs.filter(d=>!d.data().seenByVictim);
-    if(!unseen.length) return;
-    showStealInbox(unseen[0].id, unseen[0].data());
+  // Escucha todos los robos pendientes a mí
+  const qv = query(
+    collection(db,"stealRequests"),
+    where("victimId","==",uid),
+    where("status","==","pending")
+  );
+  unsubInbox = onSnapshot(qv, async (snap)=>{
+    const docs = snap.docs;
+    if(!docs.length) return;
+
+    // Filtramos en cliente si ya está marcado como visto (por si hay antiguos)
+    const first = docs.find(d => !d.data().seenByVictim) || docs[0];
+    const data = first.data();
+
+    // Abrir pop-up y marcar como visto para no repetir al recargar
+    showStealInbox(first.id, data);
   });
 }
+
 function subscribeAttackInbox(uid){
   if(unsubAttackInbox){unsubAttackInbox();unsubAttackInbox=null}
-  const qv=query(attackCol, where("victimId","==",uid), where("status","==","pending"));
-  unsubAttackInbox=onSnapshot(qv,(snap)=>{ const docs=snap.docs; if(!docs.length) return; showAttackInbox(docs[0].id, docs[0].data()); });
+  const qv = query(
+    collection(db,"attackRequests"),
+    where("victimId","==",uid),
+    where("status","==","pending")
+  );
+  unsubAttackInbox = onSnapshot(qv, (snap)=>{
+    const docs = snap.docs;
+    if(!docs.length) return;
+    // Abre el primero pendiente
+    showAttackInbox(docs[0].id, docs[0].data());
+  });
 }
+
 function subscribeDebuffs(uid){
   if(unsubDebuffs){unsubDebuffs();unsubDebuffs=null}
   const qv=query(debuffCol, where("targetId","==",uid), where("active","==",true));
@@ -743,20 +765,33 @@ stealLoad.onclick=async()=>{
     stealGrid.appendChild(slot);
   });
 };
-stealConfirm.onclick=async()=>{
+stealConfirm.onclick = async () => {
   if(!currentUser) return;
-  const uid=stealTarget.value; if(!uid||!stealSelectedCardId) return;
-  // Sumo al ladrón ahora
-  const mine = state.cards.find(c=>c.id===stealSelectedCardId); if(mine){ mine.qty=(mine.qty||0)+1; }
-  state.useLog.push({date:new Date().toISOString(), name:`Robo sigiloso: añadida ${stealSelectedCardName} (+1)`, note:`de ${uid}`});
-  scheduleSave(); render(); toggleModal(stealModal,false);
-  // Notificación a la víctima
-  await addDoc(stealCol, {
-    attackerId: currentUser.uid, attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
-    victimId: uid,
-    cardId: stealSelectedCardId, cardName: stealSelectedCardName,
-    status: "pending", seenByVictim: false, createdAt: serverTimestamp()
+  const uid = stealTarget.value;
+  if(!uid || !stealSelectedCardId) return;
+
+  // Al ladrón se le suma ya
+  const mine = state.cards.find(c=>c.id===stealSelectedCardId);
+  if(mine){ mine.qty = (mine.qty||0) + 1; }
+  state.useLog.push({
+    date:new Date().toISOString(),
+    name:`Robo sigiloso: añadida ${stealSelectedCardName} (+1)`,
+    note:`de ${uid}`
   });
+  scheduleSave(); render(); toggleModal(stealModal,false);
+
+  // Notificación a la víctima (pendiente)
+  await addDoc(collection(db,"stealRequests"), {
+    attackerId: currentUser.uid,
+    attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+    victimId: uid,
+    cardId: stealSelectedCardId,
+    cardName: stealSelectedCardName,
+    status: "pending",
+    seenByVictim: false,
+    createdAt: serverTimestamp()
+  });
+
   toast("🕵️ Robo enviado. El rival confirmará la resta.");
 };
 
@@ -765,7 +800,7 @@ const inboxModal=$("#inboxModal"), inboxText=$("#inboxText"), inboxPreview=$("#i
 const inboxApply=$("#inboxApply"), inboxCloseX=$("#inboxCloseX");
 let currentInboxId=null, currentInboxData=null;
 
-inboxCloseX.onclick=async()=>{
+inboxCloseX.onclick = async ()=>{
   if(currentInboxId){
     await updateDoc(doc(db,"stealRequests", currentInboxId), {
       seenByVictim: true,
@@ -1003,23 +1038,27 @@ async function onUse(){
   else if(c.name.toLowerCase()==="barajear cartas"){
     openShufflePicker(); return;
   }
-  else if(c.type==="ataque"){
-    // Elegir rival para el ataque y notificar
-    const target = await pickUser(`¿A quién quieres atacar con “${c.name}”?`);
-    if(!target) return;
-    state.karma=(state.karma||0)+1; // usar ataque suma karma negativo
-    await addDoc(attackCol, {
-      attackerId: currentUser.uid, attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
-      victimId: target.uid, cardName: c.name, status:"pending", createdAt: serverTimestamp()
-    });
-    toast(`⚔️ Ataque enviado a ${target.name}`);
-  }
-  // Restar carta usada (si no fue robo sigiloso ni barajar)
-  if(c.name.toLowerCase()!=="robo sigiloso" && c.name.toLowerCase()!=="barajear cartas"){
-    c.qty -= 1; state.useLog.push({date:new Date().toISOString(),name:`Usaste ${c.name} (−1)`});
-  }
-  scheduleSave(); render(); openCard(c.id);
+ else if(c.type==="ataque"){
+  // Elegir rival y enviar notificación de ataque
+  const target = await pickUser(`¿A quién quieres atacar con “${c.name}”?`);
+  if(!target) return;
+
+  // Karma del atacante +1
+  state.karma = (state.karma||0) + 1;
+
+  // Crear doc en /attackRequests
+  await addDoc(collection(db,"attackRequests"), {
+    attackerId: currentUser.uid,
+    attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+    victimId: target.uid,
+    cardName: c.name,
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
+
+  toast(`⚔️ Ataque enviado a ${target.name}`);
 }
+
 
 /* ========= Ruleta ========= */
 const slotText=$("#slotText"), spinPaid=$("#spinPaid"), spinFree=$("#spinFree");
