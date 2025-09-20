@@ -24,6 +24,11 @@ input,select{background:#0e121a;color:var(--text);border:1px solid var(--edge);b
 select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.spacer{flex:1}
 .badge{display:inline-flex;gap:6px;align-items:center;padding:2px 8px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-size:12px}
 .cards{display:grid;gap:12px;grid-template-columns:repeat(5,minmax(150px,1fr))}
+/* Popups de notificación: una sola columna, carta centrada y más grande */
+#inboxModal .panel, #attackModal .panel { grid-template-columns: 1fr; max-width: 720px; }
+#inboxPreview.cards, #attackPreview.cards { grid-template-columns: 1fr; justify-items: center; }
+#inboxPreview .cardSlot, #attackPreview .cardSlot { width: 260px; }
+
 @media(max-width:1200px){.cards{grid-template-columns:repeat(4,minmax(140px,1fr))}}
 @media(max-width:900px){.cards{grid-template-columns:repeat(3,minmax(130px,1fr))}}
 @media(max-width:640px){.cards{grid-template-columns:repeat(2,minmax(120px,1fr))}}
@@ -46,7 +51,20 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 .slotText{font-weight:800}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:100}
 .modal.show{display:flex}
-.modal .panel{background:var(--panel);border:1px solid var(--edge);border-radius:18px;max-width:820px;width:100%;padding:16px;display:grid;gap:14px;grid-template-columns:1fr 1fr;max-height:90vh;overflow:auto}
+.modal .panel{
+  background:var(--panel);
+  border:1px solid var(--edge);
+  border-radius:18px;
+  max-width:820px;
+  width:100%;
+  padding:16px;
+  display:grid;
+  gap:14px;
+  grid-template-columns:1fr 1fr;
+  max-height:90vh;
+  overflow-y:auto;   /* solo vertical */
+  overflow-x:hidden; /* adiós scrollbar horizontal */
+}
 @media(max-width:760px){.modal .panel{grid-template-columns:1fr}}
 .modal .bigImg{aspect-ratio:1/1;border:1px solid var(--edge);border-radius:12px;background:#0e121a;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .modal h3{margin:0}.modal .closeX{position:absolute;top:8px;right:12px;background:#00000066;border:1px solid var(--edge);color:#fff;border-radius:10px;padding:6px 10px;cursor:pointer}
@@ -54,6 +72,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 .picked{outline:2px solid #60a5fa; box-shadow:0 0 0 3px #60a5fa22 inset}
 /* spy tint */
 .spyTint body, .spyTint main{filter:hue-rotate(-25deg) saturate(1.1)}
+#inboxModal .hr, #attackModal .hr { display: none; }
 </style>
 </head>
 <body>
@@ -811,22 +830,45 @@ inboxCloseX.onclick = async ()=>{
   currentInboxId=null; currentInboxData=null;
 };
 
-async function showStealInbox(docId, data){
-  // Simplificado: solo notificación y OK que resta la carta al cerrar.
-  currentInboxId = docId;
-  currentInboxData = data;
-  const attacker = data.attackerName || data.attackerId || "Alguien";
-  inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
+// Asignamos la acción del botón OK (cierra YA y aplica en segundo plano)
+inboxApply.onclick = async () => {
+  if(!currentInboxId || !currentInboxData) { toggleModal(inboxModal,false); return; }
 
-  // Marcamos como visto inmediatamente para evitar repeticiones
-  try {
-    await updateDoc(doc(db,"stealRequests", currentInboxId), {
-      seenByVictim: true,
-      seenAt: serverTimestamp()
+  // Cierra inmediatamente el pop-up
+  toggleModal(inboxModal,false);
+  const _docId = currentInboxId;
+  const _data  = currentInboxData;
+  currentInboxId = null; currentInboxData = null;
+
+  try{
+    // Restar 1 unidad de la carta si la tenías
+    const cid = _data.cardId;
+    const localCard = state.cards.find(x=>x.id===cid);
+    if(localCard && (localCard.qty||0) > 0){
+      localCard.qty = Math.max(0, (localCard.qty||0) - 1);
+      state.useLog.push({
+        date: new Date().toISOString(),
+        cardId: cid,
+        name: `Te robaron ${_data.cardName} (−1)`,
+        note: `Por ${_data.attackerName||_data.attackerId}`
+      });
+      toast(`🔻 -1 ${_data.cardName}`);
+    } else {
+      toast("No tenías esa carta disponible para restar.");
+    }
+
+    // Marcar como aplicado
+    await updateDoc(doc(db,"stealRequests", _docId), {
+      status: "applied",
+      appliedAt: serverTimestamp(),
+      seenByVictim: true
     });
+
+    scheduleSave(); render();
   } catch(e){
-    console.warn("No se pudo marcar visto:", e);
+    console.error("Error al aplicar robo:", e);
   }
+};
 
   // Preview: una sola tarjeta
   inboxPreview.innerHTML = "";
@@ -905,24 +947,29 @@ async function showAttackInbox(docId, data){
 
   // Simplificamos: un único botón OK que aplica el ataque (karma −1)
   defenseButtons.innerHTML = "";
-  const okBtn = document.createElement("button"); okBtn.className="btn bad"; okBtn.textContent="OK (recibir ataque)";
-  okBtn.onclick = async () => {
-    try{
-      state.karma = (state.karma||0) - 1;
-      await updateDoc(doc(db,"attackRequests", currentAttackId), { status: "applied", resolvedAt: serverTimestamp() });
-      toast("⚡ Ataque aplicado: karma −1");
-      scheduleSave(); render();
-    } catch(e){
-      console.error("Error aplicando ataque:", e);
-    } finally {
-      toggleModal(attackModal,false);
-      currentAttackId = null; currentAttackData = null;
-    }
-  };
-  defenseButtons.appendChild(okBtn);
+const okBtn = document.createElement("button");
+okBtn.className = "btn bad";
+okBtn.textContent = "OK (recibir ataque)";
+okBtn.onclick = async () => {
+  // Cierra inmediatamente
+  toggleModal(attackModal,false);
+  const _docId = currentAttackId;
+  currentAttackId = null; currentAttackData = null;
 
-  toggleModal(attackModal,true);
-}
+  try{
+    state.karma = (state.karma||0) - 1;
+    await updateDoc(doc(db,"attackRequests", _docId), {
+      status: "applied",
+      resolvedAt: serverTimestamp()
+    });
+    toast("⚡ Ataque aplicado: karma −1");
+    scheduleSave(); render();
+  } catch(e){
+    console.error("Error aplicando ataque:", e);
+  }
+};
+defenseButtons.appendChild(okBtn);
+
 
 /* ========= Espiar ========= */
 function renderSpyMenu(){
