@@ -329,18 +329,18 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-// --- Manejo del resultado de signInWithRedirect (Google) ---
-try {
-  const redirectRes = await getRedirectResult(auth);
-  if (redirectRes && redirectRes.user) {
-    console.log("[Auth] Redirect OK como:", redirectRes.user.email || redirectRes.user.uid);
-    // onAuthStateChanged también se disparará; no hay que hacer más aquí
+// Recoger resultado del signInWithRedirect (evita que "no pase nada" tras volver de Google)
+(async ()=>{
+  try{
+    const r = await getRedirectResult(auth);
+    if(r && r.user){
+      console.log("[Auth] Redirect OK:", r.user.email||r.user.uid);
+    }
+  }catch(e){
+    console.error("[Auth] Redirect ERROR:", e);
+    alert("Error al completar el login (redirect): " + (e.code || e.message));
   }
-} catch (e) {
-  console.error("[Auth] Redirect ERROR:", e);
-  alert("Error al completar el login (redirect): " + (e.code || e.message));
-}
-
+})();
 const db = getFirestore(app);
 enableIndexedDbPersistence(db).catch(()=>{});
 
@@ -1177,37 +1177,51 @@ function showReward(win){
   $("#rewardDesc").textContent=win.desc;
   toggleModal(rewardModal,true);
 }
+let unsubAtkOut=null, unsubStealOut=null;
+function subscribeOutgoing(uid){
+  // Desuscribir previos
+  try{unsubAtkOut && unsubAtkOut()}catch{}
+  try{unsubStealOut && unsubStealOut()}catch{}
 
-/* ========= Feedback al atacante (ataques y robos) ========= */
-onSnapshot(query(attackCol, where("attackerId","==",()=>currentUser?.uid||"zz")), (snap)=>{
-  snap.docChanges().forEach(ch=>{
-    if(ch.type!=="modified") return;
-    const d=ch.doc.data();
-    if(d.status==="defended"){ toast(`🛡️ Rival defendió con ${d.defenseUsed}.`); }
-    if(d.status==="protected_success_refund"){
-      const my = state.cards.find(c=>c.name.toLowerCase()===d.cardName.toLowerCase());
-      if(my){ my.qty=(my.qty||0)+1; toast(`🪙 Protección (cara): te devuelven ${my.name}.`); scheduleSave(); render(); }
+  // ATAQUES enviados por mí
+  unsubAtkOut = onSnapshot(
+    query(attackCol, where("attackerId","==", uid)),
+    (snap)=>{
+      snap.docChanges().forEach(ch=>{
+        if(ch.type!=="modified") return;
+        const d=ch.doc.data();
+        if(d.status==="defended"){ toast(`🛡️ Rival defendió con ${d.defenseUsed}.`); }
+        if(d.status==="protected_success_refund"){
+          const my = state.cards.find(c=>c.name.toLowerCase()===d.cardName.toLowerCase());
+          if(my){ my.qty=(my.qty||0)+1; toast(`🪙 Protección (cara): te devuelven ${my.name}.`); scheduleSave(); render(); }
+        }
+      });
     }
-  });
-});
-onSnapshot(query(stealCol, where("attackerId","==",()=>currentUser?.uid||"zz")), (snap)=>{
-  snap.docChanges().forEach(ch=>{
-    if(ch.type!=="modified") return;
-    const d=ch.doc.data();
-    if(d.status==="defended"){
-      const stolen = state.cards.find(c=>c.id===d.cardId);
-      if(stolen && stolen.qty>0){ stolen.qty -= 1; toast(`🛡️ Robo bloqueado: −1 ${stolen.name}`); scheduleSave(); render(); }
+  );
+
+  // ROBOS enviados por mí
+  unsubStealOut = onSnapshot(
+    query(stealCol, where("attackerId","==", uid)),
+    (snap)=>{
+      snap.docChanges().forEach(ch=>{
+        if(ch.type!=="modified") return;
+        const d=ch.doc.data();
+        if(d.status==="defended"){
+          const stolen = state.cards.find(c=>c.id===d.cardId);
+          if(stolen && stolen.qty>0){ stolen.qty -= 1; toast(`🛡️ Robo bloqueado: −1 ${stolen.name}`); scheduleSave(); render(); }
+        }
+        if(d.status==="protected_success_refund"){
+          const stolen = state.cards.find(c=>c.id===d.cardId);
+          if(stolen && stolen.qty>0){ stolen.qty -= 1; }
+          const rs = state.cards.find(c=>c.name.toLowerCase()==="robo sigiloso");
+          if(rs){ rs.qty=(rs.qty||0)+1; }
+          toast("🪙 Protección (cara): te devuelven 'Robo sigiloso'.");
+          scheduleSave(); render();
+        }
+      });
     }
-    if(d.status==="protected_success_refund"){
-      const stolen = state.cards.find(c=>c.id===d.cardId);
-      if(stolen && stolen.qty>0){ stolen.qty -= 1; }
-      const rs = state.cards.find(c=>c.name.toLowerCase()==="robo sigiloso");
-      if(rs){ rs.qty=(rs.qty||0)+1; }
-      toast("🪙 Protección (cara): te devuelven 'Robo sigiloso'.");
-      scheduleSave(); render();
-    }
-  });
-});
+  );
+}
 
 /* ========= Auth state ========= */
 onAuthStateChanged(auth, async (u)=>{
@@ -1231,6 +1245,8 @@ onAuthStateChanged(auth, async (u)=>{
     toolsBox.style.display="none";
     [unsubInv,unsubProfiles,unsubInbox,unsubAttackInbox,unsubDebuffs,unsubGiftAlerts].forEach(fn=>{try{fn&&fn()}catch{}});
     state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[]}; render();
+   	 try{unsubAtkOut && unsubAtkOut()}catch{}
+   	 try{unsubStealOut && unsubStealOut()}catch{}
   }
 });
 </script>
