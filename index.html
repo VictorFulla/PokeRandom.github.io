@@ -217,6 +217,9 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 }
 /* hover sigue igual porque la sombra va en ::after */
 
+
+.btn.admin{background:#22d3ee;color:#06262b}
+
 </style>
 </head>
 <body>
@@ -318,9 +321,39 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     </aside>
   </div>
   <div class="footer small">Firestore por usuario. Robos/ataques con defensas. Exporta tu perfil para backup.</div>
+<button id="adminFab" class="btn" title="Admin" style="
+    position:fixed; right:20px; bottom:24px; z-index:120;
+    border-radius:999px; padding:14px 18px; background:#00c2ff; color:#001018; font-weight:900;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+  ">⚙️ Admin</button>
 </main>
 
 <div id="toast" class="toast"></div>
+
+<!-- Modal ADMIN cartas -->
+<div id="adminModal" class="modal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-label="Administrador de cartas" style="grid-template-columns:1fr">
+    <button class="closeX" id="adminCloseX">Cerrar</button>
+    <h3>🛠️ Administrador de cartas</h3>
+    <div class="small">Añade o resta cartas directamente de tu inventario. Las acciones quedarán registradas con etiqueta <strong>[ADMIN]</strong>.</div>
+    <div class="hr"></div>
+    <div class="flex">
+      <label class="small">Carta</label>
+      <select id="adminCardSelect"><option value="">— Elegir carta —</option></select>
+      <label class="small">Cantidad</label>
+      <input id="adminAmount" type="number" step="1" min="1" value="1" style="width:90px"/>
+      <span class="spacer"></span>
+      <label id="adminResolveWrap" class="small" style="display:none">
+        <input id="adminResolveSteal" type="checkbox" checked/> Marcar robo como resuelto
+      </label>
+    </div>
+    <div class="flex" style="margin-top:10px">
+      <button id="adminAdd" class="btn" style="background:#22d3ee;color:#06262b">+ Añadir</button>
+      <button id="adminSub" class="btn bad">− Restar</button>
+      <button id="adminClose" class="btn alt right">Cerrar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal Monedas -->
 <div id="coinModal" class="modal" aria-hidden="true">
@@ -909,6 +942,134 @@ function toggleModal(el,show){el.classList.toggle("show",!!show);el.setAttribute
 modals.forEach(m=>m.addEventListener("click",(e)=>{if(e.target===m)toggleModal(m,false)}));
 window.addEventListener("keydown",(e)=>{if(e.key==="Escape"){modals.forEach(m=>toggleModal(m,false))}});
 
+
+
+/* ========= Admin de cartas ========= */
+const adminFab = $("#adminFab");
+const adminModal = $("#adminModal");
+const adminCardSelect = $("#adminCardSelect");
+const adminAmount = $("#adminAmount");
+const adminAdd = $("#adminAdd");
+const adminSub = $("#adminSub");
+const adminClose = $("#adminClose");
+const adminCloseX = $("#adminCloseX");
+const adminResolveWrap = $("#adminResolveWrap");
+const adminResolveSteal = $("#adminResolveSteal");
+
+let __adminPendingStealId = null;
+
+// Saca un catálogo de cartas lo más robusto posible
+function getAdminCatalog(){
+  // Preferimos un catálogo "global" de todas las cartas
+  let cat = (window.cardsBase || window.CARD_DB || window.CARDS || window.ALL_CARDS || []);
+  // Si no existe, usamos el inventario del usuario como fallback
+  if (!Array.isArray(cat) || !cat.length){
+    cat = Array.isArray(state?.cards) ? state.cards : [];
+  }
+  // Normalizamos los campos (id + name) y filtramos duplicados
+  const seen = new Set();
+  const norm = [];
+  for (const it of cat){
+    const id = String(it.id || it.cardId || it.slug || it.key || it.code || "").trim();
+    const name = String(it.name || it.title || it.cardName || id).trim();
+    if (!id) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    norm.push({id, name});
+  }
+  // Orden alfabético por nombre
+  norm.sort((a,b)=> a.name.localeCompare(b.name, 'es'));
+  return norm;
+}
+
+function fillAdminOptions(force=false){
+  if (!adminCardSelect) return;
+  if (adminCardSelect.dataset.filled && !force) return;
+  const cat = getAdminCatalog();
+  const opts = ['<option value="">— Elegir carta —</option>']
+    .concat(cat.map(c => `<option value="${c.id}">${esc(c.name)} (${c.id})</option>`));
+  adminCardSelect.innerHTML = opts.join("");
+  adminCardSelect.dataset.filled = "1";
+}
+
+function openAdmin(opts={}){
+  fillAdminOptions(false);
+  if (opts.preselectId){
+    adminCardSelect.value = opts.preselectId;
+  } else if (opts.preselectName){
+    // Fallback por nombre exacto (insensible a mayúsculas)
+    const cat = getAdminCatalog();
+    const found = cat.find(c => (c.name||"").toLowerCase() === String(opts.preselectName||"").toLowerCase());
+    adminCardSelect.value = found ? found.id : "";
+  }
+  adminAmount.value = String(Math.max(1, parseInt(opts.amount||1,10) || 1));
+  __adminPendingStealId = opts.pendingStealId || null;
+  adminResolveWrap.style.display = __adminPendingStealId ? "inline-flex" : "none";
+  toggleModal(adminModal, true);
+  setTimeout(()=>{ try{ adminCardSelect?.focus(); }catch(_){ } }, 0);
+}
+
+if (adminFab) adminFab.onclick = ()=> openAdmin();
+
+if (adminClose)  adminClose.onclick  = ()=> toggleModal(adminModal,false);
+if (adminCloseX) adminCloseX.onclick = ()=> toggleModal(adminModal,false);
+
+async function adminApply(kind){
+  const id = adminCardSelect?.value || "";
+  const amt = Math.max(1, parseInt(adminAmount?.value||"1",10) || 1);
+  if (!id){ alert("Elige una carta"); return; }
+
+  // Aseguramos que exista la carta en el estado (si el catálogo no era el inventario)
+  let card = (state.cards||[]).find(c=> c.id === id);
+  if (!card){
+    // Si no existe, la creamos con qty 0 y nombre del catálogo
+    const cat = getAdminCatalog();
+    const found = cat.find(c=> c.id === id) || {id, name:id};
+    card = { id: found.id, name: found.name, qty: 0 };
+    state.cards = Array.isArray(state.cards) ? state.cards : [];
+    state.cards.push(card);
+  }
+
+  if (kind === "add"){
+    card.qty = (card.qty||0) + amt;
+    state.useLog.push({date:new Date().toISOString(), cardId:id, name:`[ADMIN] Añadida ${card.name} (+${amt})`});
+    toast && toast(`✅ [ADMIN] +${amt} ${card.name}`);
+  } else {
+    card.qty = Math.max(0, (card.qty||0) - amt);
+    state.useLog.push({date:new Date().toISOString(), cardId:id, name:`[ADMIN] Restada ${card.name} (−${amt})`});
+    toast && toast(`🗑️ [ADMIN] −${amt} ${card.name}`);
+  }
+
+  // Marcar robo como resuelto si venía de allí
+  if (__adminPendingStealId && adminResolveSteal?.checked){
+    try{
+      await updateDoc(doc(db,"stealRequests", __adminPendingStealId), {
+        status: "applied",
+        appliedAt: serverTimestamp(),
+        seenByVictim: true
+      });
+      __adminPendingStealId = null;
+    }catch(e){
+      console.warn("No se pudo marcar el robo como resuelto:", e);
+    }
+  }
+
+  // Guardar en MI inventario aunque estuviera espiando
+  const wasSpy = window.spyUid || null;
+  window.spyUid = null;
+  try{
+    if (typeof window.saveNow === "function") { await window.saveNow(); }
+    else if (typeof window.scheduleSave === "function") { window.scheduleSave(); }
+  } finally { window.spyUid = wasSpy; }
+
+  render && render();
+}
+
+if (adminAdd) adminAdd.onclick = ()=> adminApply("add");
+if (adminSub) adminSub.onclick = ()=> adminApply("sub");
+
+if (adminSub) adminSub.onclick = ()=> adminApply("sub");
+
 /* ========= Monedero ========= */
 $("#coinMenuBtn").onclick=()=>toggleModal($("#coinModal"),true);
 $("#coinClose").onclick=()=>toggleModal($("#coinModal"),false);
@@ -1138,37 +1299,16 @@ function resolveVictimCard(data){
   // --- OK: RESTAR por ID exacto y marcar applied ---
   if (inboxApply){
     inboxApply.onclick = async ()=>{
-      toggleModal(inboxModal,false);
-      try{
-        const list = Array.isArray(window.state?.cards) ? window.state.cards : [];
-        const cid  = _data?.cardId || "";
-        const card = list.find(c => c.id === cid);
-        if (card){ card.qty = Math.max(0, (card.qty||0) - 1); }
-
-        if (_docId){
-          await updateDoc(doc(db,"stealRequests", _docId), {
-            status: "applied",
-            appliedAt: serverTimestamp(),
-            seenByVictim: true
-          });
-        }
-
-        // Guardar SIEMPRE en MI inventario (reglas: solo el dueño puede escribir)
-        const wasSpy = window.spyUid || null;
-        window.spyUid = null;
-        try{
-          if (typeof window.saveNow === "function") { await window.saveNow(); }
-          else if (typeof window.scheduleSave === "function") { window.scheduleSave(); }
-        } finally {
-          window.spyUid = wasSpy;
-        }
-
-        if (typeof render === "function") render();
-      }catch(e){
-        console.warn("Error aplicando robo minimal:", e);
-      }
-      _docId = null; _data = null;
-    };
+  // Cierra el popup y abre Admin preseleccionado
+  toggleModal(inboxModal,false);
+  try{
+    const preId = _data?.cardId || "";
+    const preName = _data?.cardName || "";
+    // No restamos aquí. Lo hará el menú Admin manualmente.
+    openAdmin({ preselectId: preId, preselectName: preName, amount: 1, pendingStealId: _docId });
+  }catch(e){ console.warn("No se pudo abrir Admin:", e); }
+  _docId=null; _data=null;
+};
   }
 })();
 
