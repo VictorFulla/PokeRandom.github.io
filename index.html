@@ -100,15 +100,6 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 .cardSlot *:not(button){ pointer-events:none; }
 .cardSlot .btn, .cardSlot .clickable{ pointer-events:auto; }
 
-
-/* === Anti-flicker hover: move shadow to pseudo-element & ignore child pointer events === */
-.cardSlot{ position:relative; will-change:opacity,transform; transform:translateZ(0); backface-visibility:hidden; }
-.cardSlot::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; box-shadow:0 0 0 rgba(0,0,0,0); transition:box-shadow .15s ease, opacity .15s ease; opacity:1; }
-.cardSlot:hover::after{ box-shadow:0 10px 30px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.10); }
-.cardSlot *{ pointer-events:none; }
-.cardSlot .btn, .cardSlot .clickable, .cardSlot a{ pointer-events:auto; }
-.cardSlot .imgWrap img{ display:block; max-width:100%; height:auto; pointer-events:none; -webkit-transform:translateZ(0); image-rendering:auto; }
-
 </style>
 </head>
 <body>
@@ -646,14 +637,10 @@ function subscribeInventory(uid){
   if(unsubInv){unsubInv();unsubInv=null}
   unsubInv = onSnapshot(invRef(uid), (snap)=>{
   if(!snap.exists()) return;
-  const next = migrateState(snap.data()||state);
-  const prevStr = JSON.stringify(state);
-  const nextStr = JSON.stringify(next);
-  if (nextStr !== prevStr) {
-    state = next;
-    render();
-    try{ scheduleSave(); }catch{}
-  }
+  state = migrateState(snap.data()||state);
+  render();
+  // Guarda de vuelta el estado limpio (deja la base sin duplicados)
+  try{ scheduleSave(); }catch{}
 });
 }
 function subscribeStealInbox(uid){
@@ -715,7 +702,7 @@ function scheduleSave(){ if(spyUid||!currentUser) return; clearTimeout(saveTimer
 async function saveNow(){ await setDoc(invRef(currentUser.uid), {...state, updatedAt:serverTimestamp()}, {merge:true}); }
 
 /* ========= Render ========= */
-function __realRender(){
+function render(){
   $("#mainSection").classList.toggle("readonly", !!spyUid);
   coinsEl.textContent=String(state.coins||0);
   coinsMini.textContent=String(state.coins||0);
@@ -779,35 +766,6 @@ $("#karmaBtn").onclick=async()=>{
 
 /* ========= Modales comunes ========= */
 const modals=[...document.querySelectorAll(".modal")];
-// ===== Hover-freeze render wrapper (prevents flicker on Firebase updates) =====
-const gridElFreeze = document.querySelector("#cardsGrid");
-let __freezeUI = false;
-let __pendingRender = false;
-let __lastStateJSON = "";
-
-if (gridElFreeze) {
-  gridElFreeze.addEventListener("mouseenter", () => { __freezeUI = true; }, true);
-  gridElFreeze.addEventListener("mouseleave", () => {
-    __freezeUI = false;
-    if (__pendingRender) { __pendingRender = false; __realRender(); }
-  }, true);
-}
-
-function render(){
-  // Avoid redundant renders with identical state string (many snapshots duplicate)
-  try {
-    const j = JSON.stringify(state);
-    if (j === __lastStateJSON) {
-      if (!__freezeUI) { /* nothing */ } else { __pendingRender = true; }
-      return;
-    }
-    __lastStateJSON = j;
-  } catch(e){ /* ignore */ }
-
-  if (__freezeUI) { __pendingRender = true; return; }
-  __realRender();
-}
-
 function toggleModal(el,show){el.classList.toggle("show",!!show);el.setAttribute("aria-hidden",show?"false":"true")}
 modals.forEach(m=>m.addEventListener("click",(e)=>{if(e.target===m)toggleModal(m,false)}));
 window.addEventListener("keydown",(e)=>{if(e.key==="Escape"){modals.forEach(m=>toggleModal(m,false))}});
@@ -1220,11 +1178,20 @@ $("#spinPaid").onclick=async()=>{
   const ru = findCardByName("Ruleta");
   if(!ru || (ru.qty||0)<=0){ alert("No tienes tiradas de Ruleta."); return; }
   if(!confirm("¿Gastar 1 Ruleta? Esto es aleatorio, no me odies si sale feo 😅")) return;
-  ru.qty-=1;
-  const res = await doSpin();
-  showReward(res);
-  state.useLog.push({date:new Date().toISOString(), name:`Ganaste por ruleta: ${res.name} (+1)`});
-  scheduleSave(); render();
+
+  // Calculamos el premio SIN tocar aún el estado
+  const chosen = doSpin();
+
+  // Aplicamos de forma atómica en el estado local y guardamos antes de mostrar
+  ru.qty = Math.max(0, (ru.qty||0) - 1);
+  const mine = state.cards.find(c=>c.id===chosen.id);
+  if(mine) mine.qty = (mine.qty||0) + 1;
+
+  try { await saveNow(); } catch(e) { /* best effort; se reintenta vía schedule */ }
+
+  showReward(chosen);
+  state.useLog.push({date:new Date().toISOString(), name:`Ganaste por ruleta: ${chosen.name} (+1)`});
+  render();
 };
 $("#spinFree").onclick=async()=>{
   if(spyUid||!currentUser)return;
@@ -1234,20 +1201,20 @@ $("#spinFree").onclick=async()=>{
   state.useLog.push({date:new Date().toISOString(), name:"Ruleta gratis (post-gym) (+1)"}); 
   scheduleSave(); render();
 };
-async function doSpin(){
-  // Fijos: 10 monedas + Monedero perdido
-  const ten = findCardByName("10 monedas"); if(ten) ten.qty=(ten.qty||0)+1;
-  const mp  = findCardByName("Monedero perdido"); if(mp) mp.qty=(mp.qty||0)+1;
-
-  // Bolsa ponderada: 1 legendaria (coste 10 o 13), 1 épica (7), 3 de coste 4, 4 de coste 2
+function doSpin(){
+  // Pool: 1 legendaria (coste 10 o 13), 2 épicas (7), 3 raras (4), 4 comunes (2)
   const leg = pickRandomByCost([13,10],1);
-  const epi = pickRandomByCost([7],1);
+  const epi = pickRandomByCost([7],2);
   const rar = pickRandomByCost([4],3);
   const com = pickRandomByCost([2],4);
-  const pool = [...leg,...epi,...rar,...com];
+  const pool = [...leg, ...epi, ...rar, ...com];
+
+  // Añadimos “10 monedas” y “Monedero perdido” como opciones dentro de la pool
+  const ten = findCardByName("10 monedas"); if(ten) pool.push(ten);
+  const mp  = findCardByName("Monedero perdido"); if(mp) pool.push(mp);
+
+  // Elegimos una única carta
   const chosen = pool[Math.floor(Math.random()*pool.length)];
-  const mine = state.cards.find(c=>c.id===chosen.id);
-  if(mine) mine.qty=(mine.qty||0)+1;
   slotText.textContent = chosen.name;
   return chosen;
 }
