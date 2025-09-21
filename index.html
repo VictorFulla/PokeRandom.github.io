@@ -88,45 +88,26 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
   transition: box-shadow 120ms ease, filter 120ms ease;
 }
 
-/* ——— Hover estable para cartas (parche Pages) ——— */
-.cardSlot{
-  position: relative;
-  /* Fijamos capa de composición para evitar re-paints que cortan hover */
-  will-change: transform;
-  backface-visibility: hidden;
-  transform: translateZ(0);
-  /* Evitamos cambios de tamaño: no escalar en hover, solo sombra */
-  transition: box-shadow 140ms ease;
-  z-index: 0;                 /* base estable */
-  contain: paint;             /* que sus hijos no afecten hover del grid */
-}
-
-/* Sombra sin tocar layout ni desplazar el elemento */
-.cardSlot:hover{
-  box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.10);
-  z-index: 1;                 /* para que la sombra no choque con vecinos */
-}
-
-/* Aumentamos ligeramente el área "capturable" del hover SIN bloquear clicks */
+/* Extiende un pelín el hitbox para evitar perder hover en el borde */
 .cardSlot::before{
   content:"";
   position:absolute;
-  inset:-4px;                 /* +4px alrededor del slot */
-  pointer-events:none;        /* no intercepta el click */
+  inset:-3px;           /* amplía 3px alrededor sin afectar layout */
+  pointer-events:none;  /* no bloquea el click */
 }
 
-/* Muy importante: que los hijos no cambien el target del puntero */
+/* Evita que hijitos “roben” el hover/click si hay gaps de imagen/texto */
+.cardSlot *:not(button){ pointer-events:none; }
+.cardSlot .btn, .cardSlot .clickable{ pointer-events:auto; }
+
+
+/* === Anti-flicker hover: move shadow to pseudo-element & ignore child pointer events === */
+.cardSlot{ position:relative; will-change:opacity,transform; transform:translateZ(0); backface-visibility:hidden; }
+.cardSlot::after{ content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; box-shadow:0 0 0 rgba(0,0,0,0); transition:box-shadow .15s ease, opacity .15s ease; opacity:1; }
+.cardSlot:hover::after{ box-shadow:0 10px 30px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.10); }
 .cardSlot *{ pointer-events:none; }
-.cardSlot .btn,
-.cardSlot .clickable{ pointer-events:auto; }
-
-/* Las imágenes en block (sin espacios/descensos) y sin robarnos el puntero */
-.cardSlot .imgWrap img{
-  display:block;
-  max-width:100%;
-  max-height:100%;
-  pointer-events:none;
-}
+.cardSlot .btn, .cardSlot .clickable, .cardSlot a{ pointer-events:auto; }
+.cardSlot .imgWrap img{ display:block; max-width:100%; height:auto; pointer-events:none; -webkit-transform:translateZ(0); image-rendering:auto; }
 
 </style>
 </head>
@@ -665,10 +646,14 @@ function subscribeInventory(uid){
   if(unsubInv){unsubInv();unsubInv=null}
   unsubInv = onSnapshot(invRef(uid), (snap)=>{
   if(!snap.exists()) return;
-  state = migrateState(snap.data()||state);
-  render();
-  // Guarda de vuelta el estado limpio (deja la base sin duplicados)
-  try{ scheduleSave(); }catch{}
+  const next = migrateState(snap.data()||state);
+  const prevStr = JSON.stringify(state);
+  const nextStr = JSON.stringify(next);
+  if (nextStr !== prevStr) {
+    state = next;
+    render();
+    try{ scheduleSave(); }catch{}
+  }
 });
 }
 function subscribeStealInbox(uid){
@@ -730,7 +715,7 @@ function scheduleSave(){ if(spyUid||!currentUser) return; clearTimeout(saveTimer
 async function saveNow(){ await setDoc(invRef(currentUser.uid), {...state, updatedAt:serverTimestamp()}, {merge:true}); }
 
 /* ========= Render ========= */
-function render(){
+function __realRender(){
   $("#mainSection").classList.toggle("readonly", !!spyUid);
   coinsEl.textContent=String(state.coins||0);
   coinsMini.textContent=String(state.coins||0);
@@ -794,6 +779,35 @@ $("#karmaBtn").onclick=async()=>{
 
 /* ========= Modales comunes ========= */
 const modals=[...document.querySelectorAll(".modal")];
+// ===== Hover-freeze render wrapper (prevents flicker on Firebase updates) =====
+const gridElFreeze = document.querySelector("#cardsGrid");
+let __freezeUI = false;
+let __pendingRender = false;
+let __lastStateJSON = "";
+
+if (gridElFreeze) {
+  gridElFreeze.addEventListener("mouseenter", () => { __freezeUI = true; }, true);
+  gridElFreeze.addEventListener("mouseleave", () => {
+    __freezeUI = false;
+    if (__pendingRender) { __pendingRender = false; __realRender(); }
+  }, true);
+}
+
+function render(){
+  // Avoid redundant renders with identical state string (many snapshots duplicate)
+  try {
+    const j = JSON.stringify(state);
+    if (j === __lastStateJSON) {
+      if (!__freezeUI) { /* nothing */ } else { __pendingRender = true; }
+      return;
+    }
+    __lastStateJSON = j;
+  } catch(e){ /* ignore */ }
+
+  if (__freezeUI) { __pendingRender = true; return; }
+  __realRender();
+}
+
 function toggleModal(el,show){el.classList.toggle("show",!!show);el.setAttribute("aria-hidden",show?"false":"true")}
 modals.forEach(m=>m.addEventListener("click",(e)=>{if(e.target===m)toggleModal(m,false)}));
 window.addEventListener("keydown",(e)=>{if(e.key==="Escape"){modals.forEach(m=>toggleModal(m,false))}});
