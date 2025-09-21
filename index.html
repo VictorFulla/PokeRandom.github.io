@@ -132,16 +132,40 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 }
 
 /* El contador/badge en la esquina: por encima de todo */
-.cardSlot .qty,
+/* ✅ SOLO el contador de la esquina va en absoluto */
+.cardSlot .qty{
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ✅ Restaura las pills (precio/rareza) a su sitio normal */
 .cardSlot .badge,
 .cardSlot .counter,
-.cardSlot .count-badge{
-  position: absolute;
-  top: 6px;             /* ajusta si lo necesitas */
-  right: 6px;           /* ajusta si lo necesitas */
-  z-index: 3;           /* MAX prioridad dentro de la carta */
-  pointer-events: none; /* que no robe el hover/click */
+.cardSlot .count-badge,
+.cardSlot .pill,
+.cardSlot .tag{
+  position: static;        /* vuelven al flujo */
+  z-index: 1;              /* encima de la sombra, debajo del contador */
+  pointer-events: none;    /* que no roben el hover */
 }
+
+/* (opcional) Si usas un separador con puntito, asegúrate de que no “flota” raro */
+.cardSlot .meta, .cardSlot .badges{
+  display: flex;
+  align-items: center;
+  gap: 8px;                /* separa pill–punto–pill */
+}
+.cardSlot .dot{
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  opacity: .35;
+  pointer-events: none;
+}
+
 
 /* Si tu triangulito verde es un pseudo-elemento del badge,
    asegúrate de que también esté por encima */
