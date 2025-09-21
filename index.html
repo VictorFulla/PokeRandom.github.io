@@ -1069,30 +1069,32 @@ state.karma = (state.karma||0) + 1;
 
   // Exponemos la función para que el resto del código pueda invocarla
  window.showStealInbox = async function showStealInbox(docId, data){
-  // —— Helpers para resolver carta por id o por nombre canónico ——
+  // —— Helpers para resolver carta por id o por nombre (ignorando espacios) ——
   const canon = (s)=> String(s||"")
     .toLowerCase()
-    .replace(/\s*\(.*?\)\s*/g,"")
-    .replace(/\s+/g," ")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/\s*\(.*?\)\s*/g,"")                 // quita "(monedas)" etc.
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // sin acentos
+    .replace(/[\s_\-]+/g,"")                      // ⭐️ quita TODOS los espacios/guiones
     .trim();
 
   const getCardByIdOrName = (cid, cname) => {
     const list = (window.state?.cards)||[];
+    // 1) por ID
     const byId = list.find(c => c.id === cid);
     if (byId) return byId;
-    const nameC = canon(cname);
-    if (!nameC) return null;
-    return list.find(c => canon(c.name) === nameC) || null;
+    // 2) por nombre (ignorando espacios)
+    const target = canon(cname);
+    if (!target) return null;
+    return list.find(c => canon(c.name) === target) || null;
   };
 
-  // —— Validaciones básicas ——
+  // —— Guardas de DOM ——
   if (!inboxModal || !inboxText || !inboxPreview || !inboxApply) {
     console.warn("Faltan elementos del modal de robo en el DOM.");
     return;
   }
 
-  // —— Contexto de la notificación ——
+  // —— Contexto ——
   currentInboxId   = docId;
   currentInboxData = data;
 
@@ -1100,7 +1102,7 @@ state.karma = (state.karma||0) + 1;
   inboxText.innerHTML =
     `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
 
-  // Marcar como visto al abrir (para que no reaparezca al recargar)
+  // Marcar como visto al abrir
   try {
     await updateDoc(doc(db,"stealRequests", currentInboxId), {
       seenByVictim: true,
@@ -1108,7 +1110,7 @@ state.karma = (state.karma||0) + 1;
     });
   } catch(e){ console.warn("No se pudo marcar visto:", e); }
 
-  // —— Preview 1× carta (ID y, si falla, nombre) ——
+  // —— Preview 1× carta (si el id falla, usamos nombre ignorando espacios) ——
   inboxPreview.innerHTML = "";
   const cardDef =
     getCardByIdOrName(data.cardId, data.cardName) ||
@@ -1126,7 +1128,8 @@ state.karma = (state.karma||0) + 1;
   const meta  = document.createElement("div");  meta.className  = "small";
   meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost ?? "?"} 🪙</span>`;
 
-  const qtyNow = (getCardByIdOrName(data.cardId, data.cardName)?.qty) || 0;
+  const victimLocal = getCardByIdOrName(data.cardId, data.cardName);
+  const qtyNow = (victimLocal?.qty) || 0; // antes te salía 0 por el mismatch “SkipPokemon” vs “Skip pokemon”
   const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
 
   block.appendChild(imgWrap);
@@ -1135,7 +1138,7 @@ state.karma = (state.karma||0) + 1;
   block.appendChild(qty);
   inboxPreview.appendChild(block);
 
-  // —— Botón OK: cierra YA y aplica en segundo plano ——
+  // —— Botón OK: cerrar YA y aplicar en 2º plano ——
   inboxApply.onclick = async () => {
     if (!currentInboxId || !currentInboxData) {
       if (typeof toggleModal === "function") toggleModal(inboxModal,false);
@@ -1150,7 +1153,7 @@ state.karma = (state.karma||0) + 1;
     currentInboxId = null; currentInboxData = null;
 
     try{
-      // Restar 1 resolviendo por id → nombre
+      // Restar 1 con resolución robusta
       const victimCard = getCardByIdOrName(_data.cardId, _data.cardName);
       if (victimCard && (victimCard.qty||0) > 0){
         victimCard.qty = Math.max(0, (victimCard.qty||0) - 1);
@@ -1165,7 +1168,6 @@ state.karma = (state.karma||0) + 1;
         if (typeof toast === "function") toast(`No encontré la carta (id=${_data.cardId || "?"} / name=${_data.cardName || "?"}) o cantidad 0.`);
       }
 
-      // No vuelve a salir
       await updateDoc(doc(db,"stealRequests", _docId), {
         status: "applied",
         appliedAt: serverTimestamp(),
