@@ -1128,13 +1128,14 @@ state.karma = (state.karma||0) + 1;
   const meta  = document.createElement("div");  meta.className  = "small";
   meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost ?? "?"} 🪙</span>`;
 
-  const qtyNow = Math.max(0, victimLocal?.qty|0);
-if (qtyNow > 0) {
-  const qty = document.createElement("div");
-  qty.className = "qty";
-  qty.textContent = "× " + qtyNow;
+  const victimLocal = getCardByIdOrName(data.cardId, data.cardName);
+  const qtyNow = (victimLocal?.qty) || 0; // antes te salía 0 por el mismatch “SkipPokemon” vs “Skip pokemon”
+  const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
+
+  block.appendChild(imgWrap);
+  block.appendChild(title);
+  block.appendChild(meta);
   block.appendChild(qty);
-}
   inboxPreview.appendChild(block);
 
   // —— Botón OK: cerrar YA y aplicar en 2º plano ——
@@ -1577,3 +1578,93 @@ $("#rewardClose").onclick=()=>toggleModal($("#rewardModal"),false);
 </script>
 </body>
 </html>
+
+/* ===== REWRITE POPUPS DE ROBO (simple) ===== */
+(function(){
+  const $ = (sel)=>document.querySelector(sel);
+  const esc = (s)=>String(s??'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+  const inboxModal = $("#inboxModal");
+  const inboxText = $("#inboxText");
+  const inboxPreview = $("#inboxPreview");
+  const inboxApply = $("#inboxApply");
+  const inboxCloseX = $("#inboxCloseX");
+
+  let currentInboxId=null, currentInboxData=null;
+
+  // Redefinir subscribe (usa el último pendiente)
+  window.subscribeStealInbox = function(uid){
+    if (window.unsubInbox) { try{ window.unsubInbox(); }catch{} window.unsubInbox=null; }
+    const qv = query(collection(db,"stealRequests"),
+                     where("victimId","==",uid),
+                     where("status","==","pending"));
+    window.unsubInbox = onSnapshot(qv, async (snap)=>{
+      const docs = snap.docs; if(!docs.length) return;
+      const ordered = [...docs].sort((a,b)=>{
+        const as=a.data().createdAt?.seconds||0, bs=b.data().createdAt?.seconds||0;
+        return bs-as;
+      });
+      const first = ordered[0];
+      window.showStealInbox(first.id, first.data());
+    });
+  };
+
+  // Resolver carta por id o por nombre
+  function canon(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,''); }
+  function getCardByIdOrName(cid, cname){
+    const list = (window.state?.cards)||[];
+    let byId = list.find(c=>c.id===cid);
+    if (byId) return byId;
+    const target = canon(cname);
+    return list.find(c=>canon(c.id)===target || canon(c.name)===target) || null;
+  }
+
+  window.showStealInbox = async function(docId, data){
+    if (!inboxModal || !inboxText || !inboxPreview || !inboxApply) return;
+    currentInboxId = docId; currentInboxData = data;
+
+    // Texto
+    const attacker = data.attackerName || data.attackerId || "Alguien";
+    inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName||'una carta')}</strong>.`;
+
+    // Preview clean
+    inboxPreview.innerHTML='';
+    const def = getCardByIdOrName(data.cardId, data.cardName) || {id:data.cardId, name:data.cardName||'Carta'};
+    const slot = document.createElement('div'); slot.className='cardSlot';
+    const wrap = document.createElement('div'); wrap.className='imgWrap';
+    const im = document.createElement('img'); im.alt = def.name;
+    im.src = `img/${def.id}.png`; im.onerror = ()=>{ if(!im.dataset.j){ im.dataset.j=1; im.src=`img/${def.id}.jpg`; } };
+    wrap.appendChild(im);
+    const title = document.createElement('div'); title.className='title'; title.textContent = def.name;
+    const meta = document.createElement('div'); meta.className='small'; meta.textContent = '';
+    slot.appendChild(wrap); slot.appendChild(title); slot.appendChild(meta);
+    inboxPreview.appendChild(slot);
+
+    // Botón OK (restar 1 y aplicar)
+    inboxApply.onclick = async ()=>{
+      try{
+        const invCard = getCardByIdOrName(data.cardId, data.cardName);
+        if (invCard && (invCard.qty||0)>0) {
+          invCard.qty = Math.max(0,(invCard.qty||0)-1);
+          (window.state?.useLog||[]).push({date:new Date().toISOString(), cardId:invCard.id, name:`Te robaron ${data.cardName||invCard.name} (−1)`, note:`Por ${attacker}`});
+          if (typeof toast==='function') toast(`🔻 -1 ${data.cardName || invCard.name}`);
+        } else {
+          if (typeof toast==='function') toast('No encontré la carta en tu inventario.');
+        }
+        await updateDoc(doc(db,'stealRequests', docId), { status:'applied', seenByVictim:true, appliedAt: serverTimestamp() });
+        if (typeof scheduleSave==='function') scheduleSave();
+        if (typeof render==='function') render();
+      } catch(e){ console.error('apply steal error', e); }
+      if (typeof toggleModal==='function') toggleModal(inboxModal,false);
+    };
+
+    // Cerrar con X: solo marcar visto (no aplica)
+    if (inboxCloseX){
+      inboxCloseX.onclick = async ()=>{
+        try{ await updateDoc(doc(db,'stealRequests', docId), { seenByVictim:true, seenAt: serverTimestamp() }); }catch(e){ console.warn(e); }
+        if (typeof toggleModal==='function') toggleModal(inboxModal,false);
+      };
+    }
+
+    if (typeof toggleModal==='function') toggleModal(inboxModal,true);
+  };
+})();
