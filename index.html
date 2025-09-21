@@ -1128,14 +1128,13 @@ state.karma = (state.karma||0) + 1;
   const meta  = document.createElement("div");  meta.className  = "small";
   meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost ?? "?"} 🪙</span>`;
 
-  const victimLocal = getCardByIdOrName(data.cardId, data.cardName);
-  const qtyNow = (victimLocal?.qty) || 0; // antes te salía 0 por el mismatch “SkipPokemon” vs “Skip pokemon”
-  const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
-
-  block.appendChild(imgWrap);
-  block.appendChild(title);
-  block.appendChild(meta);
+  const qtyNow = Math.max(0, victimLocal?.qty|0);
+if (qtyNow > 0) {
+  const qty = document.createElement("div");
+  qty.className = "qty";
+  qty.textContent = "× " + qtyNow;
   block.appendChild(qty);
+}
   inboxPreview.appendChild(block);
 
   // —— Botón OK: cerrar YA y aplicar en 2º plano ——
