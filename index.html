@@ -1083,7 +1083,7 @@ function resolveVictimCard(data){
 }
 
 /* ========= Robos (víctima) ========= */
-(function(){ 
+(function(){
   const $ = (s)=> document.querySelector(s);
   const inboxModal   = $("#inboxModal");
   const inboxText    = $("#inboxText");
@@ -1091,9 +1091,8 @@ function resolveVictimCard(data){
   const inboxApply   = $("#inboxApply");
   const inboxCloseX  = $("#inboxCloseX");
 
-  let _docId  = null;
-  let _data   = null;
-  let _imgKey = null;   // <-- HOOK A: clave de imagen (p.ej. "c01")
+  let _docId = null;
+  let _data  = null;
 
   function toggleModal(el, show){
     if (!el) return;
@@ -1101,111 +1100,76 @@ function resolveVictimCard(data){
     el.setAttribute("aria-hidden", show ? "false" : "true");
   }
 
-  // Normaliza string a “clave” (c01, ruleta, etc.)
-  function key(s){
-    return String(s||"").toLowerCase()
-      .replace(/\.[a-z0-9]+$/,'')           // quita extensión
-      .replace(/^img[\\/]/,'')              // quita prefijo img/
-      .replace(/[^\w]+/g,'')                // sólo letras/números/_
-      .trim();
-  }
-
-  // Busca en MI inventario por la misma clave de imagen
-  function findByImageKey(imgKey){
-    const list = Array.isArray(window.state?.cards) ? window.state.cards : [];
-    if (!list.length || !imgKey) return null;
-
-    // Candidatos por cada carta: id, name y posibles campos de imagen si existen
-    for (const c of list){
-      const cand = [];
-      if (c.id)   cand.push(key(c.id));
-      if (c.name) cand.push(key(c.name));
-      if (c.img)  cand.push(key(c.img));
-      if (c.image)cand.push(key(c.image));
-      if (cand.includes(imgKey)) return c;
-    }
-    return null;
-  }
-
-  // Abre popup
+  // --- Abrir popup: solo pinta texto + miniatura por cardId ---
   window.showStealInbox = async function(docId, data){
-    _docId  = docId;
-    _data   = data || {};
-    _imgKey = null;
+    _docId = docId;
+    _data  = data || {};
 
     const who  = data?.attackerName || data?.attackerId || "otro jugador";
-    const what = data?.cardName     || data?.cardId     || "una carta";
+    const what = data?.cardName || data?.cardId || "una carta";
     if (inboxText) inboxText.innerHTML = `<strong>${who}</strong> te ha robado <strong>${what}</strong>.`;
 
-    // Vista previa mínima + fijar _imgKey
-    if (inboxPreview) {
+    if (inboxPreview){
       inboxPreview.innerHTML = "";
       const wrap = document.createElement("div"); wrap.className = "cardSlot";
       const imgw = document.createElement("div"); imgw.className = "imgWrap";
-      const img  = document.createElement("img");
-
-      // Si viene cardId, úsalo como imagen
-      const cid = data?.cardId ? String(data.cardId) : "";
-      if (cid){
-        _imgKey = key(cid);                          // <-- HOOK A: clave directa por id
-        img.src = `img/${cid}.png`;
-        img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = `img/${cid}.jpg`; } };
-      }else{
-        // Si no hay id, intenta con nombre → clave y recursos genéricos
-        _imgKey = key(data?.cardName || data?.slug || "");
-        img.src = _imgKey ? `img/${_imgKey}.png` : `img/_.png`;
-        img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = _imgKey ? `img/${_imgKey}.jpg` : `img/_.jpg`; } };
-      }
-
-      img.alt = what;
+      const img  = document.createElement("img"); img.alt = what;
+      const cid  = data?.cardId || "";
+      img.src = cid ? `img/${cid}.png` : `img/_.png`;
+      img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = cid ? `img/${cid}.jpg` : `img/_.jpg`; } };
       imgw.appendChild(img);
       const title = document.createElement("div"); title.className = "title"; title.textContent = what;
       wrap.appendChild(imgw); wrap.appendChild(title);
       inboxPreview.appendChild(wrap);
     }
 
-    // Marca visto para que no reaparezca
-    try { await updateDoc(doc(db,"stealRequests", docId), { seenByVictim:true, seenAt: serverTimestamp() }); } catch(_){}
+    // marcar visto para no repetir
+    try{ await updateDoc(doc(db,"stealRequests", docId), { seenByVictim:true, seenAt: serverTimestamp() }); }catch(_){}
 
     toggleModal(inboxModal, true);
-    setTimeout(()=>{ try{ inboxApply?.focus(); }catch(_){} }, 0);
+    setTimeout(()=>{ try{ inboxApply?.focus(); }catch(_){ } }, 0);
   };
 
   // Cerrar con la X
-  if (inboxCloseX) inboxCloseX.onclick = ()=>{
-    toggleModal(inboxModal,false); _docId=null; _data=null; _imgKey=null;
-  };
+  if (inboxCloseX){
+    inboxCloseX.onclick = ()=>{ toggleModal(inboxModal,false); _docId = null; _data = null; };
+  }
 
-  // OK: restar 1 por la MISMA IMAGEN y marcar aplicado
-  if (inboxApply) inboxApply.onclick = async ()=>{
-    toggleModal(inboxModal,false);
-    try{
-      // <-- HOOK B: buscar por imagen
-      const card = findByImageKey(_imgKey);
-      if (card) { card.qty = Math.max(0, (card.qty||0) - 1); }
-
-      if (_docId){
-        await updateDoc(doc(db,"stealRequests", _docId), {
-          status:"applied", appliedAt: serverTimestamp(), seenByVictim:true
-        });
-      }
-
-      // Guardar SIEMPRE en MI inventario (reglas: sólo el dueño puede escribir)
-      const wasSpy = window.spyUid || null;
-      window.spyUid = null;
+  // --- OK: RESTAR por ID exacto y marcar applied ---
+  if (inboxApply){
+    inboxApply.onclick = async ()=>{
+      toggleModal(inboxModal,false);
       try{
-        if (typeof window.saveNow === "function") await window.saveNow();
-        else if (typeof window.scheduleSave === "function") window.scheduleSave();
-      }finally{
-        window.spyUid = wasSpy;
-      }
+        const list = Array.isArray(window.state?.cards) ? window.state.cards : [];
+        const cid  = _data?.cardId || "";
+        const card = list.find(c => c.id === cid);
+        if (card){ card.qty = Math.max(0, (card.qty||0) - 1); }
 
-      if (typeof render === "function") render();
-    }catch(e){
-      console.warn("Error aplicando robo por imagen:", e);
-    }
-    _docId=null; _data=null; _imgKey=null;
-  };
+        if (_docId){
+          await updateDoc(doc(db,"stealRequests", _docId), {
+            status: "applied",
+            appliedAt: serverTimestamp(),
+            seenByVictim: true
+          });
+        }
+
+        // Guardar SIEMPRE en MI inventario (reglas: solo el dueño puede escribir)
+        const wasSpy = window.spyUid || null;
+        window.spyUid = null;
+        try{
+          if (typeof window.saveNow === "function") { await window.saveNow(); }
+          else if (typeof window.scheduleSave === "function") { window.scheduleSave(); }
+        } finally {
+          window.spyUid = wasSpy;
+        }
+
+        if (typeof render === "function") render();
+      }catch(e){
+        console.warn("Error aplicando robo minimal:", e);
+      }
+      _docId = null; _data = null;
+    };
+  }
 })();
 
 /* ========= Ataques (víctima) ========= */
