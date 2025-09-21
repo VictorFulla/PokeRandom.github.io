@@ -1037,150 +1037,135 @@ state.karma = (state.karma||0) + 1;
   toast("🕵️ Robo enviado. El rival confirmará la resta.");
 };
 
-<!-- ========= Robos (víctima) ========= -->
-// Refs del modal de notificación de robo
-const inboxModal  = $("#inboxModal"),
-      inboxText   = $("#inboxText"),
-      inboxPreview= $("#inboxPreview"),
-      inboxApply  = $("#inboxApply"),
-      inboxCloseX = $("#inboxCloseX");
+/* ========= Robos (víctima) ========= */
+(function(){
+  // Toma refs con fallback (no revienta si $ no existe)
+  const $el = (sel)=> (window.$ ? $(sel) : document.querySelector(sel));
+  const inboxModal   = $el("#inboxModal");
+  const inboxText    = $el("#inboxText");
+  const inboxPreview = $el("#inboxPreview");
+  const inboxApply   = $el("#inboxApply");
+  const inboxCloseX  = $el("#inboxCloseX");
 
-let currentInboxId = null;
-let currentInboxData = null;
-let unsubInbox = null;
+  // Estado local del popup
+  let currentInboxId   = null;
+  let currentInboxData = null;
 
-// Cerrar con la X: marca visto y cierra
-inboxCloseX.onclick = async ()=>{
-  if (currentInboxId){
-    try{
+  // Cierra con la X (si existe el botón)
+  if (inboxCloseX) {
+    inboxCloseX.onclick = async ()=>{
+      try{
+        if(currentInboxId){
+          await updateDoc(doc(db,"stealRequests", currentInboxId), {
+            seenByVictim: true,
+            seenAt: serverTimestamp()
+          });
+        }
+      }catch(e){ console.warn("No se pudo marcar visto:", e); }
+      if (typeof toggleModal === "function" && inboxModal) toggleModal(inboxModal,false);
+      currentInboxId = null; currentInboxData = null;
+    };
+  }
+
+  // Exponemos la función para que el resto del código pueda invocarla
+  window.showStealInbox = async function showStealInbox(docId, data){
+    // Validaciones básicas para no romper si falta algo
+    if (!inboxModal || !inboxText || !inboxPreview || !inboxApply) {
+      console.warn("Faltan elementos del modal de robo en el DOM.");
+      return;
+    }
+
+    currentInboxId   = docId;
+    currentInboxData = data;
+
+    const attacker = data.attackerName || data.attackerId || "Alguien";
+    inboxText.innerHTML =
+      `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
+
+    // Marcar como visto al abrir (para que no reaparezca en reload)
+    try {
       await updateDoc(doc(db,"stealRequests", currentInboxId), {
         seenByVictim: true,
         seenAt: serverTimestamp()
       });
-    }catch(e){ console.warn("No se pudo marcar visto:", e); }
-  }
-  toggleModal(inboxModal, false);
-  currentInboxId = null; currentInboxData = null;
-};
+    } catch(e){ console.warn("No se pudo marcar visto:", e); }
 
-// Suscripción a robos pendientes para este usuario
-function subscribeStealInbox(uid){
-  if (unsubInbox){ unsubInbox(); unsubInbox = null; }
-  // Docs pendientes contra mí
-  const qv = query(
-    collection(db, "stealRequests"),
-    where("victimId","==", uid),
-    where("status","==","pending")
-  );
-  unsubInbox = onSnapshot(qv, async (snap)=>{
-    const docs = snap.docs;
-    if (!docs.length) return;
+    // Preview 1× carta
+    inboxPreview.innerHTML = "";
+    const cardDef = (window.state?.cards||[]).find(c => c.id === data.cardId)
+                  || { id: data.cardId, name: data.cardName || "Carta", type: "", cost: "?" };
 
-    // Si alguno ya está marcado como visto, abre el primero NO visto; si no, el primero
-    const first = docs.find(d => !d.data().seenByVictim) || docs[0];
-    showStealInbox(first.id, first.data());
-  });
-}
+    const block   = document.createElement("div"); block.className = "cardSlot";
+    const imgWrap = document.createElement("div"); imgWrap.className = "imgWrap";
+    const img     = document.createElement("img");
+    img.alt = cardDef.name;
+    img.src = `img/${cardDef.id}.png`;
+    img.onerror = ()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ = 1; img.src = `img/${cardDef.id}.jpg`; } };
+    imgWrap.appendChild(img);
 
-// Mostrar el modal del robo (víctima)
-async function showStealInbox(docId, data){
-  currentInboxId   = docId;
-  currentInboxData = data;
+    const title = document.createElement("div");  title.className = "title";  title.textContent = cardDef.name;
+    const meta  = document.createElement("div");  meta.className  = "small";
+    meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost} 🪙</span>`;
 
-  const attacker = data.attackerName || data.attackerId || "Alguien";
-  inboxText.innerHTML =
-    `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
+    const qtyNow = ((window.state?.cards||[]).find(c=>c.id===cardDef.id)?.qty) || 0;
+    const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
 
-  // Márcalo como "visto" en cuanto se abre, para que NO reaparezca al recargar
-  try{
-    await updateDoc(doc(db,"stealRequests", currentInboxId), {
-      seenByVictim: true,
-      seenAt: serverTimestamp()
-    });
-  }catch(e){ console.warn("No se pudo marcar visto:", e); }
+    block.appendChild(imgWrap);
+    block.appendChild(title);
+    block.appendChild(meta);
+    block.appendChild(qty);
+    inboxPreview.appendChild(block);
 
-  // Preview 1× carta
-  inboxPreview.innerHTML = "";
-  const cardDef =
-    state.cards.find(c => c.id === data.cardId)
-    || { id: data.cardId, name: data.cardName || "Carta", type: "", cost: "?" };
-
-  const block   = document.createElement("div"); block.className = "cardSlot";
-  const imgWrap = document.createElement("div"); imgWrap.className = "imgWrap";
-  const img     = document.createElement("img");
-  img.alt = cardDef.name;
-  img.src = `img/${cardDef.id}.png`;
-  img.onerror = ()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ = 1; img.src = `img/${cardDef.id}.jpg`; } };
-  imgWrap.appendChild(img);
-
-  const title = document.createElement("div");  title.className = "title";  title.textContent = cardDef.name;
-  const meta  = document.createElement("div");  meta.className  = "small";
-  meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost} 🪙</span>`;
-
-  const qtyNow = (state.cards.find(c=>c.id===cardDef.id)?.qty) || 0;
-  const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
-
-  block.appendChild(imgWrap);
-  block.appendChild(title);
-  block.appendChild(meta);
-  block.appendChild(qty);
-  inboxPreview.appendChild(block);
-
-  // Botón "OK / eliminar del inventario": cerrar YA y procesar en segundo plano
-  inboxApply.onclick = async () => {
-    if (!currentInboxId || !currentInboxData){
-      toggleModal(inboxModal, false);
-      return;
-    }
-
-    // Desactivar para evitar dobles clics y cerrar de inmediato
-    inboxApply.disabled = true;
-    const oldLabel = inboxApply.textContent;
-    inboxApply.textContent = "Aplicando…";
-    toggleModal(inboxModal, false);
-
-    const _docId = currentInboxId;
-    const _data  = currentInboxData;
-    currentInboxId = null; currentInboxData = null;
-
-    try{
-      // Restar 1 unidad localmente si existe
-      const cid = _data.cardId;
-      const localCard = state.cards.find(x => x.id === cid);
-      if (localCard && (localCard.qty||0) > 0){
-        localCard.qty = Math.max(0, (localCard.qty||0) - 1);
-        state.useLog.push({
-          date: new Date().toISOString(),
-          cardId: cid,
-          name: `Te robaron ${_data.cardName} (−1)`,
-          note: `Por ${_data.attackerName || _data.attackerId || ""}`
-        });
-        toast(`🔻 -1 ${_data.cardName}`);
-      } else {
-        // Si no la tenías, solo informamos y seguimos
-        toast("No tenías esa carta disponible para restar.");
+    // Botón OK: cerrar YA y aplicar en segundo plano (con guardas)
+    inboxApply.onclick = async () => {
+      if (!currentInboxId || !currentInboxData) {
+        if (typeof toggleModal === "function") toggleModal(inboxModal,false);
+        return;
       }
 
-      // Marcar la notificación como aplicada (ya no volverá a salir)
-      await updateDoc(doc(db,"stealRequests", _docId), {
-        status: "applied",
-        appliedAt: serverTimestamp(),
-        seenByVictim: true
-      });
+      // Cierra de inmediato
+      if (typeof toggleModal === "function") toggleModal(inboxModal,false);
 
-      scheduleSave();
-      render();
-    }catch(e){
-      console.error("Error al aplicar robo:", e);
-    }finally{
-      inboxApply.disabled = false;
-      inboxApply.textContent = oldLabel;
-    }
+      const _docId = currentInboxId;
+      const _data  = currentInboxData;
+      currentInboxId = null; currentInboxData = null;
+
+      try{
+        // Restar 1 local si existe
+        const cid = _data.cardId;
+        const list = (window.state?.cards)||[];
+        const localCard = list.find(x => x.id === cid);
+        if (localCard && (localCard.qty||0) > 0){
+          localCard.qty = Math.max(0, (localCard.qty||0) - 1);
+          (window.state?.useLog||[]).push({
+            date: new Date().toISOString(),
+            cardId: cid,
+            name: `Te robaron ${_data.cardName} (−1)`,
+            note: `Por ${_data.attackerName || _data.attackerId || ""}`
+          });
+          if (typeof toast === "function") toast(`🔻 -1 ${_data.cardName}`);
+        } else {
+          if (typeof toast === "function") toast("No tenías esa carta disponible para restar.");
+        }
+
+        // Marcar aplicado (para que no vuelva a salir)
+        await updateDoc(doc(db,"stealRequests", _docId), {
+          status: "applied",
+          appliedAt: serverTimestamp(),
+          seenByVictim: true
+        });
+
+        if (typeof scheduleSave === "function") scheduleSave();
+        if (typeof render === "function") render();
+      }catch(e){
+        console.error("Error al aplicar robo:", e);
+      }
+    };
+
+    // Abrir modal
+    if (typeof toggleModal === "function") toggleModal(inboxModal, true);
   };
-
-  // Abrir modal
-  toggleModal(inboxModal, true);
-}
+})();
 
 /* ========= Ataques (víctima) ========= */
 const attackModal=$("#attackModal"), attackText=$("#attackText"), attackPreview=$("#attackPreview"), defenseButtons=$("#defenseButtons"), attackCloseX=$("#attackCloseX");
