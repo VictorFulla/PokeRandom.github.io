@@ -828,8 +828,13 @@ function subscribeStealInbox(uid){
     if(!docs.length) return;
 
     // Filtramos en cliente si ya está marcado como visto (por si hay antiguos)
-    const first = docs.find(d => !d.data().seenByVictim) || docs[0];
-    const data = first.data();
+    const unseen = docs.find(d => {
+  const dd = d.data();
+  return !dd.seenByVictim && !(window.__suppressSteal && window.__suppressSteal.has(d.id));
+});
+if (!unseen) return;               // ⬅️ si todos están vistos → NO ABRIR
+const data = unseen.data();
+showStealInbox(unseen.id, data);
 
     // Abrir pop-up y marcar como visto para no repetir al recargar
     showStealInbox(first.id, data);
