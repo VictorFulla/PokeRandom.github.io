@@ -1068,103 +1068,120 @@ state.karma = (state.karma||0) + 1;
   }
 
   // Exponemos la función para que el resto del código pueda invocarla
-  window.showStealInbox = async function showStealInbox(docId, data){
-    // Validaciones básicas para no romper si falta algo
-    if (!inboxModal || !inboxText || !inboxPreview || !inboxApply) {
-      console.warn("Faltan elementos del modal de robo en el DOM.");
+ window.showStealInbox = async function showStealInbox(docId, data){
+  // —— Helpers para resolver carta por id o por nombre canónico ——
+  const canon = (s)=> String(s||"")
+    .toLowerCase()
+    .replace(/\s*\(.*?\)\s*/g,"")
+    .replace(/\s+/g," ")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .trim();
+
+  const getCardByIdOrName = (cid, cname) => {
+    const list = (window.state?.cards)||[];
+    const byId = list.find(c => c.id === cid);
+    if (byId) return byId;
+    const nameC = canon(cname);
+    if (!nameC) return null;
+    return list.find(c => canon(c.name) === nameC) || null;
+  };
+
+  // —— Validaciones básicas ——
+  if (!inboxModal || !inboxText || !inboxPreview || !inboxApply) {
+    console.warn("Faltan elementos del modal de robo en el DOM.");
+    return;
+  }
+
+  // —— Contexto de la notificación ——
+  currentInboxId   = docId;
+  currentInboxData = data;
+
+  const attacker = data.attackerName || data.attackerId || "Alguien";
+  inboxText.innerHTML =
+    `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
+
+  // Marcar como visto al abrir (para que no reaparezca al recargar)
+  try {
+    await updateDoc(doc(db,"stealRequests", currentInboxId), {
+      seenByVictim: true,
+      seenAt: serverTimestamp()
+    });
+  } catch(e){ console.warn("No se pudo marcar visto:", e); }
+
+  // —— Preview 1× carta (ID y, si falla, nombre) ——
+  inboxPreview.innerHTML = "";
+  const cardDef =
+    getCardByIdOrName(data.cardId, data.cardName) ||
+    { id: data.cardId, name: data.cardName || "Carta", type: "", cost: "?" };
+
+  const block   = document.createElement("div"); block.className = "cardSlot";
+  const imgWrap = document.createElement("div"); imgWrap.className = "imgWrap";
+  const img     = document.createElement("img");
+  img.alt = cardDef.name;
+  img.src = `img/${cardDef.id}.png`;
+  img.onerror = ()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ = 1; img.src = `img/${cardDef.id}.jpg`; } };
+  imgWrap.appendChild(img);
+
+  const title = document.createElement("div");  title.className = "title";  title.textContent = cardDef.name;
+  const meta  = document.createElement("div");  meta.className  = "small";
+  meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost ?? "?"} 🪙</span>`;
+
+  const qtyNow = (getCardByIdOrName(data.cardId, data.cardName)?.qty) || 0;
+  const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
+
+  block.appendChild(imgWrap);
+  block.appendChild(title);
+  block.appendChild(meta);
+  block.appendChild(qty);
+  inboxPreview.appendChild(block);
+
+  // —— Botón OK: cierra YA y aplica en segundo plano ——
+  inboxApply.onclick = async () => {
+    if (!currentInboxId || !currentInboxData) {
+      if (typeof toggleModal === "function") toggleModal(inboxModal,false);
       return;
     }
 
-    currentInboxId   = docId;
-    currentInboxData = data;
+    // Cerrar de inmediato
+    if (typeof toggleModal === "function") toggleModal(inboxModal,false);
 
-    const attacker = data.attackerName || data.attackerId || "Alguien";
-    inboxText.innerHTML =
-      `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
+    const _docId = currentInboxId;
+    const _data  = currentInboxData;
+    currentInboxId = null; currentInboxData = null;
 
-    // Marcar como visto al abrir (para que no reaparezca en reload)
-    try {
-      await updateDoc(doc(db,"stealRequests", currentInboxId), {
-        seenByVictim: true,
-        seenAt: serverTimestamp()
-      });
-    } catch(e){ console.warn("No se pudo marcar visto:", e); }
-
-    // Preview 1× carta
-    inboxPreview.innerHTML = "";
-    const cardDef = (window.state?.cards||[]).find(c => c.id === data.cardId)
-                  || { id: data.cardId, name: data.cardName || "Carta", type: "", cost: "?" };
-
-    const block   = document.createElement("div"); block.className = "cardSlot";
-    const imgWrap = document.createElement("div"); imgWrap.className = "imgWrap";
-    const img     = document.createElement("img");
-    img.alt = cardDef.name;
-    img.src = `img/${cardDef.id}.png`;
-    img.onerror = ()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ = 1; img.src = `img/${cardDef.id}.jpg`; } };
-    imgWrap.appendChild(img);
-
-    const title = document.createElement("div");  title.className = "title";  title.textContent = cardDef.name;
-    const meta  = document.createElement("div");  meta.className  = "small";
-    meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost} 🪙</span>`;
-
-    const qtyNow = ((window.state?.cards||[]).find(c=>c.id===cardDef.id)?.qty) || 0;
-    const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
-
-    block.appendChild(imgWrap);
-    block.appendChild(title);
-    block.appendChild(meta);
-    block.appendChild(qty);
-    inboxPreview.appendChild(block);
-
-    // Botón OK: cerrar YA y aplicar en segundo plano (con guardas)
-    inboxApply.onclick = async () => {
-      if (!currentInboxId || !currentInboxData) {
-        if (typeof toggleModal === "function") toggleModal(inboxModal,false);
-        return;
-      }
-
-      // Cierra de inmediato
-      if (typeof toggleModal === "function") toggleModal(inboxModal,false);
-
-      const _docId = currentInboxId;
-      const _data  = currentInboxData;
-      currentInboxId = null; currentInboxData = null;
-
-      try{
-        // Restar 1 local si existe
-        const cid = _data.cardId;
-        const list = (window.state?.cards)||[];
-        const localCard = list.find(x => x.id === cid);
-        if (localCard && (localCard.qty||0) > 0){
-          localCard.qty = Math.max(0, (localCard.qty||0) - 1);
-          (window.state?.useLog||[]).push({
-            date: new Date().toISOString(),
-            cardId: cid,
-            name: `Te robaron ${_data.cardName} (−1)`,
-            note: `Por ${_data.attackerName || _data.attackerId || ""}`
-          });
-          if (typeof toast === "function") toast(`🔻 -1 ${_data.cardName}`);
-        } else {
-          if (typeof toast === "function") toast("No tenías esa carta disponible para restar.");
-        }
-
-        // Marcar aplicado (para que no vuelva a salir)
-        await updateDoc(doc(db,"stealRequests", _docId), {
-          status: "applied",
-          appliedAt: serverTimestamp(),
-          seenByVictim: true
+    try{
+      // Restar 1 resolviendo por id → nombre
+      const victimCard = getCardByIdOrName(_data.cardId, _data.cardName);
+      if (victimCard && (victimCard.qty||0) > 0){
+        victimCard.qty = Math.max(0, (victimCard.qty||0) - 1);
+        (window.state?.useLog||[]).push({
+          date: new Date().toISOString(),
+          cardId: victimCard.id,
+          name: `Te robaron ${_data.cardName || victimCard.name} (−1)`,
+          note: `Por ${_data.attackerName || _data.attackerId || ""}`
         });
-
-        if (typeof scheduleSave === "function") scheduleSave();
-        if (typeof render === "function") render();
-      }catch(e){
-        console.error("Error al aplicar robo:", e);
+        if (typeof toast === "function") toast(`🔻 -1 ${_data.cardName || victimCard.name}`);
+      } else {
+        if (typeof toast === "function") toast(`No encontré la carta (id=${_data.cardId || "?"} / name=${_data.cardName || "?"}) o cantidad 0.`);
       }
-    };
 
-    // Abrir modal
-    if (typeof toggleModal === "function") toggleModal(inboxModal, true);
+      // No vuelve a salir
+      await updateDoc(doc(db,"stealRequests", _docId), {
+        status: "applied",
+        appliedAt: serverTimestamp(),
+        seenByVictim: true
+      });
+
+      if (typeof scheduleSave === "function") scheduleSave();
+      if (typeof render === "function") render();
+    }catch(e){
+      console.error("Error al aplicar robo:", e);
+    }
   };
+
+  // Abrir modal
+  if (typeof toggleModal === "function") toggleModal(inboxModal, true);
+};
 })();
 
 /* ========= Ataques (víctima) ========= */
