@@ -1036,6 +1036,50 @@ state.karma = (state.karma||0) + 1;
 
   toast("🕵️ Robo enviado. El rival confirmará la resta.");
 };
+// Resolver robusto para localizar la carta en el inventario de la VÍCTIMA
+function resolveVictimCard(data){
+  const canon = (s)=> String(s||"").toLowerCase()
+    .replace(/\s*\(.*?\)\s*/g,"")              // quita paréntesis
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // quita acentos
+    .replace(/[\s_\-]+/g,"")                   // quita espacios/guiones
+    .trim();
+
+  const list = (window.state?.cards)||[];
+
+  // 1) por id exacto/canónico
+  if (data?.cardId){
+    const targetId = canon(data.cardId);
+    const byId = list.find(c=> canon(c.id)===targetId);
+    if (byId) return byId;
+  }
+  // 2) por nombre canónico
+  if (data?.cardName){
+    const targetName = canon(data.cardName);
+    const byName = list.find(c=> canon(c.name)===targetName);
+    if (byName) return byName;
+  }
+  // 3) contra catálogo maestro si existe (CARD_DB / CARDS)
+  const master = (window.CARD_DB || window.CARDS || []);
+  let masterCard = null;
+  if (data?.cardId){
+    const targetId = canon(data.cardId);
+    masterCard = master.find(c=> canon(c.id)===targetId) || null;
+  }
+  if (!masterCard && data?.cardName){
+    const targetName = canon(data.cardName);
+    masterCard = master.find(c=> canon(c.name)===targetName) || null;
+  }
+  if (masterCard){
+    const candidates = [masterCard.id, masterCard.slug, masterCard.name]
+      .filter(Boolean).map(canon);
+    const victim = list.find(c=>{
+      const cid = canon(c.id), cn = canon(c.name);
+      return candidates.includes(cid) || candidates.includes(cn);
+    }) || null;
+    if (victim) return victim;
+  }
+  return null; // si no, que el flujo marque aplicado igual (no se queda colgado)
+}
 
 /* ========= Robos (víctima) ========= */
 (function(){
@@ -1154,7 +1198,7 @@ state.karma = (state.karma||0) + 1;
 
   try {
     // Restar 1 con resolución robusta (id exacto o nombre canónico)
-    const victimCard = getCardByIdOrName(_data.cardId, _data.cardName);
+    const victimCard = resolveVictimCard(_data);
     if (victimCard && (victimCard.qty || 0) > 0) {
       victimCard.qty = Math.max(0, (victimCard.qty || 0) - 1);
       (window.state?.useLog || []).push({
