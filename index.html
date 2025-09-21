@@ -1037,155 +1037,134 @@ state.karma = (state.karma||0) + 1;
   toast("🕵️ Robo enviado. El rival confirmará la resta.");
 };
 
+
 /* ========= Robos (víctima) ========= */
 (function(){
-  // Toma refs con fallback (no revienta si $ no existe)
   const $el = (sel)=> (window.$ ? $(sel) : document.querySelector(sel));
+
   const inboxModal   = $el("#inboxModal");
   const inboxText    = $el("#inboxText");
   const inboxPreview = $el("#inboxPreview");
   const inboxApply   = $el("#inboxApply");
   const inboxCloseX  = $el("#inboxCloseX");
 
-  // Estado local del popup
   let currentInboxId   = null;
   let currentInboxData = null;
 
-  // Cierra con la X (si existe el botón)
+  // Cerrar con la X
   if (inboxCloseX) {
-    inboxCloseX.onclick = async ()=>{
+    inboxCloseX.onclick = async () => {
       try{
         if(currentInboxId){
-          await updateDoc(doc(db,"stealRequests", currentInboxId), {
-            seenByVictim: true,
-            seenAt: serverTimestamp()
-          });
+          await updateDoc(doc(db,"stealRequests", currentInboxId), { seenByVictim:true, seenAt: serverTimestamp() });
         }
-      }catch(e){ console.warn("No se pudo marcar visto:", e); }
+      }catch(_){}
       if (typeof toggleModal === "function" && inboxModal) toggleModal(inboxModal,false);
       currentInboxId = null; currentInboxData = null;
     };
   }
 
-  // Exponemos la función para que el resto del código pueda invocarla
- window.showStealInbox = async function showStealInbox(docId, data){
-  // —— Helpers para resolver carta por id o por nombre (ignorando espacios) ——
-  const canon = (s)=> String(s||"")
-    .toLowerCase()
-    .replace(/\s*\(.*?\)\s*/g,"")                 // quita "(monedas)" etc.
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // sin acentos
-    .replace(/[\s_\-]+/g,"")                      // ⭐️ quita TODOS los espacios/guiones
-    .trim();
+  // Expuesto global: abre el popup de robo
+  window.showStealInbox = async function(docId, data){
+    currentInboxId = docId;
+    currentInboxData = data || {};
 
-  const getCardByIdOrName = (cid, cname) => {
-    const list = (window.state?.cards)||[];
-    // 1) por ID
-    const byId = list.find(c => c.id === cid);
-    if (byId) return byId;
-    // 2) por nombre (ignorando espacios)
-    const target = canon(cname);
-    if (!target) return null;
-    return list.find(c => canon(c.name) === target) || null;
-  };
+    // Marcar visto para que no reaparezca
+    try { await updateDoc(doc(db,"stealRequests", docId), { seenByVictim:true, seenAt: serverTimestamp() }); } catch(_){}
 
-  // —— Guardas de DOM ——
-  if (!inboxModal || !inboxText || !inboxPreview || !inboxApply) {
-    console.warn("Faltan elementos del modal de robo en el DOM.");
-    return;
-  }
-
-  // —— Contexto ——
-  currentInboxId   = docId;
-  currentInboxData = data;
-
-  const attacker = data.attackerName || data.attackerId || "Alguien";
-  inboxText.innerHTML =
-    `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
-
-  // Marcar como visto al abrir
-  try {
-    await updateDoc(doc(db,"stealRequests", currentInboxId), {
-      seenByVictim: true,
-      seenAt: serverTimestamp()
-    });
-  } catch(e){ console.warn("No se pudo marcar visto:", e); }
-
-  // —— Preview 1× carta (si el id falla, usamos nombre ignorando espacios) ——
-  inboxPreview.innerHTML = "";
-  const cardDef =
-    getCardByIdOrName(data.cardId, data.cardName) ||
-    { id: data.cardId, name: data.cardName || "Carta", type: "", cost: "?" };
-
-  const block   = document.createElement("div"); block.className = "cardSlot";
-  const imgWrap = document.createElement("div"); imgWrap.className = "imgWrap";
-  const img     = document.createElement("img");
-  img.alt = cardDef.name;
-  img.src = `img/${cardDef.id}.png`;
-  img.onerror = ()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ = 1; img.src = `img/${cardDef.id}.jpg`; } };
-  imgWrap.appendChild(img);
-
-  const title = document.createElement("div");  title.className = "title";  title.textContent = cardDef.name;
-  const meta  = document.createElement("div");  meta.className  = "small";
-  meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost ?? "?"} 🪙</span>`;
-
-  const victimLocal = getCardByIdOrName(data.cardId, data.cardName);
-  const qtyNow = (victimLocal?.qty) || 0; // antes te salía 0 por el mismatch “SkipPokemon” vs “Skip pokemon”
-  const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
-
-  block.appendChild(imgWrap);
-  block.appendChild(title);
-  block.appendChild(meta);
-  block.appendChild(qty);
-  inboxPreview.appendChild(block);
-
-  // —— Botón OK: cerrar YA y aplicar en 2º plano ——
-  inboxApply.onclick = async () => {
-    if (!currentInboxId || !currentInboxData) {
-      if (typeof toggleModal === "function") toggleModal(inboxModal,false);
-      return;
+    // Texto simple
+    if (inboxText) {
+      const who = data?.attackerName || data?.attackerId || "otro jugador";
+      const card = data?.cardName || data?.cardId || "una carta";
+      inboxText.textContent = `${who} te robó ${card}. Pulsa OK para restar 1 de tu inventario.`;
     }
 
-    // Cerrar de inmediato
-    if (typeof toggleModal === "function") toggleModal(inboxModal,false);
+    // Preview minimal (imagen por id si existe)
+    if (inboxPreview) {
+      inboxPreview.innerHTML = "";
+      const wrap = document.createElement("div");
+      wrap.className = "cardSlot";
+      const imgWrap = document.createElement("div"); imgWrap.className="imgWrap";
+      const img = document.createElement("img");
+      const cardId = data?.cardId || "";
+      const cardName = data?.cardName || "";
+      img.alt = cardName || cardId || "Carta";
+      img.src = cardId ? `img/${cardId}.png` : `img/_.png`;
+      img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = cardId ? `img/${cardId}.jpg` : `img/_.jpg`; } };
+      imgWrap.appendChild(img);
+      const title = document.createElement("div"); title.className="title"; title.textContent = cardName || cardId || "Carta";
+      wrap.appendChild(imgWrap); wrap.appendChild(title);
+      inboxPreview.appendChild(wrap);
+    }
 
-    const _docId = currentInboxId;
-    const _data  = currentInboxData;
-    currentInboxId = null; currentInboxData = null;
+    if (typeof toggleModal === "function" && inboxModal) toggleModal(inboxModal,true);
+  };
 
-    try{
-      // Restar 1 con resolución robusta
-      const victimCard = getCardByIdOrName(_data.cardId, _data.cardName);
-      if (victimCard && (victimCard.qty||0) > 0){
-        victimCard.qty = Math.max(0, (victimCard.qty||0) - 1);
-        (window.state?.useLog||[]).push({
-          date: new Date().toISOString(),
-          cardId: victimCard.id,
-          name: `Te robaron ${_data.cardName || victimCard.name} (−1)`,
-          note: `Por ${_data.attackerName || _data.attackerId || ""}`
+  // Resolver: siempre cerramos, restamos si existe, y marcamos aplicado (sin bloquear por errores)
+  if (inboxApply) {
+    inboxApply.onclick = async ()=>{
+      // Cerrar primero
+      if (typeof toggleModal === "function" && inboxModal) toggleModal(inboxModal,false);
+
+      const _docId  = currentInboxId;
+      const _data   = currentInboxData;
+      currentInboxId = null; currentInboxData = null;
+
+      try{
+        // Resolver carta en inventario del usuario actual
+        const canon = (s)=> String(s||"").toLowerCase()
+          .replace(/\s*\(.*?\)\s*/g,"")
+          .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+          .replace(/[\s_\-]+/g,"")
+          .trim();
+
+        const list = (window.state?.cards)||[];
+        let victimCard = null;
+
+        // 1) por id exacto
+        if (_data?.cardId) victimCard = list.find(c=>c.id===_data.cardId) || null;
+        // 2) por nombre canónico
+        if (!victimCard && _data?.cardName){
+          const target = canon(_data.cardName);
+          victimCard = list.find(c=> canon(c.name) === target) || null;
+        }
+
+        // 3) Restar si existe; si no, continuamos (no bloqueamos)
+        if (victimCard){
+          const before = victimCard.qty||0;
+          victimCard.qty = Math.max(0, before - 1);
+          (window.state?.useLog||[]).push({
+            date: new Date().toISOString(),
+            cardId: victimCard.id,
+            name: `Te robaron ${_data.cardName || victimCard.name} (−1)`,
+            note: `Por ${_data.attackerName || _data.attackerId || ""}`
+          });
+          if (typeof toast==="function") toast(`🔻 -1 ${_data.cardName || victimCard.name}`);
+        } else {
+          // Log informativo pero no impedimos aplicar para que no se quede colgado
+          (window.state?.useLog||[]).push({
+            date: new Date().toISOString(),
+            cardId: _data?.cardId || "?",
+            name: `Robo confirmado (no se encontró la carta)`,
+            note: `De ${_data?.attackerName || _data?.attackerId || ""} — id=${_data?.cardId||"?"}, name=${_data?.cardName||"?"}`
+          });
+        }
+
+        // Marcar aplicado siempre para no repetir
+        await updateDoc(doc(db,"stealRequests", _docId), {
+          status: "applied",
+          appliedAt: serverTimestamp(),
+          seenByVictim: true
         });
-        if (typeof toast === "function") toast(`🔻 -1 ${_data.cardName || victimCard.name}`);
-      } else {
-        if (typeof toast === "function") toast(`No encontré la carta (id=${_data.cardId || "?"} / name=${_data.cardName || "?"}) o cantidad 0.`);
+
+        if (typeof scheduleSave === "function") scheduleSave();
+        if (typeof render === "function") render();
+      }catch(e){
+        console.warn("Error aplicando robo (continuo):", e);
       }
-
-      await updateDoc(doc(db,"stealRequests", _docId), {
-        status: "applied",
-        appliedAt: serverTimestamp(),
-        seenByVictim: true
-      });
-
-      if (typeof scheduleSave === "function") scheduleSave();
-      if (typeof render === "function") render();
-    }catch(e){
-      console.error("Error al aplicar robo:", e);
-    }
-  };
-
-  // Abrir modal
-  if (typeof toggleModal === "function") toggleModal(inboxModal, true);
-};
+    };
+  }
 })();
-
 /* ========= Ataques (víctima) ========= */
 const attackModal=$("#attackModal"), attackText=$("#attackText"), attackPreview=$("#attackPreview"), defenseButtons=$("#defenseButtons"), attackCloseX=$("#attackCloseX");
 attackCloseX.onclick=()=>toggleModal(attackModal,false);
@@ -1579,92 +1558,3 @@ $("#rewardClose").onclick=()=>toggleModal($("#rewardModal"),false);
 </body>
 </html>
 
-/* ===== REWRITE POPUPS DE ROBO (simple) ===== */
-(function(){
-  const $ = (sel)=>document.querySelector(sel);
-  const esc = (s)=>String(s??'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
-  const inboxModal = $("#inboxModal");
-  const inboxText = $("#inboxText");
-  const inboxPreview = $("#inboxPreview");
-  const inboxApply = $("#inboxApply");
-  const inboxCloseX = $("#inboxCloseX");
-
-  let currentInboxId=null, currentInboxData=null;
-
-  // Redefinir subscribe (usa el último pendiente)
-  window.subscribeStealInbox = function(uid){
-    if (window.unsubInbox) { try{ window.unsubInbox(); }catch{} window.unsubInbox=null; }
-    const qv = query(collection(db,"stealRequests"),
-                     where("victimId","==",uid),
-                     where("status","==","pending"));
-    window.unsubInbox = onSnapshot(qv, async (snap)=>{
-      const docs = snap.docs; if(!docs.length) return;
-      const ordered = [...docs].sort((a,b)=>{
-        const as=a.data().createdAt?.seconds||0, bs=b.data().createdAt?.seconds||0;
-        return bs-as;
-      });
-      const first = ordered[0];
-      window.showStealInbox(first.id, first.data());
-    });
-  };
-
-  // Resolver carta por id o por nombre
-  function canon(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,''); }
-  function getCardByIdOrName(cid, cname){
-    const list = (window.state?.cards)||[];
-    let byId = list.find(c=>c.id===cid);
-    if (byId) return byId;
-    const target = canon(cname);
-    return list.find(c=>canon(c.id)===target || canon(c.name)===target) || null;
-  }
-
-  window.showStealInbox = async function(docId, data){
-    if (!inboxModal || !inboxText || !inboxPreview || !inboxApply) return;
-    currentInboxId = docId; currentInboxData = data;
-
-    // Texto
-    const attacker = data.attackerName || data.attackerId || "Alguien";
-    inboxText.innerHTML = `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName||'una carta')}</strong>.`;
-
-    // Preview clean
-    inboxPreview.innerHTML='';
-    const def = getCardByIdOrName(data.cardId, data.cardName) || {id:data.cardId, name:data.cardName||'Carta'};
-    const slot = document.createElement('div'); slot.className='cardSlot';
-    const wrap = document.createElement('div'); wrap.className='imgWrap';
-    const im = document.createElement('img'); im.alt = def.name;
-    im.src = `img/${def.id}.png`; im.onerror = ()=>{ if(!im.dataset.j){ im.dataset.j=1; im.src=`img/${def.id}.jpg`; } };
-    wrap.appendChild(im);
-    const title = document.createElement('div'); title.className='title'; title.textContent = def.name;
-    const meta = document.createElement('div'); meta.className='small'; meta.textContent = '';
-    slot.appendChild(wrap); slot.appendChild(title); slot.appendChild(meta);
-    inboxPreview.appendChild(slot);
-
-    // Botón OK (restar 1 y aplicar)
-    inboxApply.onclick = async ()=>{
-      try{
-        const invCard = getCardByIdOrName(data.cardId, data.cardName);
-        if (invCard && (invCard.qty||0)>0) {
-          invCard.qty = Math.max(0,(invCard.qty||0)-1);
-          (window.state?.useLog||[]).push({date:new Date().toISOString(), cardId:invCard.id, name:`Te robaron ${data.cardName||invCard.name} (−1)`, note:`Por ${attacker}`});
-          if (typeof toast==='function') toast(`🔻 -1 ${data.cardName || invCard.name}`);
-        } else {
-          if (typeof toast==='function') toast('No encontré la carta en tu inventario.');
-        }
-        await updateDoc(doc(db,'stealRequests', docId), { status:'applied', seenByVictim:true, appliedAt: serverTimestamp() });
-        if (typeof scheduleSave==='function') scheduleSave();
-        if (typeof render==='function') render();
-      } catch(e){ console.error('apply steal error', e); }
-      if (typeof toggleModal==='function') toggleModal(inboxModal,false);
-    };
-
-    // Cerrar con X: solo marcar visto (no aplica)
-    if (inboxCloseX){
-      inboxCloseX.onclick = async ()=>{
-        try{ await updateDoc(doc(db,'stealRequests', docId), { seenByVictim:true, seenAt: serverTimestamp() }); }catch(e){ console.warn(e); }
-        if (typeof toggleModal==='function') toggleModal(inboxModal,false);
-      };
-    }
-
-    if (typeof toggleModal==='function') toggleModal(inboxModal,true);
-  };
-})();
