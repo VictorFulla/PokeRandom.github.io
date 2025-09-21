@@ -88,17 +88,45 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
   transition: box-shadow 120ms ease, filter 120ms ease;
 }
 
-/* Extiende un pelín el hitbox para evitar perder hover en el borde */
+/* ——— Hover estable para cartas (parche Pages) ——— */
+.cardSlot{
+  position: relative;
+  /* Fijamos capa de composición para evitar re-paints que cortan hover */
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  /* Evitamos cambios de tamaño: no escalar en hover, solo sombra */
+  transition: box-shadow 140ms ease;
+  z-index: 0;                 /* base estable */
+  contain: paint;             /* que sus hijos no afecten hover del grid */
+}
+
+/* Sombra sin tocar layout ni desplazar el elemento */
+.cardSlot:hover{
+  box-shadow: 0 10px 30px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.10);
+  z-index: 1;                 /* para que la sombra no choque con vecinos */
+}
+
+/* Aumentamos ligeramente el área "capturable" del hover SIN bloquear clicks */
 .cardSlot::before{
   content:"";
   position:absolute;
-  inset:-3px;           /* amplía 3px alrededor sin afectar layout */
-  pointer-events:none;  /* no bloquea el click */
+  inset:-4px;                 /* +4px alrededor del slot */
+  pointer-events:none;        /* no intercepta el click */
 }
 
-/* Evita que hijitos “roben” el hover/click si hay gaps de imagen/texto */
-.cardSlot *:not(button){ pointer-events:none; }
-.cardSlot .btn, .cardSlot .clickable{ pointer-events:auto; }
+/* Muy importante: que los hijos no cambien el target del puntero */
+.cardSlot *{ pointer-events:none; }
+.cardSlot .btn,
+.cardSlot .clickable{ pointer-events:auto; }
+
+/* Las imágenes en block (sin espacios/descensos) y sin robarnos el puntero */
+.cardSlot .imgWrap img{
+  display:block;
+  max-width:100%;
+  max-height:100%;
+  pointer-events:none;
+}
 
 </style>
 </head>
