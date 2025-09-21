@@ -176,6 +176,46 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
   z-index: 3;
   position: relative;
 }
+/* ======= DROPDOWN ESPIAR ======= */
+#btnSpy { position: relative; }
+
+#spyMenu{
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  display: none;                    /* se muestra con .show */
+  width: 260px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 6px;
+  background: #0b1020;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.4);
+  z-index: 1000;
+}
+#spyMenu.show{ display:block; }
+
+#spyMenu .spyItem{
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 0;
+  background: transparent;
+  color: #E6EAFF;
+  border-radius: 8px;
+  font: inherit;
+  cursor: pointer;
+}
+#spyMenu .spyItem:hover{ background: rgba(255,255,255,.08); }
+
+/* ======= MODO ESPIAR: SOLO CAMBIA EL FONDO DE LAS CARTAS ======= */
+/* tu tarjeta ya tiene un fondo; lo sobreescribimos en modo espía */
+.is-spying .cardSlot{
+  background-color: #0E213A !important;   /* azul oscuro */
+}
+/* hover sigue igual porque la sombra va en ::after */
 
 </style>
 </head>
@@ -1134,31 +1174,40 @@ async function showAttackInbox(docId, data){
 }
 
 /* ========= Espiar ========= */
-/* ========= Espiar ========= */
 function renderSpyMenu(){
-  const menuBox   = document.getElementById('spyMenu');
-  const toolsWrap = document.getElementById('spyTools');
+  const menuBox   = document.getElementById('spyMenu');  // dropdown
+  const toolsWrap = document.getElementById('spyTools'); // contenedor del botón ojo, etc.
+  const btn       = document.getElementById('btnSpy');   // botón 👁️
+  const exitBtn   = document.getElementById('spyExit');  // botón salir (si lo tienes)
   const me = currentUser?.uid;
-  if (!menuBox || !toolsWrap) return;
+  if (!menuBox || !toolsWrap || !btn) return;
 
   // Cableado una sola vez
   if (!menuBox.dataset.ready){
-    toolsWrap.style.display = "block"; // muestra el bloque de herramientas
-    const menu = menuBox;
+    toolsWrap.style.display = "block";
 
-    // abrir/cerrar menú al click del ojo
-    const btn = document.getElementById('btnSpy');
-    if (btn) btn.onclick = (e)=>{ e.stopPropagation(); menu.classList.toggle('show'); };
+    // abrir/cerrar dropdown
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      menuBox.classList.toggle('show');
+      // posicionar pegado al botón (por si cambias layout)
+      const r = btn.getBoundingClientRect();
+      menuBox.style.right = '0';
+    });
 
-    // cerrar al click fuera
-    document.body.addEventListener('click', ()=> menu.classList.remove('show'));
+    // cerrar al hacer click fuera
+    document.addEventListener('click', (e)=>{
+      if (!menuBox.contains(e.target) && e.target !== btn){
+        menuBox.classList.remove('show');
+      }
+    });
 
-    // click en un usuario del menú
-    menu.addEventListener('click', (e)=>{
+    // seleccionar usuario del dropdown
+    menuBox.addEventListener('click', (e)=>{
       const item = e.target.closest('.spyItem');
       if (!item) return;
       const uid = item.getAttribute('data-uid');
-      menu.classList.remove('show');
+      menuBox.classList.remove('show');
       if (!uid) return;
 
       spyUid = uid;
@@ -1168,32 +1217,35 @@ function renderSpyMenu(){
       if (info) info.style.display = 'inline-flex';
       if (name) name.textContent = profile?.displayName || profile?.email || uid;
 
-      document.documentElement.classList.add('spyTint');
-      // suscríbete al inventario del espiado
+      // Cambiamos la “señal” visual al modo que quieres (solo fondo)
+      document.documentElement.classList.add('is-spying');
+
+      // Suscripción al inventario del espiado
       subscribeInventory(uid);
     });
 
     // salir del modo espiar
-    const exitBtn = document.getElementById('spyExit');
-    if (exitBtn) exitBtn.onclick = ()=>{
-      spyUid = null;
-      const info = document.getElementById('spyInfo');
-      if (info) info.style.display = 'none';
-      document.documentElement.classList.remove('spyTint');
-      if (currentUser) subscribeInventory(currentUser.uid);
-    };
+    if (exitBtn){
+      exitBtn.addEventListener('click', ()=>{
+        spyUid = null;
+        const info = document.getElementById('spyInfo');
+        if (info) info.style.display = 'none';
+        document.documentElement.classList.remove('is-spying');
+        if (currentUser) subscribeInventory(currentUser.uid);
+      });
+    }
 
-    menuBox.dataset.ready = "1"; // marca como cableado
+    menuBox.dataset.ready = "1";
   }
 
-  // Rellena/actualiza la lista de usuarios (cada vez que cambien profiles)
+  // Rellena/actualiza usuarios en el dropdown
   const items = profiles
     .filter(p => p.id !== me)
     .map(p => `<button class="spyItem" data-uid="${p.id}" type="button">${esc(p.displayName || p.email || p.id)}</button>`);
 
   menuBox.innerHTML = items.length
     ? items.join("")
-    : '<div class="small">No hay otros usuarios aún.</div>';
+    : '<div class="small" style="padding:8px 10px;opacity:.7">No hay otros usuarios aún.</div>';
 }
 
 /* ========= Selector de usuario reutilizable ========= */
