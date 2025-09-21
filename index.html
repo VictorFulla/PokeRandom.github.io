@@ -677,6 +677,7 @@ $("#exportBtn").onclick = ()=>{
 $("#importFile").onchange = async (e)=>{
   const file = e.target.files?.[0]; if(!file) return;
   try{
+    const text = await file.text();
     const data = JSON.parse(text);
 state = migrateState(data);
 toast("📥 Importado");
@@ -1082,168 +1083,91 @@ function resolveVictimCard(data){
 }
 
 /* ========= Robos (víctima) ========= */
-(function(){
-  // Toma refs con fallback (no revienta si $ no existe)
-  const $el = (sel)=> (window.$ ? $(sel) : document.querySelector(sel));
-  const inboxModal   = $el("#inboxModal");
-  const inboxText    = $el("#inboxText");
-  const inboxPreview = $el("#inboxPreview");
-  const inboxApply   = $el("#inboxApply");
-  const inboxCloseX  = $el("#inboxCloseX");
+(function(){ 
+  const $ = (s)=> document.querySelector(s);
+  const inboxModal   = $("#inboxModal");
+  const inboxText    = $("#inboxText");
+  const inboxPreview = $("#inboxPreview");
+  const inboxApply   = $("#inboxApply");
+  const inboxCloseX  = $("#inboxCloseX");
 
-  // Estado local del popup
-  let currentInboxId   = null;
-  let currentInboxData = null;
+  let _docId = null;
+  let _data  = null;
 
-  // Cierra con la X (si existe el botón)
-  if (inboxCloseX) {
-    inboxCloseX.onclick = async ()=>{
-      try{
-        if(currentInboxId){
-          await updateDoc(doc(db,"stealRequests", currentInboxId), {
-            seenByVictim: true,
-            seenAt: serverTimestamp()
-          });
-        }
-      }catch(e){ console.warn("No se pudo marcar visto:", e); }
-      if (typeof toggleModal === "function" && inboxModal) toggleModal(inboxModal,false);
-      currentInboxId = null; currentInboxData = null;
-    };
+  function toggleModal(el, show){ el.classList.toggle("show", !!show); el.setAttribute("aria-hidden", show ? "false" : "true"); }
+
+  // Util simple: nombre canónico
+  function canonicalName(n){
+    return String(n||"").toLowerCase().replace(/\s*\(.*?\)\s*/g,"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[\s_\-]+/g,"").trim();
+  }
+  function findVictimCard(data){
+    const list = (window.state?.cards) || [];
+    if (data?.cardId) {
+      const byId = list.find(c=> c.id === data.cardId);
+      if (byId) return byId;
+    }
+    if (data?.cardName) {
+      const target = canonicalName(data.cardName);
+      const byName = list.find(c=> canonicalName(c.name) === target);
+      if (byName) return byName;
+    }
+    return null;
   }
 
-  // Exponemos la función para que el resto del código pueda invocarla
- window.showStealInbox = async function showStealInbox(docId, data){
-  // —— Helpers para resolver carta por id o por nombre (ignorando espacios) ——
-  const canon = (s)=> String(s||"")
-    .toLowerCase()
-    .replace(/\s*\(.*?\)\s*/g,"")                 // quita "(monedas)" etc.
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // sin acentos
-    .replace(/[\s_\-]+/g,"")                      // ⭐️ quita TODOS los espacios/guiones
-    .trim();
+  window.showStealInbox = async function(docId, data){
+    _docId = docId;
+    _data  = data || {};
 
-  const getCardByIdOrName = (cid, cname) => {
-    const list = (window.state?.cards)||[];
-    // 1) por ID
-    const byId = list.find(c => c.id === cid);
-    if (byId) return byId;
-    // 2) por nombre (ignorando espacios)
-    const target = canon(cname);
-    if (!target) return null;
-    return list.find(c => canon(c.name) === target) || null;
-  };
+    // Mensaje
+    const who  = data?.attackerName || data?.attackerId || "otro jugador";
+    const what = data?.cardName || data?.cardId || "una carta";
+    if (inboxText) inboxText.innerHTML = `<strong>${who}</strong> te ha robado <strong>${what}</strong>.`;
 
-  // —— Guardas de DOM ——
-  if (!inboxModal || !inboxText || !inboxPreview || !inboxApply) {
-    console.warn("Faltan elementos del modal de robo en el DOM.");
-    return;
-  }
-
-  // —— Contexto ——
-  currentInboxId   = docId;
-  currentInboxData = data;
-
-  const attacker = data.attackerName || data.attackerId || "Alguien";
-  inboxText.innerHTML =
-    `<strong>${esc(attacker)}</strong> te ha robado <strong>${esc(data.cardName || "una carta")}</strong>.`;
-
-  // Marcar como visto al abrir
-  try {
-    await updateDoc(doc(db,"stealRequests", currentInboxId), {
-      seenByVictim: true,
-      seenAt: serverTimestamp()
-    });
-  } catch(e){ console.warn("No se pudo marcar visto:", e); }
-
-  // —— Preview 1× carta (si el id falla, usamos nombre ignorando espacios) ——
-  inboxPreview.innerHTML = "";
-  const cardDef =
-    getCardByIdOrName(data.cardId, data.cardName) ||
-    { id: data.cardId, name: data.cardName || "Carta", type: "", cost: "?" };
-
-  const block   = document.createElement("div"); block.className = "cardSlot";
-  const imgWrap = document.createElement("div"); imgWrap.className = "imgWrap";
-  const img     = document.createElement("img");
-  img.alt = cardDef.name;
-  img.src = `img/${cardDef.id}.png`;
-  img.onerror = ()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ = 1; img.src = `img/${cardDef.id}.jpg`; } };
-  imgWrap.appendChild(img);
-
-  const title = document.createElement("div");  title.className = "title";  title.textContent = cardDef.name;
-  const meta  = document.createElement("div");  meta.className  = "small";
-  meta.innerHTML = `<span class="badge">${esc(cardDef.type||"")}</span> · <span class="badge">${cardDef.cost ?? "?"} 🪙</span>`;
-
-  const victimLocal = getCardByIdOrName(data.cardId, data.cardName);
-  const qtyNow = (victimLocal?.qty) || 0; // antes te salía 0 por el mismatch “SkipPokemon” vs “Skip pokemon”
-  const qty    = document.createElement("div"); qty.className="qty"; qty.textContent = "× " + qtyNow;
-
-  block.appendChild(imgWrap);
-  block.appendChild(title);
-  block.appendChild(meta);
-  block.appendChild(qty);
-  inboxPreview.appendChild(block);
-
-  // —— Botón OK: cerrar YA y aplicar en 2º plano ——
-  inboxApply.onclick = async () => {
-  if (!currentInboxId || !currentInboxData) {
-    if (typeof toggleModal === "function") toggleModal(inboxModal, false);
-    return;
-  }
-
-  // Cerrar de inmediato
-  if (typeof toggleModal === "function") toggleModal(inboxModal, false);
-
-  const _docId = currentInboxId;
-  const _data  = currentInboxData;
-  currentInboxId = null; currentInboxData = null;
-
-  try {
-    // Restar 1 con resolución robusta (id exacto o nombre canónico)
-    const victimCard = resolveVictimCard(_data);
-    if (victimCard && (victimCard.qty || 0) > 0) {
-      victimCard.qty = Math.max(0, (victimCard.qty || 0) - 1);
-      (window.state?.useLog || []).push({
-        date: new Date().toISOString(),
-        cardId: victimCard.id,
-        name: `Te robaron ${_data.cardName || victimCard.name} (−1)`,
-        note: `Por ${_data.attackerName || _data.attackerId || ""}`
-      });
-      if (typeof toast === "function") toast(`🔻 -1 ${_data.cardName || victimCard.name}`);
-    } else {
-      if (typeof toast === "function") {
-        toast(`No encontré la carta (${_data.cardId || "?"} / ${_data.cardName || "?"}) o cantidad 0.`);
-      }
+    // Vista previa MUY simple
+    if (inboxPreview) {
+      inboxPreview.innerHTML = "";
+      const wrap = document.createElement("div"); wrap.className = "cardSlot";
+      const imgw = document.createElement("div"); imgw.className = "imgWrap";
+      const img  = document.createElement("img");
+      const cid  = data?.cardId || "";
+      img.alt = what;
+      img.src = cid ? `img/${cid}.png` : `img/_.png`;
+      img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = cid ? `img/${cid}.jpg` : `img/_.jpg`; } };
+      imgw.appendChild(img);
+      const title = document.createElement("div"); title.className = "title"; title.textContent = what;
+      wrap.appendChild(imgw); wrap.appendChild(title);
+      inboxPreview.appendChild(wrap);
     }
 
-    // Marcar la solicitud como aplicada
-    await updateDoc(doc(db, "stealRequests", _docId), {
-      status: "applied",
-      appliedAt: serverTimestamp(),
-      seenByVictim: true
-    });
+    // Marca visto para que no se repita
+    try { await updateDoc(doc(db,"stealRequests", docId), { seenByVictim:true, seenAt: serverTimestamp() }); } catch(_){}
 
-    // === GUARDAR FORZANDO MI INVENTARIO (no el spy) ===
-const wasSpy = window.spyUid ?? null;
-window.spyUid = null;
-try {
-  if (typeof window.saveNow === "function") {
-    await window.saveNow();           // persiste ya en /inventories/{auth.uid}
-  } else if (typeof window.scheduleSave === "function") {
-    window.scheduleSave();            // fallback si no hay saveNow
-  }
-} finally {
-  window.spyUid = wasSpy;             // restaurar estado de "espiar"
-}
+    if (inboxModal) toggleModal(inboxModal, true);
+  };
 
+  if (inboxCloseX) inboxCloseX.onclick = ()=>{ if (inboxModal) toggleModal(inboxModal,false); _docId=null; _data=null; };
 
-    if (typeof render === "function") render();
-  } catch (e) {
-    console.error("Error al aplicar robo:", e);
-  }
-};
-
-  // Abrir modal
-  if (typeof toggleModal === "function") toggleModal(inboxModal, true);
-};
+  // APLICAR (restar 1 y marcar aplicado). Sin magia.
+  if (inboxApply) inboxApply.onclick = async ()=>{
+    if (inboxModal) toggleModal(inboxModal,false);
+    try{
+      const card = findVictimCard(_data);
+      if (card) { card.qty = Math.max(0, (card.qty||0) - 1); }
+      // marca aplicado SIEMPRE para que no quede colgado aunque no haya card
+      if (_docId) {
+        await updateDoc(doc(db,"stealRequests", _docId), { status:"applied", appliedAt: serverTimestamp(), seenByVictim:true });
+      }
+      // Forzar guardado en MI inventario (reglas requieren auth.uid == userId)
+      const wasSpy = window.spyUid || null;
+      window.spyUid = null;
+      try {
+        if (typeof window.saveNow === "function") { await window.saveNow(); }
+        else if (typeof window.scheduleSave === "function") { window.scheduleSave(); }
+      } finally { window.spyUid = wasSpy; }
+      if (typeof render === "function") render();
+    }catch(e){ console.warn("Error aplicando robo simple:", e); }
+    _docId=null; _data=null;
+  };
 })();
 
 /* ========= Ataques (víctima) ========= */
