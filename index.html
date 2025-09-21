@@ -1177,24 +1177,25 @@ state.karma = (state.karma||0) + 1;
       seenByVictim: true
     });
 
-    // GUARDAR FORZANDO MI INVENTARIO (no el spy)
-    const wasSpy = window.spyUid;
-    window.spyUid = null;
-    try {
-      if (typeof window.saveNow === "function") {
-        await window.saveNow();
-      } else if (typeof window.scheduleSave === "function") {
-        window.scheduleSave();
-      }
-    } finally {
-      window.spyUid = wasSpy;
-    }
+    // === GUARDAR FORZANDO MI INVENTARIO (no el spy) ===
+const wasSpy = window.spyUid ?? null;
+window.spyUid = null;
+try {
+  if (typeof window.saveNow === "function") {
+    await window.saveNow();           // persiste ya en /inventories/{auth.uid}
+  } else if (typeof window.scheduleSave === "function") {
+    window.scheduleSave();            // fallback si no hay saveNow
+  }
+} finally {
+  window.spyUid = wasSpy;             // restaurar estado de "espiar"
+}
+
 
     if (typeof render === "function") render();
   } catch (e) {
     console.error("Error al aplicar robo:", e);
   }
-};};
+};
 
   // Abrir modal
   if (typeof toggleModal === "function") toggleModal(inboxModal, true);
