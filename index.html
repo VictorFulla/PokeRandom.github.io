@@ -944,6 +944,8 @@ window.addEventListener("keydown",(e)=>{if(e.key==="Escape"){modals.forEach(m=>t
 
 
 
+/* ========= Notificaciones locales (suprimir popups vistos) ========= */
+window.__suppressSteal = window.__suppressSteal || new Set();
 /* ========= Admin de cartas ========= */
 const adminFab = $("#adminFab");
 const adminModal = $("#adminModal");
@@ -1293,18 +1295,30 @@ function resolveVictimCard(data){
 
   // Cerrar con la X
   if (inboxCloseX){
-    inboxCloseX.onclick = ()=>{ toggleModal(inboxModal,false); _docId = null; _data = null; };
+    inboxCloseX.onclick = ()=>{
+  toggleModal(inboxModal,false);
+  try{
+    if (_docId){
+      window.__suppressSteal.add(_docId); // suprimir en esta sesión
+      updateDoc(doc(db,"stealRequests", _docId), { seenByVictim:true, dismissedAt: serverTimestamp() });
+    }
+  }catch(_){}
+  _docId=null; _data=null;
+};
   }
 
   // --- OK: RESTAR por ID exacto y marcar applied ---
   if (inboxApply){
     inboxApply.onclick = async ()=>{
-  // Cierra el popup y abre Admin preseleccionado
   toggleModal(inboxModal,false);
   try{
+    if (_docId){
+      window.__suppressSteal.add(_docId);
+      // No marcamos applied aquí; solo visto. El admin podrá marcar applied si quiere.
+      await updateDoc(doc(db,"stealRequests", _docId), { seenByVictim:true, seenAt: serverTimestamp() });
+    }
     const preId = _data?.cardId || "";
     const preName = _data?.cardName || "";
-    // No restamos aquí. Lo hará el menú Admin manualmente.
     openAdmin({ preselectId: preId, preselectName: preName, amount: 1, pendingStealId: _docId });
   }catch(e){ console.warn("No se pudo abrir Admin:", e); }
   _docId=null; _data=null;
