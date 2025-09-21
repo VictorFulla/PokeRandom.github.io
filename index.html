@@ -1134,26 +1134,66 @@ async function showAttackInbox(docId, data){
 }
 
 /* ========= Espiar ========= */
+/* ========= Espiar ========= */
 function renderSpyMenu(){
-  const me=currentUser?.uid;
-  const items=profiles.filter(p=>p.id!==me).map(p=>`<button class="spyItem" data-uid="${p.id}" style="width:100%;text-align:left;background:transparent;color:var(--text);border:1px solid transparent;padding:8px 10px;border-radius:10px;cursor:pointer">${esc(p.displayName||p.email||p.id)}</button>`);
-  let box = $("#spyMenu");
-  if(!box){
-    $("#spyTools").style.display="block";
-    const menu=$("#spyMenu");
-    $("#btnSpy").onclick=(e)=>{e.stopPropagation();menu.classList.toggle("show")};
-    document.body.addEventListener("click",()=>menu.classList.remove("show"));
-    menu.addEventListener("click",(e)=>{
-      const btn=e.target.closest(".spyItem"); if(!btn)return;
-      const uid=btn.getAttribute("data-uid"); menu.classList.remove("show"); if(!uid)return;
-      spyUid=uid; $("#spyInfo").style.display="inline-flex";
-      const profile=profiles.find(p=>p.id===uid); $("#spyName").textContent=profile?.displayName||profile?.email||uid;
-      document.documentElement.classList.add("spyTint");
+  const menuBox   = document.getElementById('spyMenu');
+  const toolsWrap = document.getElementById('spyTools');
+  const me = currentUser?.uid;
+  if (!menuBox || !toolsWrap) return;
+
+  // Cableado una sola vez
+  if (!menuBox.dataset.ready){
+    toolsWrap.style.display = "block"; // muestra el bloque de herramientas
+    const menu = menuBox;
+
+    // abrir/cerrar menú al click del ojo
+    const btn = document.getElementById('btnSpy');
+    if (btn) btn.onclick = (e)=>{ e.stopPropagation(); menu.classList.toggle('show'); };
+
+    // cerrar al click fuera
+    document.body.addEventListener('click', ()=> menu.classList.remove('show'));
+
+    // click en un usuario del menú
+    menu.addEventListener('click', (e)=>{
+      const item = e.target.closest('.spyItem');
+      if (!item) return;
+      const uid = item.getAttribute('data-uid');
+      menu.classList.remove('show');
+      if (!uid) return;
+
+      spyUid = uid;
+      const profile = profiles.find(p=>p.id===uid);
+      const info = document.getElementById('spyInfo');
+      const name = document.getElementById('spyName');
+      if (info) info.style.display = 'inline-flex';
+      if (name) name.textContent = profile?.displayName || profile?.email || uid;
+
+      document.documentElement.classList.add('spyTint');
+      // suscríbete al inventario del espiado
       subscribeInventory(uid);
     });
-    $("#spyExit").onclick=()=>{spyUid=null;$("#spyInfo").style.display="none";document.documentElement.classList.remove("spyTint");if(currentUser)subscribeInventory(currentUser.uid)};
+
+    // salir del modo espiar
+    const exitBtn = document.getElementById('spyExit');
+    if (exitBtn) exitBtn.onclick = ()=>{
+      spyUid = null;
+      const info = document.getElementById('spyInfo');
+      if (info) info.style.display = 'none';
+      document.documentElement.classList.remove('spyTint');
+      if (currentUser) subscribeInventory(currentUser.uid);
+    };
+
+    menuBox.dataset.ready = "1"; // marca como cableado
   }
-  $("#spyMenu").innerHTML=items.length?items.join(""):'<div class="small">No hay otros usuarios aún.</div>';
+
+  // Rellena/actualiza la lista de usuarios (cada vez que cambien profiles)
+  const items = profiles
+    .filter(p => p.id !== me)
+    .map(p => `<button class="spyItem" data-uid="${p.id}" type="button">${esc(p.displayName || p.email || p.id)}</button>`);
+
+  menuBox.innerHTML = items.length
+    ? items.join("")
+    : '<div class="small">No hay otros usuarios aún.</div>';
 }
 
 /* ========= Selector de usuario reutilizable ========= */
