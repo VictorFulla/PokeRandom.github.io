@@ -660,6 +660,9 @@ let currentUser=null, spyUid=null, unsubInv=null, unsubProfiles=null, unsubInbox
 let profiles=[];
 let state={coins:0,karma:0,cards:cardsBase,walletLog:[],useLog:[],updatedAt:null};
 
+function addKarma(delta){ state.karma = Math.max(0, (state.karma||0) + (delta||0)); karmaEl.textContent=String(state.karma||0); }
+
+
 /* ========= Refs ========= */
 const invRef = uid => doc(db,"inventories",uid);
 const profRef = uid => doc(db,"profiles",uid);
@@ -937,7 +940,7 @@ function __realRender(){
 $("#karmaBtn").onclick=async()=>{
   if(!currentUser) return;
   if(confirm("¿Has recibido un ataque?")){
-    state.karma=(state.karma||0)-1; toast("⚡ Karma reducido (ataque recibido)"); scheduleSave(); render();
+    addKarma(-1); toast("⚡ Karma reducido (ataque recibido)"); scheduleSave(); render();
   }
 };
 
@@ -1187,7 +1190,7 @@ if(stealCard && (stealCard.qty||0)>0){
   stealCard.qty = Math.max(0, (stealCard.qty||0)-1);
   state.useLog.push({date:new Date().toISOString(), name:"Usaste Robo sigiloso (−1)"});
 }
-state.karma = (state.karma||0) + 1;
+addKarma(1);
 
   scheduleSave(); render(); toggleModal(stealModal,false);
 
@@ -1366,7 +1369,7 @@ async function showAttackInbox(docId, data){
     currentAttackId = null; currentAttackData = null;
 
     try{
-      state.karma = (state.karma||0) - 1;
+      addKarma(-1);
       await updateDoc(doc(db,"attackRequests", _docId), {
         status: "applied",
         resolvedAt: serverTimestamp()
@@ -1481,6 +1484,9 @@ async function onUse(){
   const c = state.cards.find(x => x.id === currentCardId); if (!c) return;
   if ((c.qty || 0) <= 0) { alert("No tienes esta carta."); return; }
 
+  // bloquear cartas de ataque si karma >=5
+  if (c.type === "ataque" && (state.karma||0) >= 5) { alert("⛔ Karma 5 o más: no puedes usar cartas de ataque hasta que tengas 4 o menos."); return; }
+
   // helper para gastar la carta actual de forma segura
   const spend = ()=>{
     c.qty = Math.max(0, (c.qty || 0) - 1);
@@ -1539,7 +1545,7 @@ async function onUse(){
     const target = await pickUser(`¿A quién quieres atacar con “${c.name}”?`);
     if (!target) return;
 
-    state.karma = (state.karma || 0) + 1; // karma del atacante +1
+    addKarma(1); // karma del atacante +1
 
     await addDoc(attackCol, {
       attackerId: currentUser.uid,
@@ -1557,6 +1563,100 @@ async function onUse(){
     toast(`⚔️ Ataque enviado a ${target.name}`);
     scheduleSave(); render(); return;
   }
+
+
+  // --- Custom new card behaviors injected by Shiro ---
+  if (c.name.toLowerCase() === "robo de monedas") {
+    const target = await pickUser("¿A quién quieres robarle 5 monedas?");
+    if (!target) return;
+    spend();
+    addCoins(5, "Robo de monedas (atacante)");
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Robo de monedas (+5)"});
+    // notify victim via stealRequests; when they close, a listener will apply -5
+    await addDoc(stealCol, {
+      attackerId: currentUser.uid,
+      attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+      victimId: target.uid,
+      cardName: "Robo de monedas",
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
+    toast("💸 +5 por Robo de monedas. El rival será notificado.");
+    scheduleSave(); render(); return;
+  }
+
+  if (c.name.toLowerCase() === "reversa") {
+    const target = await pickUser("Elige al rival contra el que vas a devolver la carta:");
+    if (!target) return;
+    spend();
+    alert("Súmate la carta que usaron contra ti. Esta carta deberás usarla inmediatamente contra el que te atacó.");
+    try { openAdmin && openAdmin(); } catch(e){}
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa"});
+    scheduleSave(); render(); return;
+  }
+
+  if (c.name.toLowerCase() === "venganza") {
+    const target = await pickUser("Elige usuario al que aplicas Venganza (si procede):");
+    if (!target) return;
+    spend();
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Venganza"});
+    // notify victim
+    await addDoc(attackCol, {
+      attackerId: currentUser.uid,
+      attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+      victimId: target.uid,
+      cardName: "Venganza",
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
+    toast("Venganza enviada. El rival será notificado.");
+    scheduleSave(); render(); return;
+  }
+
+  if (c.name.toLowerCase() === "regalo") {
+    const target = await pickUser("¿A quién quieres enviar una tirada de ruleta gratuita?");
+    if (!target) return;
+    spend();
+    addKarma(-2);
+    // send a special stealRequest-like doc that the victim UI interprets as a 'gift' -> opens admin with ruleta preselected
+    await addDoc(stealCol, {
+      attackerId: currentUser.uid,
+      attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+      victimId: target.uid,
+      cardName: "ruleta",
+      meta: {gift:true},
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Regalo (tu karma −2)"});
+    toast("🎁 Regalo enviado. Tu karma bajó (−2).");
+    scheduleSave(); render(); return;
+  }
+
+  if (c.name.toLowerCase() === "maldición" || c.name.toLowerCase() === "maldicion") {
+    const target = await pickUser("¿A quién quieres maldecir?");
+    if (!target) return;
+    spend();
+    // add debuff so victim shows 'maldito por X'
+    await addDoc(debuffCol, {
+      victimId: target.uid,
+      type: "curse",
+      fromId: currentUser.uid,
+      fromName: currentUser.displayName||currentUser.email||currentUser.uid,
+      createdAt: serverTimestamp()
+    });
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Maldición"});
+    toast("🔮 Maldición enviada. El rival será notificado.");
+    scheduleSave(); render(); return;
+  }
+
+  if (c.name.toLowerCase() === "protección del débil" || c.name.toLowerCase() === "proteccion del debil") {
+    spend();
+    toast(Math.random()<0.5 ? "🪙 Ha salido cara" : "🪙 Ha salido cruz");
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Protección del débil"});
+    scheduleSave(); render(); return;
+  }
+  // --- end injected behaviors ---
 
   // ——— SIN efecto automático: se considera “in-game” y SE GASTA igual ———
   spend();
@@ -1723,4 +1823,3 @@ $("#rewardClose").onclick=()=>toggleModal($("#rewardModal"),false);
 </script>
 </body>
 </html>
-
