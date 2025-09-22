@@ -1,0 +1,80 @@
+// Firestore security rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Perfiles (para listar a quién espiar, mostrar nombre, etc.)
+    match /profiles/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    // Inventarios (cada user sólo su propio doc para escribir; cualquiera autenticado puede leer)
+    match /inventories/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Solicitudes de ROBO (notificación a la víctima)
+    match /stealRequests/{reqId} {
+      // Cualquiera autenticado puede crear una solicitud
+      allow create: if request.auth != null;
+
+      // Leer sólo si eres la víctima o el atacante
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.victimId ||
+        request.auth.uid == resource.data.attackerId
+      );
+
+      // Actualizar: sólo la VÍCTIMA puede marcar como vista/aplicada o usar defensa
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.victimId;
+
+      // No permitir delete desde cliente
+      allow delete: if false;
+    }
+
+    // Solicitudes de ATAQUE (notificación y defensas)
+    match /attackRequests/{reqId} {
+      allow create: if request.auth != null;
+
+      // Leer sólo si eres la víctima o el atacante
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.victimId ||
+        request.auth.uid == resource.data.attackerId
+      );
+
+      // Actualizar: sólo la VÍCTIMA (aplicar/defender)
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.victimId;
+
+      allow delete: if false;
+    }
+match /tournaments/{tId} {
+  allow read: if request.auth != null;
+  allow create: if request.auth != null;
+  allow update: if request.auth != null
+    && (request.auth.uid == resource.data.createdBy
+        || (resource.data.editors != null && request.auth.uid in resource.data.editors));
+  allow delete: if false;
+}
+
+match /tournamentRewards/{rId} {
+  allow create: if request.auth != null;
+  allow read: if request.auth != null && request.auth.uid == resource.data.targetId;
+  allow update: if request.auth != null && request.auth.uid == resource.data.targetId;
+  allow delete: if false;
+}
+    // Debuffs/estados (maldición, regalo pendiente)
+    match /debuffs/{debId} {
+      allow create: if request.auth != null;
+      // Ver si eres el objetivo
+      allow read: if request.auth != null && request.auth.uid == resource.data.targetId;
+      // Actualizar sólo el objetivo (p. ej. quitar maldición manualmente)
+      allow update: if request.auth != null && request.auth.uid == resource.data.targetId;
+      allow delete: if false;
+    }
+  }
+}
