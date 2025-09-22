@@ -1277,22 +1277,36 @@ function resolveVictimCard(data){
     _data  = data || {};
 
     const who  = data?.attackerName || data?.attackerId || "otro jugador";
-    const what = data?.cardName || data?.cardId || "una carta";
-    if (inboxText) inboxText.innerHTML = `<strong>${who}</strong> te ha robado <strong>${what}</strong>.`;
+const isGift = !!(data?.meta && data.meta.gift);
 
-    if (inboxPreview){
-      inboxPreview.innerHTML = "";
-      const wrap = document.createElement("div"); wrap.className = "cardSlot";
-      const imgw = document.createElement("div"); imgw.className = "imgWrap";
-      const img  = document.createElement("img"); img.alt = what;
-      const cid  = data?.cardId || "";
-      img.src = cid ? `img/${cid}.png` : `img/_.png`;
-      img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = cid ? `img/${cid}.jpg` : `img/_.jpg`; } };
-      imgw.appendChild(img);
-      const title = document.createElement("div"); title.className = "title"; title.textContent = what;
-      wrap.appendChild(imgw); wrap.appendChild(title);
-      inboxPreview.appendChild(wrap);
-    }
+// Texto del popup
+if (inboxText) {
+  if (isGift) {
+    inboxText.innerHTML = `<strong>${esc(who)}</strong> te ha enviado un <strong>regalo</strong>. ¡Disfruta de tu ruleta!`;
+  } else {
+    const what = data?.cardName || data?.cardId || "una carta";
+    inboxText.innerHTML = `<strong>${who}</strong> te ha robado <strong>${esc(what)}</strong>.`;
+  }
+}
+
+// Imagen/preview
+if (inboxPreview){
+  inboxPreview.innerHTML = "";
+  const wrap = document.createElement("div"); wrap.className = "cardSlot";
+  const imgw = document.createElement("div"); imgw.className = "imgWrap";
+  const img  = document.createElement("img");
+  const cid  = isGift ? "ruleta" : (data?.cardId || "");
+  const titleText = isGift ? "Ruleta" : (data?.cardName || data?.cardId || "Carta");
+
+  img.alt = titleText;
+  img.src = cid ? `img/${cid}.png` : `img/_.png`;
+  img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = cid ? `img/${cid}.jpg` : `img/_.jpg`; } };
+  imgw.appendChild(img);
+
+  const title = document.createElement("div"); title.className = "title"; title.textContent = titleText;
+  wrap.appendChild(imgw); wrap.appendChild(title);
+  inboxPreview.appendChild(wrap);
+}
 
     // marcar visto para no repetir
     try{ await updateDoc(doc(db,"stealRequests", docId), { seenByVictim:true, seenAt: serverTimestamp() }); }catch(_){}
@@ -1585,15 +1599,33 @@ async function onUse(){
     scheduleSave(); render(); return;
   }
 
-  if (c.name.toLowerCase() === "reversa") {
-    const target = await pickUser("Elige al rival contra el que vas a devolver la carta:");
-    if (!target) return;
-    spend();
-    alert("Súmate la carta que usaron contra ti. Esta carta deberás usarla inmediatamente contra el que te atacó.");
-    try { openAdmin && openAdmin(); } catch(e){}
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa"});
-    scheduleSave(); render(); return;
-  }
+ if (c.name.toLowerCase() === "reversa") {
+  const target = await pickUser("Elige al rival contra el que vas a devolver la carta:");
+  if (!target) return;
+
+  // 1) Gastar ya
+  spend();
+
+  // 2) Notificar al rival (sin abrir todavía nada)
+  await addDoc(attackCol, {
+    attackerId: currentUser.uid,
+    attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+    victimId: target.uid,
+    cardName: "Reversa",
+    type: "reversa",
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
+
+  // 3) Log + UI
+  state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa"});
+  toast("Reversa enviada. El rival será notificado.");
+  scheduleSave(); render();
+
+  // 4) Ahora sí: abrir Admin al final
+  try { openAdmin && openAdmin(); } catch(e){}
+  return;
+}
 
   if (c.name.toLowerCase() === "venganza") {
     const target = await pickUser("Elige usuario al que aplicas Venganza (si procede):");
@@ -1634,28 +1666,35 @@ async function onUse(){
   }
 
   if (c.name.toLowerCase() === "maldición" || c.name.toLowerCase() === "maldicion") {
-    const target = await pickUser("¿A quién quieres maldecir?");
-    if (!target) return;
-    spend();
-    // add debuff so victim shows 'maldito por X'
-    await addDoc(debuffCol, {
-      victimId: target.uid,
-      type: "curse",
-      fromId: currentUser.uid,
-      fromName: currentUser.displayName||currentUser.email||currentUser.uid,
-      createdAt: serverTimestamp()
-    });
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Maldición"});
-    toast("🔮 Maldición enviada. El rival será notificado.");
-    scheduleSave(); render(); return;
-  }
+  const target = await pickUser("¿A quién quieres maldecir?");
+  if (!target) return;
+  spend();
+
+  // Registrar “silencioso”: un attackRequest especial que NO abre modal en la víctima
+  await addDoc(attackCol, {
+    attackerId: currentUser.uid,
+    attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+    victimId: target.uid,
+    cardName: "Maldición",
+    type: "maldicion-log",
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
+
+  // Historial propio (morado)
+  state.useLog.push({date:new Date().toISOString(), name:`Lanzaste Maldición a @${(target.name||target.uid||"rival").slice(0,6)}`, color:"#7E57C2"});
+  scheduleSave(); render(); return;
+}
+
 
   if (c.name.toLowerCase() === "protección del débil" || c.name.toLowerCase() === "proteccion del debil") {
-    spend();
-    toast(Math.random()<0.5 ? "🪙 Ha salido cara" : "🪙 Ha salido cruz");
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Protección del débil"});
-    scheduleSave(); render(); return;
-  }
+  spend();
+  const coin = Math.random() < 0.5 ? "cara" : "cruz";
+  toast(coin === "cara" ? "🪙 Ha salido CARA" : "🪙 Ha salido CRUZ");
+  state.useLog.push({date:new Date().toISOString(), name:`Protección del débil → salió ${coin}`});
+  scheduleSave(); render(); return;
+}
+
   // --- end injected behaviors ---
 
   // ——— SIN efecto automático: se considera “in-game” y SE GASTA igual ———
