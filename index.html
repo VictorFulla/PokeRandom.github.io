@@ -589,7 +589,7 @@ const rawList = [
   [4,"gacha","Apuesta Segura","Apuesta que vas a ganar los combates contra los demás jugadores. si Ganas, recibes 15 monedas, si pierdes, debes dar 5 monedas a cada jugador que te gano."],
   [10,"ataque","Cambio repentino","Un pokémon de un rival cambiará su habilidad al menos que el rival page 15 monedas"],
   [0,"item","Intercambio","Intercambia un pokémon con un rival si ambos quieren."],
-  [2,"defensa","Regalo","Envías un objeto curativo aleatorio a un rival. A cambio, si te lanza una carta negativa, tendrás que devolver el regalo por 3 de su propio inventario."],
+  [4,"defensa","Regalo"," Envias una tirada de ruleta gratuita a un rival. Tras esto, tu karma bajará."],
   [10,"defensa","Maldición","Maldices a un rival, si ese jugador tiene 3 de karma negativo o más, puedes robarle una carta a tu elección."],
   [7,"Ataque","Robo sigiloso","Robas una carta del rival"],
   [7,"defensa","Buff permanente","subes 8 puntos todos los IVS de un pokémon a tu elección"],
@@ -840,7 +840,7 @@ const data = unseen.data();
 showStealInbox(unseen.id, data);
 
     // Abrir pop-up y marcar como visto para no repetir al recargar
-    showStealInbox(first.id, data);
+    /* removed stray duplicate call */
   });
 }
 
@@ -1344,12 +1344,16 @@ async function showAttackInbox(docId, data){
   currentAttackData = data;
   const attacker = data.attackerName || data.attackerId || "Alguien";
   attackText.innerHTML = `<strong>${esc(attacker)}</strong> te ha atacado con <strong>${esc(data.cardName)}</strong>.`;
+  if ((data.cardName||"").toLowerCase()==="regalo"){
+    attackText.innerHTML = `<strong>${esc(attacker)}</strong> te ha enviado un regalo. ¡Disfruta de tu ruleta!`;
+  }
 
   // Preview centrada con 1 carta
   attackPreview.innerHTML = "";
   const block = document.createElement("div"); block.className="cardSlot";
   const imgWrap=document.createElement("div"); imgWrap.className="imgWrap";
   const idGuess = state.cards.find(c=>c.name.toLowerCase()===data.cardName.toLowerCase())?.id || "c01";
+  if ((data.cardName||"").toLowerCase()==="regalo"){ idGuess = "ruleta"; }
   const img=document.createElement("img"); img.alt=data.cardName; img.src=`img/${idGuess}.png`;
   img.onerror=()=>{ if(!img.dataset.tryJ){ img.dataset.tryJ=1; img.src=`img/${idGuess}.jpg`; } };
   imgWrap.appendChild(img);
@@ -1363,6 +1367,9 @@ async function showAttackInbox(docId, data){
   okBtn.className = "btn bad";
   okBtn.textContent = "OK (recibir ataque)";
   okBtn.onclick = async () => {
+    // Efectos especiales por carta
+    if ((currentAttackData?.cardName||"").toLowerCase()==="robo de monedas"){ addCoins(-5, "Robo de monedas (víctima)"); }
+    if ((currentAttackData?.cardName||"").toLowerCase()==="regalo"){ try{ openAdmin({ preselectName:"Ruleta", amount:1 }); }catch(e){} }
     // Cerrar al instante
     toggleModal(attackModal,false);
     const _docId = currentAttackId;
@@ -1520,12 +1527,29 @@ async function onUse(){
   }
 
   if (c.name.toLowerCase() === "robo de monedas") {
+
+    const target = await pickUser("¿A quién quieres robarle 5 monedas?");
+    if (!target) return;
     spend();
-    addCoins(5, "Robo de monedas");
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Robo de monedas (+5) y gastaste la carta (−1)"});
+    addCoins(5, "Robo de monedas (atacante)");
+    state.useLog = state.useLog || [];
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Robo de monedas (+5 para ti)"});
     toast("💸 +5 por Robo de monedas");
+    // Notificar al rival: al cerrar su popup se le restará −5
+    await addDoc(collection(db,"attackRequests"), {
+      attackerId: currentUser.uid,
+      attackerName: (currentUser.displayName||currentUser.email||"Usuario"),
+      victimId: target.uid,
+      cardName: "Robo de monedas",
+      type: "monedas",
+      payload: { delta: -5 },
+      seenByVictim: false,
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
     scheduleSave(); render(); return;
-  }
+
+}
 
   // ——— ESPECIALES ———
   // Robo sigiloso: se gasta al CONFIRMAR el robo (no aquí)
@@ -1536,9 +1560,18 @@ async function onUse(){
 
   // Barajear cartas: se gasta al CONFIRMAR el barajeo (no aquí)
   if (c.name.toLowerCase() === "barajear cartas") {
-    openShuffle();
-    return;
-  }
+
+    // Mostrar dos cartas en la notificación grande (ya lo hacía una, lo extendemos a dos)
+    const result = await barajarYObtenerDosCartas?.() || null;
+    if (result && result.length === 2){
+      notifyTwoCards(result[0], result[1]);
+    }
+    spend();
+    state.useLog = state.useLog || [];
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Barajear cartas (2 recompensas mostradas)"});
+    scheduleSave(); render(); return;
+
+}
 
   // ——— ATAQUES genéricos: notifican y GASTAN la carta ———
   if (c.type === "ataque") {
@@ -1586,52 +1619,66 @@ async function onUse(){
   }
 
   if (c.name.toLowerCase() === "reversa") {
+
     const target = await pickUser("Elige al rival contra el que vas a devolver la carta:");
     if (!target) return;
     spend();
-    alert("Súmate la carta que usaron contra ti. Esta carta deberás usarla inmediatamente contra el que te atacó.");
+    await addDoc(collection(db,"attackRequests"), {
+      attackerId: currentUser.uid,
+      attackerName: (currentUser.displayName||currentUser.email||"Usuario"),
+      victimId: target.uid,
+      cardName: "Reversa",
+      status: "pending",
+      seenByVictim: false,
+      createdAt: serverTimestamp()
+    });
     try { openAdmin && openAdmin(); } catch(e){}
+    state.useLog = state.useLog || [];
     state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa"});
     scheduleSave(); render(); return;
-  }
+
+}
 
   if (c.name.toLowerCase() === "venganza") {
-    const target = await pickUser("Elige usuario al que aplicas Venganza (si procede):");
+
+    const target = await pickUser("Elige un jugador contra quien usar Venganza:");
     if (!target) return;
     spend();
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Venganza"});
-    // notify victim
-    await addDoc(attackCol, {
+    await addDoc(collection(db,"attackRequests"), {
       attackerId: currentUser.uid,
-      attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+      attackerName: (currentUser.displayName||currentUser.email||"Usuario"),
       victimId: target.uid,
       cardName: "Venganza",
       status: "pending",
+      seenByVictim: false,
       createdAt: serverTimestamp()
     });
-    toast("Venganza enviada. El rival será notificado.");
+    state.useLog = state.useLog || [];
+    state.useLog.push({date:new Date().toISOString(), name:"Usaste Venganza"});
     scheduleSave(); render(); return;
-  }
+
+}
 
   if (c.name.toLowerCase() === "regalo") {
+
     const target = await pickUser("¿A quién quieres enviar una tirada de ruleta gratuita?");
     if (!target) return;
     spend();
     addKarma(-2);
-    // send a special stealRequest-like doc that the victim UI interprets as a 'gift' -> opens admin with ruleta preselected
-    await addDoc(stealCol, {
+    await addDoc(collection(db,"attackRequests"), {
       attackerId: currentUser.uid,
-      attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+      attackerName: (currentUser.displayName||currentUser.email||"Usuario A"),
       victimId: target.uid,
-      cardName: "ruleta",
-      meta: {gift:true},
+      cardName: "Regalo",
+      payload: { give: "ruleta", amount: 1, label: "Usuario A te ha enviado un regalo, ¡disfruta de tu ruleta!", illustration:"ruleta" },
       status: "pending",
+      seenByVictim: false,
       createdAt: serverTimestamp()
     });
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Regalo (tu karma −2)"});
     toast("🎁 Regalo enviado. Tu karma bajó (−2).");
     scheduleSave(); render(); return;
-  }
+
+}
 
   if (c.name.toLowerCase() === "maldición" || c.name.toLowerCase() === "maldicion") {
     const target = await pickUser("¿A quién quieres maldecir?");
@@ -1668,6 +1715,39 @@ async function onUse(){
   scheduleSave(); render();
   alert("Esta carta se aplica en la partida (fuera de la app). Ya se ha descontado de tu inventario.");
   return;
+
+  if (c.name.toLowerCase() === "maldición") {
+
+    const target = await pickUser("¿A quién maldices?");
+    if (!target) return;
+    spend();
+    await addDoc(collection(db,"attackRequests"), {
+      attackerId: currentUser.uid,
+      attackerName: (currentUser.displayName||currentUser.email||"Usuario"),
+      victimId: target.uid,
+      cardName: "Maldición",
+      payload: { debuff: "maldicion" },
+      status: "pending",
+      seenByVictim: false,
+      createdAt: serverTimestamp()
+    });
+    state.useLog = state.useLog || [];
+    state.useLog.push({date:new Date().toISOString(), name:"Maldición lanzada a " + (target.name||target.uid), color:"#7e22ce"});
+    scheduleSave(); render(); return;
+
+  }
+
+  if (c.name.toLowerCase() === "protección del débil") {
+
+    const cara = Math.random() < 0.5;
+    const label = cara ? "Ha salido cara" : "Ha salido cruz";
+    state.useLog = state.useLog || [];
+    state.useLog.push({date:new Date().toISOString(), name:"Protección del débil — " + label});
+    toast("🪙 " + label);
+    spend();
+    scheduleSave(); render(); return;
+
+  }
 }
 
 
