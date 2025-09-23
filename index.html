@@ -829,8 +829,6 @@ function subscribeInventory(uid){
   if(!snap.exists()) return;
   state = migrateState(snap.data()||state);
   render();
-  // Guarda de vuelta el estado limpio (deja la base sin duplicados)
-  try{ scheduleSave(); }catch{}
 });
 }
 function subscribeStealInbox(uid){
