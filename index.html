@@ -603,7 +603,9 @@ const rawList = [
   [7,"Ataque","Robo sigiloso","Robas una carta del rival"],
   [7,"defensa","Buff permanente","subes 8 puntos todos los IVS de un pokémon a tu elección"],
   [2,"defensa","Protección del débil","usa cuando te tiren una carta de ataque, tira una moneda; si sale cara, te proteges y el rival recupera su carta; si sale cruz, recibes el ataque y pierdes esta carta."],
-  [4,"gacha","Barajear cartas","Elige 3 cartas de tu inventario; recibes 2 cartas aleatorias ponderadas por rareza."]
+  [4,"gacha","Barajear cartas","Elige 3 cartas de tu inventario; recibes 2 cartas aleatorias ponderadas por rareza."],
+[99,"item","Poleo Menta","Puedes elejir una menta neutra o especifica. Esta carta solo podra conseguirse en ruleta o en victorias de torneo."],
+[10,"gacha","Rascada de Huevos","Tras comprar esta carta recibirás un huevo de un Pokémon aleatorio."]
 ];
 let cardsBase = rawList.map((r,i)=>({id:"c"+String(i+1).padStart(2,"0"),cost:+r[0],type:slugType(r[1]),name:r[2].trim(),desc:capFirst(r[3]||""),qty:0}));
 // Ajuste: Intercambio pasa a costar 2
