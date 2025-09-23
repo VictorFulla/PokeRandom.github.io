@@ -228,6 +228,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     <h1 class="logo">Random Lock Wubalonga <span class="sub">• v4.8</span></h1>
 
     <div class="badge" id="whoAmI">Sin sesión</div>
+<button id="editNickBtn" class="btn alt" style="display:none">Editar nick</button>
     <button id="btnGoogle" class="btn good">Entrar con Google</button>
     <button id="btnEmail" class="btn alt">Email/Contraseña</button>
     <button id="btnLogout" class="btn warn" style="display:none">Salir</button>
@@ -1974,6 +1975,133 @@ $("#shuffleResultClose").onclick=()=>toggleModal($("#shuffleResultModal"),false)
 $("#rewardClose").onclick=()=>toggleModal($("#rewardModal"),false);
 
 /* ========= FIN ========= */
+</script>
+
+<!-- Modal NICK -->
+<div id="nickModal" class="modal" aria-hidden="true">
+  <div class="panel" role="dialog" aria-label="Editar nick" style="grid-template-columns:1fr">
+    <button class="closeX" id="nickCloseX">Cerrar</button>
+    <h3>✏️ Nick</h3>
+    <div class="small">Tu nick se mostrará en cartas, listas y notificaciones. Reglas: 3–20 chars; letras, números o _</div>
+    <div class="hr"></div>
+    <label class="small">Nuevo nick</label>
+    <input id="nickInput" type="text" placeholder="p. ej. Fulla_ae" maxlength="20" />
+    <div id="nickError" class="small" style="color:#fca5a5;margin-top:6px"></div>
+    <div class="flex" style="margin-top:10px">
+      <button id="nickSave" class="btn">Guardar</button>
+      <button id="nickCancel" class="btn alt right">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+
+<script type="module">
+// ========= Nick utils =========
+const $ = (sel, ctx=document) => ctx.querySelector(sel);
+const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+
+const auth = (window.auth) ? window.auth : getAuth();
+const db = (window.db) ? window.db : getFirestore();
+
+const currentUserRef = () => auth.currentUser;
+const profRef = (uid) => doc(db, "profiles", uid);
+
+function toast(msg){
+  try { if (window.toast) return window.toast(msg); } catch(e){}
+  console.log(msg);
+}
+
+function toggleModal(el, show){
+  if(!el) return;
+  if(show){ el.style.display="block"; el.setAttribute("aria-hidden","false"); }
+  else { el.style.display="none"; el.setAttribute("aria-hidden","true"); }
+}
+
+function validateNick(s){
+  return /^[A-Za-z0-9_]{3,20}$/.test(String(s||"").trim());
+}
+
+async function myNickOrName(){
+  const user = currentUserRef();
+  if(!user) return "Jugador";
+  const d = await getDoc(profRef(user.uid));
+  const p = d.exists() ? d.data() : {};
+  return (p.nick || p.displayName || user.displayName || user.email || user.uid);
+}
+
+async function loadMyProfileAndShow(){
+  const user = currentUserRef();
+  if(!user) return;
+  const d = await getDoc(profRef(user.uid));
+  const p = d.exists() ? d.data() : {};
+  const name = p.nick || p.displayName || user.displayName || user.email || user.uid;
+  const who = $("#whoAmI");
+  if (who) who.textContent = name;
+  const btn = $("#editNickBtn");
+  if (btn) btn.style.display = "inline-block";
+  return p;
+}
+
+function openNickModal(initial=""){
+  const inpt = $("#nickInput");
+  if (inpt) inpt.value = (initial || "").slice(0,20);
+  const err = $("#nickError");
+  if (err) err.textContent = "";
+  toggleModal($("#nickModal"), true);
+}
+
+function closeNickModal(){
+  toggleModal($("#nickModal"), false);
+}
+
+async function saveNick(){
+  const user = currentUserRef();
+  if(!user) return;
+  const v = ($("#nickInput")?.value || "").trim();
+  if(!validateNick(v)){
+    const err = $("#nickError");
+    if (err) err.textContent = "Usa 3–20 caracteres: letras, números o _";
+    return;
+  }
+  await setDoc(profRef(user.uid), { nick: v, updatedAt: serverTimestamp() }, { merge: true });
+  const who = $("#whoAmI"); if (who) who.textContent = v;
+  toast("✅ Nick actualizado");
+  closeNickModal();
+}
+
+// Bind modal events
+$("#nickSave")?.addEventListener("click", saveNick);
+$("#nickCancel")?.addEventListener("click", closeNickModal);
+$("#nickCloseX")?.addEventListener("click", closeNickModal);
+
+$("#editNickBtn")?.addEventListener("click", async ()=>{
+  const user = currentUserRef();
+  if(!user) return;
+  const d = await getDoc(profRef(user.uid));
+  const p = d.exists() ? d.data() : {};
+  openNickModal(p.nick || "");
+});
+
+// Secondary auth listener to inject nick UX without touching your main logic
+onAuthStateChanged(auth, async (user)=>{
+  if(user){
+    const p = await loadMyProfileAndShow();
+    if(!p?.nick){
+      const base = user.displayName || (user.email ? user.email.split("@")[0] : "Jugador");
+      const hint = base.replace(/\s+/g,"_").slice(0,20);
+      const input = document.getElementById("nickInput");
+      if (input) input.value = hint;
+      openNickModal(hint);
+    }
+  }else{
+    const who = $("#whoAmI"); if (who) who.textContent = "Sin sesión";
+    const btn = $("#editNickBtn"); if (btn) btn.style.display = "none";
+  }
+});
 </script>
 </body>
 </html>
