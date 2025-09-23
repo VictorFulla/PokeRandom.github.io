@@ -1292,16 +1292,22 @@ function resolveVictimCard(data){
 
     const who  = data?.attackerName || data?.attackerId || "otro jugador";
 const isGift = !!(data?.meta && data.meta.gift);
+// === HOOK: flag de monedas
+const isCoins = !!(data && data.meta && data.meta.coins);
+const coinsAmount = isCoins ? Number(data.meta.coins) || 0 : 0;
 
-// Texto del popup
+// Texto del popup 
 if (inboxText) {
   if (isGift) {
     inboxText.innerHTML = `<strong>${esc(who)}</strong> te ha enviado un <strong>regalo</strong>. ¡Disfruta de tu ruleta!`;
+  } else if (isCoins) {
+    inboxText.innerHTML = `<strong>${esc(who)}</strong> te ha robado <strong>${coinsAmount}</strong> monedas.`;
   } else {
     const what = data?.cardName || data?.cardId || "una carta";
     inboxText.innerHTML = `<strong>${who}</strong> te ha robado <strong>${esc(what)}</strong>.`;
   }
 }
+
 
 // Imagen/preview
 if (inboxPreview){
@@ -1309,9 +1315,15 @@ if (inboxPreview){
   const wrap = document.createElement("div"); wrap.className = "cardSlot";
   const imgw = document.createElement("div"); imgw.className = "imgWrap";
   const img  = document.createElement("img");
-  const cid  = isGift ? "ruleta" : (data?.cardId || "");
+  const cid  = isGift ? (data?.cardId || "c03") : (data?.cardId || "");
   const titleText = isGift ? "Ruleta" : (data?.cardName || data?.cardId || "Carta");
-
+// Para monedas, muestra un icono genérico (si no tienes, deja el default)
+if (isCoins) {
+  // Si tienes img/coin.png úsala, si no, deja como está
+  img.src = `img/coin.png`;
+  // y el título
+  wrap.querySelector?.(".title")?.remove?.(); // por si lo añades luego
+}
   img.alt = titleText;
   img.src = cid ? `img/${cid}.png` : `img/_.png`;
   img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = cid ? `img/${cid}.jpg` : `img/_.jpg`; } };
@@ -1520,6 +1532,43 @@ async function onUse(){
     c.qty = Math.max(0, (c.qty || 0) - 1);
     $("#cardQty").textContent = Math.trunc(c.qty || 0); // refresco rápido en el modal
   };
+// === ROBO DE MONEDAS ===
+if (c.name.toLowerCase() === "robo de monedas") {
+  const target = await pickUser("Elige a quién robar 5 monedas");
+  if (!target) return;
+
+  try {
+    // 1) crea la noti para la víctima (usamos mismo canal 'steal' con meta.coins)
+    await addDoc(stealCol, {
+      attackerId: currentUser.uid,
+      attackerName: currentUser.displayName || currentUser.email || currentUser.uid,
+      victimId: target.uid,
+      cardName: "Monedas",
+      meta: { coins: 5 },                // <- CLAVE: marca que son monedas
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
+
+    // 2) te sumas +5 al momento
+    state.wallet = (state.wallet || 0) + 5;
+    (state.walletLog = state.walletLog || []).push({
+      date: new Date().toISOString(),
+      name: "Robo de monedas (+5)",
+      note: `Desde ${target.displayName || target.uid}`
+    });
+
+    // 3) gasta la carta al final si todo ok
+    spend();
+    toast("💰 Robaste 5 monedas");
+  } catch (e) {
+    console.error(e);
+    alert("No se pudo enviar el robo de monedas.");
+    return; // no gastes si falla
+  } finally {
+    scheduleSave(); render();
+  }
+  return;
+}
 
   // ——— ECONOMÍA: efectos automáticos (SIEMPRE gastan la carta) ———
   if (c.name.toLowerCase() === "10 monedas") {
