@@ -1677,13 +1677,10 @@ if (c.name.toLowerCase() === "regalo") {
       status: "pending",
       createdAt: serverTimestamp()
     });
-
     // 2) Log local
     state.useLog.push({ date: new Date().toISOString(), name: "Usaste Regalo (tu karma −2)" });
-
     // 3) GASTAR AL FINAL (solo si todo salió OK)
-    spend();
-
+    spend(-1);
     toast("🎁 Regalo enviado. Tu karma bajó (−2).");
   } catch (e) {
     console.error(e);
