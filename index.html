@@ -1664,32 +1664,28 @@ async function onUse(){
 if (c.name.toLowerCase() === "regalo") {
   const target = await pickUser("¿A quién quieres enviar una tirada de ruleta gratuita?");
   if (!target) return;
+  addKarma(-2);
+  // send a special stealRequest-like doc ...
+  await addDoc(stealCol, {
+    attackerId: currentUser.uid,
+    attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+    victimId: target.uid,
+    cardName: "ruleta",
+    meta: {gift:true},
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
 
-  addKarma(-2); // lo mantenemos
-  try {
-    // 1) Crea la request (igual que antes)
-    await addDoc(stealCol, {
-      attackerId: currentUser.uid,
-      attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
-      victimId: target.uid,
-      cardName: "ruleta",
-      meta: { gift: true },
-      status: "pending",
-      createdAt: serverTimestamp()
-    });
-    // 2) Log local
-    state.useLog.push({ date: new Date().toISOString(), name: "Usaste Regalo (tu karma −2)" });
-    // 3) GASTAR AL FINAL (solo si todo salió OK)
-    spend(-1);
-    toast("🎁 Regalo enviado. Tu karma bajó (−2).");
-  } catch (e) {
-    console.error(e);
-    alert("No se pudo enviar el regalo. Inténtalo de nuevo.");
-    return; // no gastamos si falló
-  } finally {
-    scheduleSave(); render();
-  }
-  return;
+  // GASTAR AL FINAL (cuando todo salió bien)
+  spend();
+
+  state.useLog.push({date:new Date().toISOString(), name:"Usaste Regalo (tu karma −2)"});
+  toast("🎁 Regalo enviado. Tu karma bajó (−2).");
+
+  // Forzar render inmediato del grid (evita quedarse “congelado”)
+  try { __freezeUI = false; __pendingRender = false; } catch(_){}
+
+  scheduleSave(); render(); return;
 }
 
 
