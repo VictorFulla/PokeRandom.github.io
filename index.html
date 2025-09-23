@@ -1862,12 +1862,30 @@ if(shuffleCard && (shuffleCard.qty||0)>0){
   toast(`🔀 Nuevas: ${r1.name} y ${r2.name}`);
   scheduleSave(); render(); toggleModal(shuffleModal,false);
 
-  // Mostrar modal resultado con 2 nombres (y 1 imagen grande por simplicidad)
-  $("#shuffleNames").textContent = `${r1.name} y ${r2.name}`;
-  const img=$("#shuffleImg1"); img.removeAttribute("data-tried"); img.onerror=null;
-  img.src=`img/${r1.id}.png`; img.onerror=()=>{ if(!img.dataset.tried){ img.dataset.tried=1; img.src=`img/${r1.id}.jpg`; } };
-  toggleModal($("#shuffleResultModal"),true);
+  // Mostrar modal resultado con 2 nombres y 2 imágenes
+$("#shuffleNames").textContent = `${r1.name} y ${r2.name}`;
+
+// Imagen 1 (r1) con fallback .jpg
+const img1 = $("#shuffleImg1");
+img1.removeAttribute("data-tried");
+img1.onerror = null;
+img1.src = `img/${r1.id}.png`;
+img1.onerror = () => {
+  if (!img1.dataset.tried) { img1.dataset.tried = 1; img1.src = `img/${r1.id}.jpg`; }
 };
+
+// Imagen 2 (r2) con fallback .jpg
+const img2 = $("#shuffleImg2");
+img2.removeAttribute("data-tried");
+img2.onerror = null;
+img2.src = `img/${r2.id}.png`;
+img2.onerror = () => {
+  if (!img2.dataset.tried) { img2.dataset.tried = 1; img2.src = `img/${r2.id}.jpg`; }
+};
+
+toggleModal($("#shuffleResultModal"), true);
+};
+
 $("#shuffleResultCloseX").onclick=()=>toggleModal($("#shuffleResultModal"),false);
 $("#shuffleResultClose").onclick=()=>toggleModal($("#shuffleResultModal"),false);
 
