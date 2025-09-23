@@ -1602,10 +1602,8 @@ async function onUse(){
  if (c.name.toLowerCase() === "reversa") {
   const target = await pickUser("Elige al rival contra el que vas a devolver la carta:");
   if (!target) return;
-
   // 1) Gastar ya
   spend();
-
   // 2) Notificar al rival (sin abrir todavía nada)
   await addDoc(attackCol, {
     attackerId: currentUser.uid,
@@ -1616,34 +1614,36 @@ async function onUse(){
     status: "pending",
     createdAt: serverTimestamp()
   });
-
   // 3) Log + UI
   state.useLog.push({date:new Date().toISOString(), name:"Usaste Reversa"});
   toast("Reversa enviada. El rival será notificado.");
   scheduleSave(); render();
-
   // 4) Ahora sí: abrir Admin al final
   try { openAdmin && openAdmin(); } catch(e){}
   return;
 }
 
   if (c.name.toLowerCase() === "venganza") {
-    const target = await pickUser("Elige usuario al que aplicas Venganza (si procede):");
-    if (!target) return;
-    spend();
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Venganza"});
-    // notify victim
-    await addDoc(attackCol, {
-      attackerId: currentUser.uid,
-      attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
-      victimId: target.uid,
-      cardName: "Venganza",
-      status: "pending",
-      createdAt: serverTimestamp()
-    });
-    toast("Venganza enviada. El rival será notificado.");
-    scheduleSave(); render(); return;
-  }
+    const target = await pickUser("Elige al rival con el que vengarte:");
+  if (!target) return;
+  // 1) Gastar ya
+  spend();
+  // 2) Notificar al rival (sin abrir todavía nada)
+  await addDoc(attackCol, {
+    attackerId: currentUser.uid,
+    attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+    victimId: target.uid,
+    cardName: "Venganza",
+    type: "venganza",
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
+  // 3) Log + UI
+  state.useLog.push({date:new Date().toISOString(), name:"Usaste Venganza"});
+  toast("Reversa enviada. El rival será notificado.");
+  scheduleSave(); render();
+}
+
 
   if (c.name.toLowerCase() === "regalo") {
     const target = await pickUser("¿A quién quieres enviar una tirada de ruleta gratuita?");
