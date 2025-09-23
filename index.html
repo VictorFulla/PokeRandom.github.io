@@ -429,7 +429,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
 <div id="inboxModal" class="modal" aria-hidden="true">
   <div class="panel" role="dialog" aria-label="Notificación de robo" style="grid-template-columns:1fr">
     <button class="closeX" id="inboxCloseX">Cerrar</button>
-    <h3>⚠️ Te han robado una carta</h3>
+    <h3>⚠️ HAN USADO UNA CARTA CONTRA TI ⚠️</h3>
     <div class="small" id="inboxText">…</div>
     <div id="inboxPreview" class="cards" style="margin-top:10px"></div>
     <div class="flex">
@@ -793,6 +793,13 @@ function unsubscribeAll(){
   [unsubInv,unsubProfiles,unsubInbox,unsubAttackInbox,unsubDebuffs].forEach(fn=>{try{fn&&fn()}catch{}});
   unsubInv=unsubProfiles=unsubInbox=unsubAttackInbox=unsubDebuffs=null;
 }
+// === Pausa global de realtime durante acciones críticas (elegir rival, confirmar, etc.)
+let __rtPaused = false;
+window.withRealtimePause = async (fn) => {
+  __rtPaused = true;
+  try { return await fn(); }
+  finally { __rtPaused = false; }
+};
 
 /* ========= Subs ========= */
 function subscribeProfiles(){
@@ -827,6 +834,7 @@ function subscribeStealInbox(uid){
     where("status","==","pending")
   );
   unsubInbox = onSnapshot(qv, async (snap)=>{
+if (__rtPaused) return; // no interrumpir flujos críticos
     const docs = snap.docs;
     if(!docs.length) return;
 
