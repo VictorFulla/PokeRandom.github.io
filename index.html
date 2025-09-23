@@ -284,7 +284,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
             <option value="gacha">Gacha</option><option value="ítem">Ítem</option><option value="captura">Captura</option>
           </select>
           <label style="display:flex;gap:6px;align-items:center">
-            <input type="checkbox" id="hideZero"/> Ocultar sin tener
+            <input type="checkbox" id="hideZero"/> Oculta no obtenidas
           </label>
         </label>
       </div>
@@ -433,7 +433,7 @@ select{min-width:180px}.right{margin-left:auto}.flex{display:flex;gap:10px;align
     <div class="small" id="inboxText">…</div>
     <div id="inboxPreview" class="cards" style="margin-top:10px"></div>
     <div class="flex">
-      <button id="inboxApply" class="btn bad">OK (restar de mi inventario)</button>
+      <button id="inboxApply" class="btn bad">OK</button>
     </div>
   </div>
 </div>
@@ -593,11 +593,11 @@ const rawList = [
   [5,"ataque","Mismo destino","tu liberas un pokemon y el rival deberá liberar otro que comparta uno de los tipos"],
   [4,"ataque","envenenamiento","el rival deber tirar 2 curas de su inventario"],
   [10,"gacha","Prime","si tu pokémon elegido con la carta no muere en los combates contra los demás, recibirá 31 IVS en todo, si lo vuelves a usar, se volverá shiny"],
-  [4,"defensa","Venganza","si te han tirado 2 o más cartas el mismo jugador, puedes tirar de ruleta o robarle un pokémon aleatorio de su caja."],
+  [4,"defensa","Venganza","si te han tirado 2 o más cartas el mismo jugador, y este tiene 3 de karma o mas, puedes robarle un pokemon aleatorio de su caja."],
   [4,"gacha","Apuesta Segura","Apuesta que vas a ganar los combates contra los demás jugadores. si Ganas, recibes 15 monedas, si pierdes, debes dar 5 monedas a cada jugador que te gano."],
   [10,"ataque","Cambio repentino","Un pokémon de un rival cambiará su habilidad al menos que el rival page 15 monedas"],
   [0,"item","Intercambio","Intercambia un pokémon con un rival si ambos quieren."],
-  [2,"defensa","Regalo","Envías un objeto curativo aleatorio a un rival. A cambio, si te lanza una carta negativa, tendrás que devolver el regalo por 3 de su propio inventario."],
+  [2,"defensa","Regalo","Enías una tirada de ruleta a tu rival! a cambio, te restas 2 de karma de tu cuenta"],
   [10,"defensa","Maldición","Maldices a un rival, si ese jugador tiene 3 de karma negativo o más, puedes robarle una carta a tu elección."],
   [7,"Ataque","Robo sigiloso","Robas una carta del rival"],
   [7,"defensa","Buff permanente","subes 8 puntos todos los IVS de un pokémon a tu elección"],
@@ -1666,12 +1666,14 @@ if (c.name.toLowerCase() === "regalo") {
   // send a special stealRequest-like doc ...
   await addDoc(stealCol, {
     attackerId: currentUser.uid,
-    attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
-    victimId: target.uid,
-    cardName: "ruleta",
-    meta: {gift:true},
-    status: "pending",
-    createdAt: serverTimestamp()
+  attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
+  victimId: target.uid,
+  // usa id + nombre para que el popup pueda resolver la imagen de la ruleta sí o sí
+  cardId: "c03",
+  cardName: "Ruleta",
+  meta: { gift: true },
+  status: "pending",
+  createdAt: serverTimestamp()
   });
 
   // GASTAR AL FINAL (cuando todo salió bien)
