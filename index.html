@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Random Lock Wubalonga — v4.8</title>
+<title>RandomLock Wobalonga — v4.8</title>
 <style>
 :root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.08);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--good:#22c55e;--bad:#ef4444;--warn:#f59e0b;--br:16px}
 *{box-sizing:border-box}html,body{height:100%}
@@ -1315,15 +1315,13 @@ if (inboxPreview){
   const wrap = document.createElement("div"); wrap.className = "cardSlot";
   const imgw = document.createElement("div"); imgw.className = "imgWrap";
   const img  = document.createElement("img");
-  const cid  = isGift ? (data?.cardId || "c03") : (data?.cardId || "");
-  const titleText = isGift ? "Ruleta" : (data?.cardName || data?.cardId || "Carta");
-// Para monedas, muestra un icono genérico (si no tienes, deja el default)
-if (isCoins) {
-  // Si tienes img/coin.png úsala, si no, deja como está
-  img.src = `img/coin.png`;
-  // y el título
-  wrap.querySelector?.(".title")?.remove?.(); // por si lo añades luego
-}
+  const cid  = isGift ? (data?.cardId || "c03")
+           : isCoins ? (data?.cardId || "c04")
+           : (data?.cardId || "");
+const titleText = isGift ? "Ruleta"
+           : isCoins ? "Monedas"
+           : (data?.cardName || data?.cardId || "Carta");
+
   img.alt = titleText;
   img.src = cid ? `img/${cid}.png` : `img/_.png`;
   img.onerror = ()=>{ if(!img.dataset.f){ img.dataset.f=1; img.src = cid ? `img/${cid}.jpg` : `img/_.jpg`; } };
@@ -1355,23 +1353,47 @@ if (isCoins) {
 };
   }
 
-  // --- OK: RESTAR por ID exacto y marcar applied ---
   if (inboxApply){
-    inboxApply.onclick = async ()=>{
-  toggleModal(inboxModal,false);
-  try{
-    if (_docId){
-      window.__suppressSteal.add(_docId);
-      // No marcamos applied aquí; solo visto. El admin podrá marcar applied si quiere.
-      await updateDoc(doc(db,"stealRequests", _docId), { seenByVictim:true, seenAt: serverTimestamp() });
-    }
-    const preId = _data?.cardId || "";
-    const preName = _data?.cardName || "";
-    openAdmin({ preselectId: preId, preselectName: preName, amount: 1, pendingStealId: _docId });
-  }catch(e){ console.warn("No se pudo abrir Admin:", e); }
-  _docId=null; _data=null;
-};
-  }
+  inboxApply.onclick = async ()=>{
+    toggleModal(inboxModal,false);
+    try{
+      if (_docId) window.__suppressSteal.add(_docId);
+
+      // Si es robo de monedas, resta del monedero y MARCA applied, sin abrir admin
+      if (_data && _data.meta && _data.meta.coins){
+        const amount = Number(_data.meta.coins) || 0;
+        state.coins = Math.max(0, (state.coins||0) - amount);
+        (state.walletLog = state.walletLog || []).push({
+          date: new Date().toISOString(),
+          type: "gasto",
+          amount,
+          note: `Robo de monedas por ${_data.attackerName || _data.attackerId || "otro jugador"}`
+        });
+        scheduleSave(); render();
+
+        if (_docId){
+          await updateDoc(doc(db,"stealRequests", _docId), {
+            status: "applied",
+            appliedAt: serverTimestamp(),
+            seenByVictim: true
+          });
+        }
+        _docId=null; _data=null;
+        return; // IMPORTANTE: no seguir al flujo de abrir admin
+      }
+
+      // Caso normal (cartas): marcar visto y abrir admin con la carta preseleccionada
+      if (_docId){
+        await updateDoc(doc(db,"stealRequests", _docId), { seenByVictim:true, seenAt: serverTimestamp() });
+      }
+      const preId = _data?.cardId || "";
+      const preName = _data?.cardName || "";
+      openAdmin({ preselectId: preId, preselectName: preName, amount: 1, pendingStealId: _docId });
+    }catch(e){ console.warn("No se pudo abrir Admin:", e); }
+    _docId=null; _data=null;
+  };
+}
+
 })();
 
 /* ========= Ataques (víctima) ========= */
@@ -1538,32 +1560,34 @@ if (c.name.toLowerCase() === "robo de monedas") {
   if (!target) return;
 
   try {
-    // 1) crea la noti para la víctima (usamos mismo canal 'steal' con meta.coins)
+    // crea la noti para la víctima (stealRequests)
     await addDoc(stealCol, {
       attackerId: currentUser.uid,
       attackerName: currentUser.displayName || currentUser.email || currentUser.uid,
       victimId: target.uid,
       cardName: "Monedas",
-      meta: { coins: 5 },                // <- CLAVE: marca que son monedas
+      cardId: "c04",            // << mostrar esta ilustración en el popup
+      meta: { coins: 5 },       // << marca que son monedas
       status: "pending",
       createdAt: serverTimestamp()
     });
 
-    // 2) te sumas +5 al momento
-    state.wallet = (state.wallet || 0) + 5;
+    // te sumas +5 ahora mismo (tu estado usa state.coins)
+    state.coins = (state.coins || 0) + 5;
     (state.walletLog = state.walletLog || []).push({
       date: new Date().toISOString(),
-      name: "Robo de monedas (+5)",
-      note: `Desde ${target.displayName || target.uid}`
+      type: "ingreso",
+      amount: 5,
+      note: `Robo de monedas a ${target.displayName || target.uid}`
     });
 
-    // 3) gasta la carta al final si todo ok
+    // gasta al final si todo OK
     spend();
-    toast("💰 Robaste 5 monedas");
+    toast("💰 Robaste 5 monedas (+5)");
   } catch (e) {
     console.error(e);
     alert("No se pudo enviar el robo de monedas.");
-    return; // no gastes si falla
+    return; // si falla, no gastes
   } finally {
     scheduleSave(); render();
   }
