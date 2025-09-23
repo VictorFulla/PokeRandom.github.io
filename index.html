@@ -1661,25 +1661,40 @@ async function onUse(){
 }
 
 
-  if (c.name.toLowerCase() === "regalo") {
-    const target = await pickUser("¿A quién quieres enviar una tirada de ruleta gratuita?");
-    if (!target) return;
-    spend();
-    addKarma(-2);
-    // send a special stealRequest-like doc that the victim UI interprets as a 'gift' -> opens admin with ruleta preselected
+if (c.name.toLowerCase() === "regalo") {
+  const target = await pickUser("¿A quién quieres enviar una tirada de ruleta gratuita?");
+  if (!target) return;
+
+  addKarma(-2); // lo mantenemos
+  try {
+    // 1) Crea la request (igual que antes)
     await addDoc(stealCol, {
       attackerId: currentUser.uid,
       attackerName: currentUser.displayName||currentUser.email||currentUser.uid,
       victimId: target.uid,
       cardName: "ruleta",
-      meta: {gift:true},
+      meta: { gift: true },
       status: "pending",
       createdAt: serverTimestamp()
     });
-    state.useLog.push({date:new Date().toISOString(), name:"Usaste Regalo (tu karma −2)"});
+
+    // 2) Log local
+    state.useLog.push({ date: new Date().toISOString(), name: "Usaste Regalo (tu karma −2)" });
+
+    // 3) GASTAR AL FINAL (solo si todo salió OK)
+    spend();
+
     toast("🎁 Regalo enviado. Tu karma bajó (−2).");
-    scheduleSave(); render(); return;
+  } catch (e) {
+    console.error(e);
+    alert("No se pudo enviar el regalo. Inténtalo de nuevo.");
+    return; // no gastamos si falló
+  } finally {
+    scheduleSave(); render();
   }
+  return;
+}
+
 
   if (c.name.toLowerCase() === "maldición" || c.name.toLowerCase() === "maldicion") {
   const target = await pickUser("¿A quién quieres maldecir?");
