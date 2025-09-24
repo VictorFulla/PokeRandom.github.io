@@ -698,10 +698,17 @@ if (gridEl) {
 }
 function render(){
   try{
-    const snap = JSON.stringify(state);
+    // 🔧 Incluimos filtros + modo espía en el snapshot, para que SÍ rerenderice al cambiar select/checkbox
+    const snap = JSON.stringify({
+      state,
+      f: (typeFilter?.value || ""),
+      hide: !!(hideZero?.checked),
+      spy: !!spyUid
+    });
     if (snap === __lastStateJSON && !__freezeUI) return;
     __lastStateJSON = snap;
   }catch(e){ /* ignore stringify issues */ }
+
   if (__freezeUI) { __pendingRender = true; return; }
   __realRender();
 }
