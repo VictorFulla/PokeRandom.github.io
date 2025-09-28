@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Torneos • Brackets 6 jugadores</title>
+  <style>
+    :root{
+      --bg:#0b1020;--panel:#121937cc;--panel-strong:#1c2659e6;--txt:#e8ecff;--muted:#a9b4ff;--accent:#7cf8ff;--accent2:#ff7cf2;--gold:#ffd166;--silver:#c0c5d3;--bronze:#d88b5a;
+      --ok:#67f58b;--bad:#ff6b6b;--shadow:0 10px 30px rgba(0,0,0,.45);
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial; color:var(--txt); background: radial-gradient(1200px 600px at 20% -10%, #20309644 0%, transparent 60%), radial-gradient(1000px 600px at 120% 10%, #7c19b944 0%, transparent 50%), linear-gradient(180deg,#0a0f21 0%, #070b16 100%); min-height:100svh}
+    header{padding:18px 20px; display:flex; gap:14px; align-items:center; justify-content:space-between; position:sticky; top:0; backdrop-filter: blur(8px); background:linear-gradient(180deg, #0b1020dd, #0b102055); border-bottom:1px solid #ffffff18; z-index:20}
+    .brand{display:flex; align-items:center; gap:12px}
+    .logo{width:36px; height:36px; border-radius:10px; background: conic-gradient(from 210deg, var(--accent), var(--accent2), var(--accent)); box-shadow:0 0 20px #7cf8ff55 inset, 0 0 30px #ff7cf255}
+    h1{font-size:18px; margin:0; letter-spacing:.5px}
+    .actions{display:flex; gap:8px; flex-wrap:wrap}
+    button, .ghost{background:linear-gradient(180deg, #1a2356, #111a40); color:var(--txt); border:1px solid #6ea8ff33; box-shadow: var(--shadow); padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600; letter-spacing:.2px; transition:.2s transform,.2s filter,.2s opacity,.2s background}
+    button:hover{transform:translateY(-1px); filter:brightness(1.08)}
+    .ghost{background:transparent; border-color:#ffffff1e}
+    .pill{padding:6px 10px; border-radius:999px; background:#ffffff12; color:var(--muted); font-size:12px; border:1px solid #ffffff1a}
+    .mode{margin-left:6px}
+    main{padding:18px; max-width:1200px; margin:0 auto; display:grid; gap:18px; grid-template-columns: 1.1fr .9fr}
+    @media (max-width:1050px){ main{grid-template-columns:1fr} }
+
+    .card{background:linear-gradient(180deg,#121937dd,#0f1639cc); border:1px solid #93b4ff22; border-radius:18px; padding:16px; box-shadow: var(--shadow)}
+    .card h2{margin:0 0 10px; font-size:16px; letter-spacing:.3px}
+
+    table{width:100%; border-collapse:separate; border-spacing:0 8px}
+    th,td{padding:10px 12px; text-align:left; font-size:14px}
+    thead th{color:var(--muted); font-weight:600}
+    tbody tr{background:#111743aa; border:1px solid #7ea2ff1f; box-shadow:0 6px 18px #0000003b}
+    tbody td{border-top:1px solid #ffffff0e; border-bottom:1px solid #00000055}
+    tbody tr{border-radius:12px}
+    tbody tr td:first-child{border-radius:12px 0 0 12px}
+    tbody tr td:last-child{border-radius:0 12px 12px 0}
+    .seed{display:inline-flex; align-items:center; gap:8px}
+    .badge{font-size:12px; padding:3px 8px; border-radius:999px; border:1px solid #ffffff1f; background:#ffffff10; color:var(--muted)}
+    .rank-1 .name{color:var(--gold)} .rank-2 .name{color:var(--silver)} .rank-3 .name{color:var(--bronze)}
+
+    .bracket{display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; align-items:stretch}
+    .round{display:grid; gap:16px}
+    .match{position:relative; padding:10px; border:1px solid #81a5ff26; background:linear-gradient(180deg,#0f1642,#0c1236); border-radius:14px; box-shadow: var(--shadow)}
+    .match header{all:unset; display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+    .round-title{font-size:12px; color:var(--muted); margin-bottom:6px}
+    .player{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px; border-radius:10px; border:1px solid #ffffff12; background:#141b49aa}
+    .player.active{outline:2px solid #7cf8ff88}
+    .player .name{font-weight:700}
+    .vs{text-align:center; color:#94a3ff; font-size:12px; padding:4px 0}
+    .advance{display:flex; gap:8px}
+    .pick{padding:6px 10px; border-radius:10px; font-size:12px}
+    .pick.win{background:#0f2b23; border:1px solid #33f49a55}
+    .pick.lose{background:#2b0f16; border:1px solid #ff6b6b44}
+
+    footer{padding:18px; text-align:center; color:#a8b1ffaa}
+    #confetti{position:fixed; inset:0; pointer-events:none}
+  </style>
+</head>
+<body>
+  <canvas id="confetti"></canvas>
+  <header>
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <h1>Bracket 6 • Torneos con ranking</h1>
+      <span class="pill">Persistencia</span><span id="mode" class="pill mode">Local</span>
+    </div>
+    <div class="actions">
+      <button id="homeBtn" title="Volver al index (misma pestaña)">Home</button>
+      <button id="startBtn">Iniciar torneo</button>
+      <button class="ghost" id="resetBtn" title="Borrar ranking e historial (localStorage)">Reset local</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card" id="rankingPanel">
+      <h2>Ranking actual</h2>
+      <table>
+        <thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Victorias</th><th>Podios</th></tr></thead>
+        <tbody id="rankingBody"></tbody>
+      </table>
+    </section>
+
+    <aside class="card">
+      <h2>Premios visuales</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+        <div class="prize">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>1º Lugar</h3><span class="badge">Campeón</span></div>
+          <p><strong>15</strong> monedas de oro</p><p>Carta: <strong>Poleo Menta</strong> (C46)</p>
+        </div>
+        <div class="prize">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>2º Lugar</h3><span class="badge">Finalista</span></div>
+          <p><strong>10</strong> monedas de oro</p><p>Carta: <strong>Ruleta</strong></p>
+        </div>
+        <div class="prize">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>3º Lugar</h3><span class="badge">Bronce</span></div>
+          <p><strong>7</strong> monedas de oro</p>
+        </div>
+        <div class="prize">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>4º–6º Lugar</h3><span class="badge">Participación</span></div>
+          <p><strong>4</strong> monedas de oro</p>
+        </div>
+      </div>
+      <p style="margin-top:10px; color:var(--muted); font-size:13px">* Solo visual. No afecta a tu inventario real de Pokémon.</p>
+
+      <section class="card" style="margin-top:14px">
+        <h2>Historial de torneos</h2>
+        <div id="history" class="history"></div>
+      </section>
+    </aside>
+
+    <section class="card" id="bracketPanel" style="grid-column:1 / -1; display:none">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px">
+        <h2 id="tourTitle">Torneo</h2>
+        <span class="badge" id="phaseBadge">Ronda en curso</span>
+      </div>
+      <div class="bracket" id="bracket"></div>
+    </section>
+  </main>
+
+  <footer>
+    Hecho con cariño para Kike • Fuya • Eri • Abel • Juan • Arturo. Modo local o sincronizado con Firestore 💫
+  </footer>
+
+  <!-- LÓGICA (modular) -->
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+    // —— Configura tu Firebase aquí (rellena con tu proyecto) ——
+    const firebaseConfig = {
+  apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
+  authDomain: "pokerandom-ce300.firebaseapp.com",
+  projectId: "pokerandom-ce300",
+  // OJO: nombre de bucket, no URL
+  storageBucket: "pokerandom-ce300.appspot.com",
+  messagingSenderId: "637348459448",
+  appId: "1:637348459448:web:4ab19e68bcce734692554d"
+};
+
+    const DEFAULT_PLAYERS = ["Kike","Fuya","Eri","Abel","Juan","Arturo"];
+    const REWARDS_POINTS = { 1:6, 2:4, 3:3, 4:2, 5:1, 6:1 };
+
+    const ui = {
+      mode: document.getElementById('mode'),
+      startBtn: document.getElementById('startBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      homeBtn: document.getElementById('homeBtn'),
+      rankingBody: document.getElementById('rankingBody'),
+      history: document.getElementById('history'),
+      bracketPanel: document.getElementById('bracketPanel'),
+      bracket: document.getElementById('bracket'),
+      tourTitle: document.getElementById('tourTitle'),
+      confetti: document.getElementById('confetti')
+    };
+
+    let app, db, auth, ONLINE=false; // si Firestore activo
+    let ranking = DEFAULT_PLAYERS.map(n=>({name:n, pts:0, wins:0, podiums:0}));
+    let historyCache = [];
+    let live = null;
+
+    // UI base
+    function renderRanking(){
+      const tbody = ui.rankingBody; tbody.innerHTML='';
+      const ordered = [...ranking].sort((a,b)=> b.pts - a.pts || b.wins - a.wins || a.name.localeCompare(b.name));
+      ordered.forEach((p, idx)=>{
+        const tr = document.createElement('tr'); tr.className = `rank-${idx+1}`;
+        tr.innerHTML = `<td>${idx+1}</td><td class="name">${medal(idx+1)} ${p.name}</td><td>${p.pts}</td><td>${p.wins}</td><td>${p.podiums}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    function renderHistory(){
+      const box = ui.history; box.innerHTML='';
+      if(historyCache.length===0){ box.innerHTML = '<p style="color:var(--muted)">Aún no hay torneos. Dale a “Iniciar torneo”.</p>'; return; }
+      [...historyCache].sort((a,b)=> (b.date?.seconds||0)-(a.date?.seconds||0)).slice(0,12).forEach(ev=>{
+        const div = document.createElement('div'); div.className='event';
+        const when = ev.date?.toDate ? ev.date.toDate() : new Date();
+        div.innerHTML = `<div class="who"><span class="medal" style="width:22px;height:22px;border-radius:50%;background:conic-gradient(var(--gold),#ffb703,var(--gold));box-shadow:0 0 10px #ffd16655"></span>
+          <div><div style=\"font-weight:800\">${ev.name}</div><div style=\"color:var(--muted); font-size:12px\">${when.toLocaleString()}</div></div></div>
+          <div style=\"text-align:right; font-size:13px\"><div><strong>1º</strong> ${ev.podium[0]}</div><div><strong>2º</strong> ${ev.podium[1]}</div><div><strong>3º</strong> ${ev.podium[2]}</div></div>`;
+        box.appendChild(div);
+      });
+    }
+    function buildBracketUI(){
+      const el = ui.bracket; el.innerHTML=''; if(!live){ ui.bracketPanel.style.display='none'; return; }
+      ui.tourTitle.textContent = live.name || 'Torneo';
+      ui.bracketPanel.style.display='';
+      const rounds = [
+        { key:'QF', title:'Cuartos (2 + 2 BYE)', list:['QF1','QF2'] },
+        { key:'SF', title:'Semifinales', list:['SF1','SF2'] },
+        { key:'F',  title:'Final', list:['F'] },
+        { key:'T3', title:'3º Puesto', list:['T3'] },
+      ];
+      rounds.forEach(r=>{
+        const col = document.createElement('div'); col.className='round';
+        const title = document.createElement('div'); title.className='round-title'; title.textContent = r.title; col.appendChild(title);
+        r.list.forEach(mKey=> col.appendChild(renderMatch(mKey)) ); el.appendChild(col);
+      });
+      updateDependencies();
+    }
+    function renderMatch(key){
+      const m = live.matches[key];
+      const box = document.createElement('div'); box.className='match'; box.dataset.key = key;
+      const head = document.createElement('header'); head.innerHTML = `<div class="pill">${key}</div>`; box.appendChild(head);
+      const pa = document.createElement('div'); pa.className='player';
+      const pb = document.createElement('div'); pb.className='player';
+      pa.innerHTML = `<div class="name">${m.a??'—'}</div><div class="advance"><button class="pick win" data-choice="a">Gana</button></div>`;
+      pb.innerHTML = `<div class="name">${m.b??'—'}</div><div class="advance"><button class="pick win" data-choice="b">Gana</button></div>`;
+      box.appendChild(pa); box.appendChild(document.createElement('div')).className='vs'; box.lastChild.textContent='VS'; box.appendChild(pb);
+      box.addEventListener('click', async (e)=>{
+        const btn = e.target.closest('.pick'); if(!btn) return; const choice = btn.dataset.choice; const m = live.matches[key];
+        if((choice==='a' && !m.a) || (choice==='b' && !m.b)) { toast('Ese slot está vacío.'); return; }
+        live.matches[key].winner = choice; updateMatchUI(key); propagate(key); checkIfComplete();
+        if(ONLINE){ await updateDoc(doc(db,'tournaments6','live'), { matches: live.matches, updatedAt: serverTimestamp() }); }
+      });
+      return box;
+    }
+    function updateMatchUI(key){
+      const box = document.querySelector(`.match[data-key="${key}"]`); if(!box) return; const m = live.matches[key];
+      const [pa, vs, pb] = [box.children[1], box.children[2], box.children[3]];
+      pa.querySelector('.name').textContent = m.a ?? '—'; pb.querySelector('.name').textContent = m.b ?? '—';
+      box.querySelectorAll('.player').forEach(p=>{p.classList.remove('active'); p.style.opacity=1; p.style.background='' });
+      if(m.winner){ const winEl = m.winner==='a'? pa : pb; const loseEl = m.winner==='a'? pb : pa; winEl.classList.add('active'); winEl.style.background='#112a22'; loseEl.style.opacity=.6; }
+    }
+    function updateDependencies(){
+      const M = live.matches; // ganadores y perdedores
+      const winnerOf=(k)=>{const m=M[k]; return m?.winner?(m.winner==='a'? m.a:m.b):null};
+      const loserOf=(k)=>{const m=M[k]; return m?.winner?(m.winner==='a'? m.b:m.a):null};
+      // Semis
+      M.SF1.b = winnerOf('QF1'); updateMatchUI('SF1');
+      M.SF2.b = winnerOf('QF2'); updateMatchUI('SF2');
+      // Final
+      M.F.a = winnerOf('SF1'); M.F.b = winnerOf('SF2'); updateMatchUI('F');
+      // Tercero
+      M.T3.a = loserOf('SF1'); M.T3.b = loserOf('SF2'); updateMatchUI('T3');
+    }
+    function propagate(){ updateDependencies(); }
+    function checkIfComplete(){ if(live.matches.F.winner && live.matches.T3.winner){ finishTournament(); } }
+
+    function medal(rank){ if(rank===1) return '🥇'; if(rank===2) return '🥈'; if(rank===3) return '🥉'; return ' '; }
+    function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+    function toast(msg){ const t=document.createElement('div'); t.textContent=msg; Object.assign(t.style,{position:'fixed',bottom:'18px',left:'50%',transform:'translateX(-50%)',background:'#111743e6',border:'1px solid #ffffff2a',padding:'10px 14px',borderRadius:'12px',boxShadow:'var(--shadow)',zIndex:50,opacity:0}); document.body.appendChild(t); requestAnimationFrame(()=>{t.style.transition='.2s opacity, .2s transform'; t.style.opacity=1; t.style.transform='translateX(-50%) translateY(-6px)'}); setTimeout(()=>{t.style.opacity=0; t.style.transform='translateX(-50%)'; setTimeout(()=>t.remove(),250)},2600) }
+
+    // Confetti
+    const conf = ui.confetti; const ctx = conf.getContext('2d'); function resize(){ conf.width=innerWidth; conf.height=innerHeight } addEventListener('resize',resize); resize(); let flakes=[];
+    function confettiBurst(){ flakes=[...Array(160)].map(()=>({x:Math.random()*conf.width,y:-20-Math.random()*40,s:4+Math.random()*6,v:2+Math.random()*3,r:Math.random()*Math.PI,vr:(Math.random()-.5)*0.2})); let t=0; const anim=()=>{ ctx.clearRect(0,0,conf.width,conf.height); flakes.forEach(f=>{ f.y+=f.v; f.x+=Math.sin((t+f.y)/30); f.r+=f.vr; ctx.save(); ctx.translate(f.x,f.y); ctx.rotate(f.r); ctx.fillStyle=`hsl(${(f.x+f.y)%360},100%,70%)`; ctx.fillRect(-f.s/2,-f.s/2,f.s,f.s); ctx.restore(); }); t++; if(t<220) requestAnimationFrame(anim); else ctx.clearRect(0,0,conf.width,conf.height); }; anim(); }
+
+    // Local storage (fallback)
+    const STORAGE_KEYS = { ranking: 'br6_ranking', history: 'br6_history' };
+    function loadLocal(){ const r=localStorage.getItem(STORAGE_KEYS.ranking); ranking = r? JSON.parse(r): ranking; const h=localStorage.getItem(STORAGE_KEYS.history); historyCache = h? JSON.parse(h): []; renderRanking(); renderHistory(); }
+    function saveLocal(){ localStorage.setItem(STORAGE_KEYS.ranking, JSON.stringify(ranking)); localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(historyCache)); }
+
+    // Firebase init
+    async function init(){
+      try{
+        if(!firebaseConfig || firebaseConfig.apiKey==='TU_API_KEY'){ throw new Error('Config no rellena'); }
+        app = initializeApp(firebaseConfig); auth = getAuth(app);
+        await new Promise((res,rej)=>{ onAuthStateChanged(auth, u=>{ if(u){ res(); } else { signInAnonymously(auth).catch(rej); } }, rej); });
+        db = getFirestore(app); ONLINE=true; ui.mode.textContent='Online (anon)';
+        bindRemote();
+      }catch(err){ ONLINE=false; ui.mode.textContent='Local'; loadLocal(); }
+    }
+
+    function bindRemote(){
+      const metaRef = doc(db,'tournaments6','meta');
+      const liveRef = doc(db,'tournaments6','live');
+      // meta (ranking)
+      onSnapshot(metaRef, async (snap)=>{
+        if(snap.exists()){
+          const data = snap.data(); ranking = (data.ranking && data.ranking.length)? data.ranking : ranking; renderRanking();
+        } else {
+          // crear base
+          await setDoc(metaRef, { ranking, updatedAt: serverTimestamp() });
+        }
+      });
+      // history subcollection
+      const histCol = collection(db,'tournaments6','meta','history');
+      onSnapshot(query(histCol, orderBy('date','desc'), limit(12)), (qs)=>{
+        historyCache = qs.docs.map(d=> d.data()); renderHistory();
+      });
+      // live bracket
+      onSnapshot(liveRef, (snap)=>{
+        if(snap.exists() && snap.data().active){ live = snap.data(); buildBracketUI(); syncUIFromLive(); }
+        else { live = null; buildBracketUI(); }
+      });
+    }
+
+    function syncUIFromLive(){
+      if(!live) return; ['QF1','QF2','SF1','SF2','F','T3'].forEach(updateMatchUI);
+    }
+
+    // Start tournament
+    async function startTournament(){
+      if(live){ toast('Hay un torneo en curso. Termínalo primero.'); return; }
+      const name = prompt('Nombre del torneo:', `Torneo #${historyCache.length+1}`); if(!name) return;
+      const allZero = ranking.every(r=> r.pts===0 && r.wins===0 && r.podiums===0);
+      let seeds; if(allZero){ seeds = shuffle(ranking.map(r=>r.name)); } else { seeds = [...ranking].sort((a,b)=> b.pts-a.pts || b.wins-a.wins || a.name.localeCompare(b.name)).map(r=>r.name); }
+      seeds = seeds.slice(0,6); const [s1,s2,s3,s4,s5,s6] = seeds;
+      live = { active:true, name, createdAt: Date.now(), matches: { QF1:{a:s3,b:s6,winner:null}, QF2:{a:s4,b:s5,winner:null}, SF1:{a:s1,b:null,winner:null}, SF2:{a:s2,b:null,winner:null}, F:{a:null,b:null,winner:null}, T3:{a:null,b:null,winner:null} } };
+      buildBracketUI();
+      if(ONLINE){ await setDoc(doc(db,'tournaments6','live'), {...live, createdAt: serverTimestamp()}); }
+      toast('Bracket creado. Marca ganadores por partido.');
+    }
+
+    async function finishTournament(){
+      const champion = live.matches.F[live.matches.F.winner==='a'? 'a':'b'];
+      const finalist = live.matches.F[live.matches.F.winner==='a'? 'b':'a'];
+      const third = live.matches.T3[live.matches.T3.winner==='a'? 'a':'b'];
+      const fourth = live.matches.T3[live.matches.T3.winner==='a'? 'b':'a'];
+      const qfLosers = [];
+      if(live.matches.QF1.winner){ qfLosers.push( live.matches.QF1[live.matches.QF1.winner==='a'? 'b':'a'] ); }
+      if(live.matches.QF2.winner){ qfLosers.push( live.matches.QF2[live.matches.QF2.winner==='a'? 'b':'a'] ); }
+      const places = [champion, finalist, third, fourth, qfLosers[0], qfLosers[1]];
+
+      // actualizar ranking
+      const rMap = new Map(ranking.map(p=>[p.name,{...p}]));
+      places.forEach((name, idx)=>{ const p=rMap.get(name); if(!p) return; const pos=idx+1; p.pts += REWARDS_POINTS[pos]||0; if(pos===1){ p.wins+=1; p.podiums+=1 } if(pos===2 || pos===3){ p.podiums+=1 } });
+      ranking = Array.from(rMap.values()); renderRanking();
+
+      // guardar
+      if(ONLINE){
+        const metaRef = doc(db,'tournaments6','meta');
+        const histCol = collection(db,'tournaments6','meta','history');
+        await Promise.all([
+          updateDoc(metaRef, { ranking, updatedAt: serverTimestamp() }).catch(()=> setDoc(metaRef,{ ranking, updatedAt: serverTimestamp() })),
+          addDoc(histCol, { name: live.name, date: serverTimestamp(), podium:[champion,finalist,third] })
+        ]);
+        await updateDoc(doc(db,'tournaments6','live'), { active:false, finishedAt: serverTimestamp() });
+      } else {
+        historyCache.push({ name: live.name, date: new Date(), podium:[champion,finalist,third] }); saveLocal(); renderHistory();
+      }
+
+      confettiBurst(); toast(`¡${champion} campeón! Se actualizó ranking e historial.`);
+      live = null; ui.bracketPanel.style.display='none';
+    }
+
+    // Eventos UI
+    ui.startBtn.addEventListener('click', startTournament);
+    ui.resetBtn.addEventListener('click', ()=>{ if(confirm('¿Resetear ranking/historial LOCAL? (no toca Firestore)')){ localStorage.removeItem('br6_ranking'); localStorage.removeItem('br6_history'); ranking = DEFAULT_PLAYERS.map(n=>({name:n, pts:0, wins:0, podiums:0})); historyCache=[]; renderRanking(); renderHistory(); toast('Reset local listo'); }});
+    ui.homeBtn.addEventListener('click', ()=>{ window.location.href = 'index.html'; });
+
+    // Arranque
+    renderRanking(); renderHistory();
+    init();
+  </script>
+</body>
+</html>
