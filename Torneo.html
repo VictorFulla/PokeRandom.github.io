@@ -68,7 +68,7 @@
     <div class="actions">
       <button id="homeBtn" title="Volver al index (misma pestaña)">Home</button>
       <button id="startBtn">Iniciar torneo</button>
-      <button class="ghost" id="resetBtn" title="Borrar ranking e historial (localStorage)">Reset local</button>
+      <button class="ghost" id="resetBtn" title="Reset ranking, historial y torneo (global)">Reset general</button>
     </div>
   </header>
 
@@ -85,19 +85,20 @@
       <h2>Premios visuales</h2>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
         <div class="prize">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>1º Lugar</h3><span class="badge">Campeón</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>🥇 1º Lugar</h3><span class="badge">Campeón</span></div>
           <p><strong>15</strong> monedas de oro</p><p>Carta: <strong>Poleo Menta</strong> (C46)</p>
         </div>
         <div class="prize">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>2º Lugar</h3><span class="badge">Finalista</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>🥈 2º Lugar</h3><span class="badge">Finalista</span></div>
           <p><strong>10</strong> monedas de oro</p><p>Carta: <strong>Ruleta</strong></p>
         </div>
         <div class="prize">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>3º Lugar</h3><span class="badge">Bronce</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>🥉 3º Lugar</h3><span class="badge">Bronce</span></div>
           <p><strong>7</strong> monedas de oro</p>
+          <p>Carta: <strong>Objeto Curativo</strong></p>
         </div>
         <div class="prize">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>4º–6º Lugar</h3><span class="badge">Participación</span></div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px"><h3>🎁 4º–6º Lugar</h3><span class="badge">Participación</span></div>
           <p><strong>4</strong> monedas de oro</p>
         </div>
       </div>
@@ -119,27 +120,27 @@
   </main>
 
   <footer>
-    Hecho con cariño para Kike • Fuya • Eri • Abel • Juan • Arturo. Modo local o sincronizado con Firestore 💫
+    No inicies un torneo por iniciar que es un coñazo borrarlo, porfi 💫
   </footer>
 
   <!-- LÓGICA (modular) -->
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
     import { getAuth, onAuthStateChanged, signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
     // —— Configura tu Firebase aquí (rellena con tu proyecto) ——
     const firebaseConfig = {
-  apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
-  authDomain: "pokerandom-ce300.firebaseapp.com",
-  projectId: "pokerandom-ce300",
-  // OJO: nombre de bucket, no URL
-  storageBucket: "pokerandom-ce300.appspot.com",
-  messagingSenderId: "637348459448",
-  appId: "1:637348459448:web:4ab19e68bcce734692554d"
-};
+      apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
+      authDomain: "pokerandom-ce300.firebaseapp.com",
+      projectId: "pokerandom-ce300",
+      // OJO: nombre de bucket, no URL
+      storageBucket: "pokerandom-ce300.appspot.com",
+      messagingSenderId: "637348459448",
+      appId: "1:637348459448:web:4ab19e68bcce734692554d"
+    };
 
-    const DEFAULT_PLAYERS = ["Kike","Fuya","Eri","Abel","Juan","Arturo"];
+    const DEFAULT_PLAYERS = ["Kique","Fulla","Eri","Abel","Juan","Arturo"];
     const REWARDS_POINTS = { 1:6, 2:4, 3:3, 4:2, 5:1, 6:1 };
 
     const ui = {
@@ -159,6 +160,7 @@
     let ranking = DEFAULT_PLAYERS.map(n=>({name:n, pts:0, wins:0, podiums:0}));
     let historyCache = [];
     let live = null;
+    let resetAt = null; // para filtrar historial tras resets globales
 
     // UI base
     function renderRanking(){
@@ -172,8 +174,12 @@
     }
     function renderHistory(){
       const box = ui.history; box.innerHTML='';
-      if(historyCache.length===0){ box.innerHTML = '<p style="color:var(--muted)">Aún no hay torneos. Dale a “Iniciar torneo”.</p>'; return; }
-      [...historyCache].sort((a,b)=> (b.date?.seconds||0)-(a.date?.seconds||0)).slice(0,12).forEach(ev=>{
+      let list = [...historyCache];
+      if(resetAt){
+        list = list.filter(ev=> (ev.date?.seconds||0) >= (resetAt.seconds||0));
+      }
+      if(list.length===0){ box.innerHTML = '<p style="color:var(--muted)">Aún no hay torneos. Dale a “Iniciar torneo”.</p>'; return; }
+      list.sort((a,b)=> (b.date?.seconds||0)-(a.date?.seconds||0)).slice(0,12).forEach(ev=>{
         const div = document.createElement('div'); div.className='event';
         const when = ev.date?.toDate ? ev.date.toDate() : new Date();
         div.innerHTML = `<div class="who"><span class="medal" style="width:22px;height:22px;border-radius:50%;background:conic-gradient(var(--gold),#ffb703,var(--gold));box-shadow:0 0 10px #ffd16655"></span>
@@ -265,18 +271,20 @@
     function bindRemote(){
       const metaRef = doc(db,'tournaments6','meta');
       const liveRef = doc(db,'tournaments6','live');
-      // meta (ranking)
+      // meta (ranking + resetAt)
       onSnapshot(metaRef, async (snap)=>{
         if(snap.exists()){
-          const data = snap.data(); ranking = (data.ranking && data.ranking.length)? data.ranking : ranking; renderRanking();
+          const data = snap.data();
+          ranking = (data.ranking && data.ranking.length)? data.ranking : ranking; 
+          resetAt = data.resetAt || null;
+          renderRanking();
         } else {
-          // crear base
-          await setDoc(metaRef, { ranking, updatedAt: serverTimestamp() });
+          await setDoc(metaRef, { ranking, updatedAt: serverTimestamp(), resetAt: serverTimestamp() });
         }
       });
       // history subcollection
       const histCol = collection(db,'tournaments6','meta','history');
-      onSnapshot(query(histCol, orderBy('date','desc'), limit(12)), (qs)=>{
+      onSnapshot(query(histCol, orderBy('date','desc'), limit(50)), (qs)=>{
         historyCache = qs.docs.map(d=> d.data()); renderHistory();
       });
       // live bracket
@@ -286,18 +294,52 @@
       });
     }
 
-    function syncUIFromLive(){
-      if(!live) return; ['QF1','QF2','SF1','SF2','F','T3'].forEach(updateMatchUI);
-    }
+    function syncUIFromLive(){ if(!live) return; ['QF1','QF2','SF1','SF2','F','T3'].forEach(updateMatchUI); }
 
     // Start tournament
     async function startTournament(){
       if(live){ toast('Hay un torneo en curso. Termínalo primero.'); return; }
-      const name = prompt('Nombre del torneo:', `Torneo #${historyCache.length+1}`); if(!name) return;
+      const name = prompt('Nombre del torneo:', `Torneo #${(historyCache||[]).length+1}`); if(!name) return;
+
+      // Regla nueva: los DOS ÚLTIMOS del ranking reciben BYE a semifinales.
+      // Los otros cuatro juegan CUARTOS con emparejamientos ALEATORIOS.
       const allZero = ranking.every(r=> r.pts===0 && r.wins===0 && r.podiums===0);
-      let seeds; if(allZero){ seeds = shuffle(ranking.map(r=>r.name)); } else { seeds = [...ranking].sort((a,b)=> b.pts-a.pts || b.wins-a.wins || a.name.localeCompare(b.name)).map(r=>r.name); }
-      seeds = seeds.slice(0,6); const [s1,s2,s3,s4,s5,s6] = seeds;
-      live = { active:true, name, createdAt: Date.now(), matches: { QF1:{a:s3,b:s6,winner:null}, QF2:{a:s4,b:s5,winner:null}, SF1:{a:s1,b:null,winner:null}, SF2:{a:s2,b:null,winner:null}, F:{a:null,b:null,winner:null}, T3:{a:null,b:null,winner:null} } };
+
+      // order = mejores primero (si hay ranking) o aleatorio (si todos a cero)
+      let order;
+      if(allZero){
+        order = shuffle(ranking.map(r=>r.name));
+      } else {
+        order = [...ranking]
+          .sort((a,b)=> b.pts-a.pts || b.wins-a.wins || a.name.localeCompare(b.name))
+          .map(r=>r.name);
+      }
+      order = order.slice(0,6);
+
+      // Peores dos (BYE): últimos de 'order'
+      const worst2 = order.slice(-2); // [p5, p6]
+      const rest4  = order.slice(0,4); // mejorados
+
+      // Aleatorizamos los cruces de cuartos entre los 4 restantes
+      const pool = shuffle([...rest4]);
+      const qf1a = pool[0], qf1b = pool[1];
+      const qf2a = pool[2], qf2b = pool[3];
+
+      const [bye1, bye2] = worst2; // pasan directos a semifinales (SF1.a y SF2.a)
+
+      live = {
+        active:true,
+        name,
+        createdAt: Date.now(),
+        matches: {
+          QF1:{a:qf1a,b:qf1b,winner:null},
+          QF2:{a:qf2a,b:qf2b,winner:null},
+          SF1:{a:bye1,b:null,winner:null},
+          SF2:{a:bye2,b:null,winner:null},
+          F:{a:null,b:null,winner:null},
+          T3:{a:null,b:null,winner:null}
+        }
+      };
       buildBracketUI();
       if(ONLINE){ await setDoc(doc(db,'tournaments6','live'), {...live, createdAt: serverTimestamp()}); }
       toast('Bracket creado. Marca ganadores por partido.');
@@ -323,7 +365,7 @@
         const metaRef = doc(db,'tournaments6','meta');
         const histCol = collection(db,'tournaments6','meta','history');
         await Promise.all([
-          updateDoc(metaRef, { ranking, updatedAt: serverTimestamp() }).catch(()=> setDoc(metaRef,{ ranking, updatedAt: serverTimestamp() })),
+          updateDoc(metaRef, { ranking, updatedAt: serverTimestamp() }).catch(()=> setDoc(metaRef,{ ranking, updatedAt: serverTimestamp(), resetAt: serverTimestamp() })),
           addDoc(histCol, { name: live.name, date: serverTimestamp(), podium:[champion,finalist,third] })
         ]);
         await updateDoc(doc(db,'tournaments6','live'), { active:false, finishedAt: serverTimestamp() });
@@ -335,9 +377,40 @@
       live = null; ui.bracketPanel.style.display='none';
     }
 
+    // Reset general (resetea Firestore y Local)
+    async function resetGeneral(){
+      if(!confirm('¿Seguro que quieres resetear ranking, historial y torneo (GLOBAL)?')) return;
+      // reset ranking en memoria
+      ranking = DEFAULT_PLAYERS.map(n=>({name:n, pts:0, wins:0, podiums:0}));
+      historyCache = [];
+      live = null; buildBracketUI(); renderRanking(); renderHistory();
+
+      // limpiar local
+      localStorage.removeItem('br6_ranking');
+      localStorage.removeItem('br6_history');
+
+      if(ONLINE){
+        const metaRef = doc(db,'tournaments6','meta');
+        const liveRef = doc(db,'tournaments6','live');
+        const histCol = collection(db,'tournaments6','meta','history');
+        // Marcar resetAt y reiniciar ranking; desactivar live
+        await setDoc(metaRef, { ranking, updatedAt: serverTimestamp(), resetAt: serverTimestamp() }, { merge:true });
+        await setDoc(liveRef, { active:false, matches:{}, finishedAt: serverTimestamp() }, { merge:true });
+        // Borrar historial existente (si las reglas no permiten delete, quedará oculto por resetAt)
+        try{
+          const snap = await getDocs(histCol);
+          const promises = snap.docs.map(d=> deleteDoc(d.ref));
+          await Promise.allSettled(promises);
+        }catch(e){ /* si delete denegado por reglas, lo ignoramos: quedará filtrado por resetAt */ }
+        toast('Reset general aplicado');
+      } else {
+        toast('Reset local aplicado');
+      }
+    }
+
     // Eventos UI
     ui.startBtn.addEventListener('click', startTournament);
-    ui.resetBtn.addEventListener('click', ()=>{ if(confirm('¿Resetear ranking/historial LOCAL? (no toca Firestore)')){ localStorage.removeItem('br6_ranking'); localStorage.removeItem('br6_history'); ranking = DEFAULT_PLAYERS.map(n=>({name:n, pts:0, wins:0, podiums:0})); historyCache=[]; renderRanking(); renderHistory(); toast('Reset local listo'); }});
+    ui.resetBtn.addEventListener('click', resetGeneral);
     ui.homeBtn.addEventListener('click', ()=>{ window.location.href = 'index.html'; });
 
     // Arranque
