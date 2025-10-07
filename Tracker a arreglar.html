@@ -291,7 +291,7 @@
         const label=document.createElement('div'); label.className='label'; label.textContent=p;
         label.style.left=(cx+Math.cos(ang)*(R+18))+'px'; label.style.top=(cy+Math.sin(ang)*(R+18))+'px';
         wrap.appendChild(label);
-        const value=countsByTag[tag]?.[p]||0; const r=R*((value>0?value:0.08)/(max || 1));
+        const value=countsByTag[tag]?.[p]||0; const r = R * ((value > 0 ? value : 0.08) / (max || 1));
         pts.push([cx+Math.cos(ang)*r, cy+Math.sin(ang)*r]);
       });
       ctx.strokeStyle='rgba(255,255,255,.15)'; for(let k=1;k<=4;k++){ const r=R*k/4; drawPolygon(ctx, players.length, cx, cy, r); }
@@ -332,7 +332,13 @@
       if(mostHitAlias) fun.push({icon:'🛡️', text:`<b>${mostHitAlias}</b> ha sido la <b>piñata oficial</b> (${mostHitV} ataques recibidos).`});
      if(leaders['curación'].alias)
   fun.push({icon:'💊',
-    text:`<span class="pill">CURACIÓN</span> <b>${leaders['curación'].alias}</b> es quien más se ha curado (${leaders['curación'].v}).`});
+    text:`<span class="pill">CURACIÓN</span> <b>${leaders['curación'].alias}</b> es quien más se ha curado (${leaders['curación'].v}).
+fun.forEach(f=>{
+  const d=document.createElement('div');
+  d.className='badge';
+  d.innerHTML=`${f.icon} ${f.text}`;
+  box.appendChild(d);
+});
 
 if(leaders['ataque'].alias)
   fun.push({icon:'⚔️',
