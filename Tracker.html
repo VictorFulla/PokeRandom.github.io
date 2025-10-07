@@ -166,51 +166,24 @@
         hitsTotals[u.alias] = 0;
       });
 
-      // 2) USOS de cartas leyendo TODOS los inventarios → useLog[]. Solo contamos usos reales.
-onSnapshot(collection(db,'inventories'), (qs)=>{
-  // reset contadores
-  users.forEach(u => TAGS.forEach(t => countsByTag[t][u.alias] = 0));
-
-  qs.forEach(doc=>{
-    const inv = doc.data() || {};
-    const uid = doc.id;
-
-    // perfil → alias
-    const prof = users.find(u=> u.uid === uid);
-    if(!prof) return;
-    const alias = prof.alias;
-
-    // logs de uso
-    const logs = Array.isArray(inv.useLog) ? inv.useLog : [];
-
-    for(const e of logs){
-      const title = String(e.name || "");
-
-      // excluir compras/admin para contar SOLO usos
-      if (/\bcompraste\b|\[ADMIN\]/i.test(title)) continue;
-
-      // deducir tipo: preferimos cardId, si no, por nombre canónico
-      let type = null;
-      if (e.cardId && byId.has(e.cardId)) {
-        type = byId.get(e.cardId).type;
-      } else {
-        const clean = canonical(
-          title.replace(/^(usaste|usada|usar)\\s+/i,'') // «Usaste X»
-        );
-        const base = byName.get(clean);
-        if (base) type = base.type;
-      }
-
-      if (!type) continue; // si no reconocemos carta, la saltamos
-      if (countsByTag[type] && countsByTag[type][alias] != null) {
-        countsByTag[type][alias]++; // cuenta 1 uso
-      }
-    }
-  });
-
-  renderRadar(currentTag);
-  renderAchievements();
-});
+      // 2) Suscribirse a usos de cartas (solo acción de uso real)
+      // Nota: ajusta los campos si tu colección guarda otros nombres: p.ej. action=='use', tag en TAGS
+      onSnapshot(collection(db, LOGS_COLLECTION), (qs)=>{
+        // Reinicia
+        TAGS.forEach(t=>{ for(const k in countsByTag[t]) countsByTag[t][k]=0; });
+        qs.forEach(doc=>{
+          const r = doc.data();
+          if(r.action && r.action !== 'use') return; // ignorar compras/admin
+          const tag = (r.tag || '').toLowerCase();
+          const userName = r.userName || r.user || r.userDisplay || r.ownerName || '';
+          const alias = NAME_ALIASES[userName] || userName;
+          if(TAGS.includes(tag)){
+            if(countsByTag[tag][alias] != null){ countsByTag[tag][alias]++; }
+          }
+        });
+        renderRadar(currentTag);
+        renderAchievements();
+      });
 
       // 3) Suscribirse a ataques (attackRequests)
       onSnapshot(collection(db, ATTACKS_COLLECTION), (qs)=>{
