@@ -1,23 +1,22 @@
-// Firestore security rules
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Perfiles (para listar a quién espiar, mostrar nombre, etc.)
+    // --- Perfiles (para listar a quién espiar, mostrar nombre, etc.)
     match /profiles/{userId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null && request.auth.uid == userId;
       allow delete: if false;
     }
 
-    // Inventarios (cada user sólo su propio doc para escribir; cualquiera autenticado puede leer)
+    // --- Inventarios (cada user sólo su propio doc para escribir; cualquiera autenticado puede leer)
     match /inventories/{userId} {
       allow read: if request.auth != null;
       allow create, update: if request.auth != null && request.auth.uid == userId;
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Solicitudes de ROBO (notificación a la víctima)
+    // --- Solicitudes de ROBO (notificación a la víctima)
     match /stealRequests/{reqId} {
       // Cualquiera autenticado puede crear una solicitud
       allow create: if request.auth != null;
@@ -36,7 +35,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Solicitudes de ATAQUE (notificación y defensas)
+    // --- Solicitudes de ATAQUE (notificación y defensas)
     match /attackRequests/{reqId} {
       allow create: if request.auth != null;
 
@@ -52,7 +51,8 @@ service cloud.firestore {
 
       allow delete: if false;
     }
-    // Debuffs/estados (maldición, regalo pendiente)
+
+    // --- Debuffs/estados (maldición, regalo pendiente)
     match /debuffs/{debId} {
       allow create: if request.auth != null;
       // Ver si eres el objetivo
@@ -60,6 +60,31 @@ service cloud.firestore {
       // Actualizar sólo el objetivo (p. ej. quitar maldición manualmente)
       allow update: if request.auth != null && request.auth.uid == resource.data.targetId;
       allow delete: if false;
+    }
+
+    // ============================================================
+    // === Torneos 6 jugadores (persistencia del bracket y ranking)
+    // Colecciones/Docs usados por el HTML: 
+    //   - tournaments6/meta         (ranking)
+    //   - tournaments6/meta/history (subcolección con torneos previos)
+    //   - tournaments6/live         (torneo en curso)
+    // ============================================================
+    match /tournaments6/{docId} {
+      // Lectura pública para que cualquiera vea el ranking/historial/bracket
+      allow read: if true;
+
+      // Escritura sólo autenticados (incluye auth anónima)
+      allow create, update: if request.auth != null;
+
+      // No se borra nada desde cliente
+      allow delete: if false;
+
+      // Subcolección de historial
+      match /history/{tid} {
+        allow read: if true;
+        allow create: if request.auth != null;
+        allow update, delete: if false;
+      }
     }
   }
 }

@@ -1575,9 +1575,22 @@ async function onUse(){
 
   // helper para gastar la carta actual de forma segura
   const spend = ()=>{
-    c.qty = Math.max(0, (c.qty || 0) - 1);
-    $("#cardQty").textContent = Math.trunc(c.qty || 0); // refresco rápido en el modal
-  };
+  c.qty = Math.max(0, (c.qty || 0) - 1);
+  $("#cardQty").textContent = Math.trunc(c.qty || 0); // refresco rápido en el modal
+
+  // ——— LOG GLOBAL para el Tracker ———
+  try {
+    addDoc(collection(db, "usageLogs"), {
+      uid: currentUser?.uid || null,
+      userName: currentUser?.displayName || currentUser?.email || currentUser?.uid || "anon",
+      cardId: c.id || null,
+      cardName: c.name || "Carta",
+      tag: (c.type || "otro").toLowerCase(),
+      action: "use",
+      createdAt: serverTimestamp()
+    });
+  } catch (e) { console.warn("usageLogs write fail:", e); }
+};
 // === ROBO DE MONEDAS ===
 if (c.name.toLowerCase() === "robo de monedas") {
   const target = await pickUser("Elige a quién robar 5 monedas");
