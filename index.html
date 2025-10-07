@@ -1101,14 +1101,13 @@ async function adminApply(kind){
     }
   }
 
-    // Guardar en MI inventario aunque estuviera espiando
+  // Guardar en MI inventario aunque estuviera espiando
   const wasSpy = window.spyUid || null;
   window.spyUid = null;
-  try {
-    await saveNow();                 // << llamar directo, NO via window.*
-  } finally {
-    window.spyUid = wasSpy;
-  }
+  try{
+    if (typeof window.saveNow === "function") { await window.saveNow(); }
+    else if (typeof window.scheduleSave === "function") { window.scheduleSave(); }
+  } finally { window.spyUid = wasSpy; }
 
   render && render();
 }
