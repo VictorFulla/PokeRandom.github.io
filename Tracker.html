@@ -291,7 +291,7 @@
         const label=document.createElement('div'); label.className='label'; label.textContent=p;
         label.style.left=(cx+Math.cos(ang)*(R+18))+'px'; label.style.top=(cy+Math.sin(ang)*(R+18))+'px';
         wrap.appendChild(label);
-        const value=countsByTag[tag]?.[p]||0; const r=R*(value/(max||1));
+        const value=countsByTag[tag]?.[p]||0; const r=R*((value>0?value:0.08)/(max || 1));
         pts.push([cx+Math.cos(ang)*r, cy+Math.sin(ang)*r]);
       });
       ctx.strokeStyle='rgba(255,255,255,.15)'; for(let k=1;k<=4;k++){ const r=R*k/4; drawPolygon(ctx, players.length, cx, cy, r); }
@@ -330,14 +330,33 @@
       let mostHitAlias=null, mostHitV=-1; for(const a in hitsTotals){ const v=hitsTotals[a]; if(v>mostHitV){mostHitV=v; mostHitAlias=a;} }
       const fun=[];
       if(mostHitAlias) fun.push({icon:'🛡️', text:`<b>${mostHitAlias}</b> ha sido la <b>piñata oficial</b> (${mostHitV} ataques recibidos).`});
-      if(leaders['curación'].alias)  fun.push({icon:'💊', text:`<b>${leaders['curación'].alias}</b> es quien más se ha curado (${leaders['curación'].v}).`});
-      if(leaders['ataque'].alias)    fun.push({icon:'⚔️', text:`<b>${leaders['ataque'].alias}</b> modo <b>berserker</b> (${leaders['ataque'].v}).`});
-      if(leaders['defensa'].alias)   fun.push({icon:'🧱', text:`<b>${leaders['defensa'].alias}</b> muralla activa (${leaders['defensa'].v}).`});
-      if(leaders['economía'].alias)  fun.push({icon:'💰', text:`<b>${leaders['economía'].alias}</b> juega al monopoly (${leaders['economía'].v}).`});
-      if(leaders['gacha'].alias)     fun.push({icon:'🎰', text:`<b>${leaders['gacha'].alias}</b> vive del azar (${leaders['gacha'].v}).`});
-      if(leaders['ítem'].alias)      fun.push({icon:'🎒', text:`<b>${leaders['ítem'].alias}</b> mochila a petar (${leaders['ítem'].v}).`});
-      if(leaders['captura'].alias)   fun.push({icon:'🧿', text:`<b>${leaders['captura'].alias}</b> cazatalentos (${leaders['captura'].v}).`});
-      fun.forEach(f=>{ const d=document.createElement('div'); d.className='badge'; d.innerHTML=`${f.icon} ${f.text}`; box.appendChild(d); });
+     if(leaders['curación'].alias)
+  fun.push({icon:'💊',
+    text:`<span class="pill">CURACIÓN</span> <b>${leaders['curación'].alias}</b> es quien más se ha curado (${leaders['curación'].v}).`});
+
+if(leaders['ataque'].alias)
+  fun.push({icon:'⚔️',
+    text:`<span class="pill">ATAQUE</span> <b>${leaders['ataque'].alias}</b> modo <b>berserker</b> (${leaders['ataque'].v}).`});
+
+if(leaders['defensa'].alias)
+  fun.push({icon:'🧱',
+    text:`<span class="pill">DEFENSA</span> <b>${leaders['defensa'].alias}</b> muralla activa (${leaders['defensa'].v}).`});
+
+if(leaders['economía'].alias)
+  fun.push({icon:'💰',
+    text:`<span class="pill">ECONOMÍA</span> <b>${leaders['economía'].alias}</b> juega al monopoly (${leaders['economía'].v}).`});
+
+if(leaders['gacha'].alias)
+  fun.push({icon:'🎰',
+    text:`<span class="pill">GACHA</span> <b>${leaders['gacha'].alias}</b> vive del azar (${leaders['gacha'].v}).`});
+
+if(leaders['ítem'].alias)
+  fun.push({icon:'🎒',
+    text:`<span class="pill">ÍTEM</span> <b>${leaders['ítem'].alias}</b> mochila a petar (${leaders['ítem'].v}).`});
+
+if(leaders['captura'].alias)
+  fun.push({icon:'🧿',
+    text:`<span class="pill">CAPTURA</span> <b>${leaders['captura'].alias}</b> cazatalentos (${leaders['captura'].v}).`});
     }
   </script>
 </body>
