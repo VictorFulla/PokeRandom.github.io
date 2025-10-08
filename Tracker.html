@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tracker (desde inventarios)</title>
+<title>Tracker (inventarios • activos)</title>
 <style>
 :root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.10);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
 *{box-sizing:border-box}html,body{height:100%}
@@ -68,7 +68,7 @@ svg{position:absolute;inset:0}
 
   <div class="grid">
     <section class="card">
-      <div class="small" style="margin-bottom:6px">🔷 Diagrama hexagonal (estilo estadísticas Pokémon)</div>
+      <div class="small" style="margin-bottom:6px">🔷 Diagrama hexagonal (estadísticas estilo Pokémon)</div>
       <div class="board" id="board">
         <svg id="hexSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
       </div>
@@ -77,7 +77,7 @@ svg{position:absolute;inset:0}
       <div id="achv" class="achievements"></div>
     </section>
     <aside class="card">
-      <div class="small">⚔️ Rankings — en vivo (solo usos reales, no ADMIN)</div>
+      <div class="small">⚔️ Rankings — en vivo (a partir del historial)</div>
       <div class="hr"></div>
       <div class="small">Ataques ejecutados</div>
       <div id="rankSent" class="rankList"></div>
@@ -91,7 +91,7 @@ svg{position:absolute;inset:0}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, query, where, onSnapshot, getDocs, doc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, getDocs, onSnapshot, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
@@ -114,90 +114,72 @@ document.querySelectorAll(".btn[data-tag]").forEach(btn=>{ btn.onclick = ()=>{ d
 document.querySelector('.btn[data-tag=""]').classList.add("active");
 rangeSel.onchange = ()=> recomputeAndRender();
 
-// === Radar estilo Pokémon ===
+// Radar
 const POS = [{x:50,y:5},{x:90,y:25},{x:90,y:75},{x:50,y:95},{x:10,y:75},{x:10,y:25}];
 function drawHexGrid(){ const pts = POS.map(p=>`${p.x},${p.y}`).join(" "); svg.innerHTML = `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`; }
+function drawRadar(values){ const center={x:50,y:50}; const scaled=values.map((v,i)=>{ const p=POS[i]; return { x:center.x+(p.x-center.x)*v, y:center.y+(p.y-center.y)*v }; }); const path=scaled.map(p=>`${p.x},${p.y}`).join(" "); const fill=`<polygon points="${path}" fill="rgba(124,92,255,.20)" stroke="rgba(124,92,255,.60)" stroke-width="0.8"/>`; const rays = POS.map(p=>`<line x1="50" y1="50" x2="${p.x}" y2="${p.y}" stroke="rgba(255,255,255,.10)" stroke-width="0.4"/>`).join(""); svg.innerHTML = `<polygon points="${POS.map(p=>`${p.x},${p.y}`).join(" ")}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>` + rays + fill; }
 drawHexGrid();
-function drawRadar(values){ // values: [0..1] x6
-  const center = {x:50,y:50};
-  const scaled = values.map((v,i)=>{
-    const p = POS[i];
-    return { x: center.x + (p.x-center.x)*v, y: center.y + (p.y-center.y)*v };
-  });
-  const path = scaled.map(p=>`${p.x},${p.y}`).join(" ");
-  // capa de relleno + contorno
-  const fill = `<polygon points="${path}" fill="rgba(124,92,255,.20)" stroke="rgba(124,92,255,.60)" stroke-width="0.8"/>`;
-  // radios
-  const rays = POS.map(p=>`<line x1="50" y1="50" x2="${p.x}" y2="${p.y}" stroke="rgba(255,255,255,.10)" stroke-width="0.4"/>`).join("");
-  svg.innerHTML = `<polygon points="${POS.map(p=>`${p.x},${p.y}`).join(" ")}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>` + rays + fill;
-}
 
-// === Utilidades ===
-const normTag = t=>{
-  t=(t||"").toString().toLowerCase();
-  if (t==="cura"||t==="curacion") return "curación";
-  if (t==="item") return "ítem";
-  return t;
+// Normalización & heurísticas
+const normTag = t=>{ t=(t||"").toString().toLowerCase(); if (t==="cura"||t==="curacion") return "curación"; if (t==="item") return "ítem"; return t; };
+const clean = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s*\(.*?\)\s*/g,"").replace(/\s+/g," ").trim();
+const catalog = {
+  "gacha": ["ruleta","caja","prime","apuesta segura","rascada","barajear"],
+  "economía": ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
+  "curación": ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
+  "ítem": ["mt","piedra","capsula","megapiedra","objeto","masterball","equipo"],
+  "captura": ["captura","reroll","recaptura","shiny","skip"],
+  "defensa": ["bloqueo","proteccion","reversa","venganza","regalo","buff"],
+  "ataque": ["robo","atac","destructor","envenenamiento","liberacion","cambio repentino","mismo destino","bloqueo pokemon","robo sigiloso"]
 };
-const clean = s => String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s*\(.*?\)\s*/g,"").replace(/\s+/g," ").trim();
-const RAW = [
-  [2,"Curacion","Objeto curativo"], [7,"Curacion","Dama curativa"],
-  [4,"Gacha","Ruleta"], [99,"Ataque","Robo de monedas"], [0,"economia","Venta ilegal"],
-  [10,"economia","10 monedas"], [3,"economia","Monedero perdido"], [2,"economia","Apuesta"],
-  [12,"captura","Captura shiny"], [2,"captura","Skip pokemon"], [10,"captura","Recaptura"], [4,"captura","Reroll"],
-  [4,"item","Masterball"], [7,"item","Compra MT"], [10,"item","Capsula habilidad"], [10,"item","Piedra Evolutiva"],
-  [10,"item","MegaPiedra"], [4,"Gacha","Caja sorpresa"], [10,"item","Objeto fuerte"],
-  [10,"Curacion","Revivir Pokemon"], [10,"Curacion","Revivir Inicial"], [7,"Curacion","Cambio de inicial"],
-  [25,"defensa","Reversa"], [7,"defensa","Bloqueo"], [10,"curacion","Bendición de Arceus"],
-  [7,"ataque","Robo Curativo"], [4,"ataque","Desgaste"], [10,"ataque","Liberación"], [10,"ataque","Robo de caja"],
-  [13,"ataque","Robo de equipo"], [7,"ataque","bloqueo pokemon"], [7,"ataque","destructor"], [5,"ataque","Mismo destino"],
-  [4,"ataque","envenenamiento"], [10,"gacha","Prime"], [4,"defensa","Venganza"], [4,"gacha","Apuesta Segura"],
-  [10,"ataque","Cambio repentino"], [0,"item","Intercambio"], [2,"defensa","Regalo"], [10,"defensa","Maldición"],
-  [7,"Ataque","Robo sigiloso"], [7,"defensa","Buff permanente"], [2,"defensa","Protección del débil"], [4,"gacha","Barajear cartas"],
-  [99,"item","Poleo Menta"], [10,"gacha","Rascada de Huevos"]
-];
-const NAME_TO_TAG = new Map(RAW.map(r=>[clean(r[2]), normTag(r[1])]));
-
-// Heurística de “uso real” desde useLog[].name
-function isRealUse(entryName){
-  const s = String(entryName||"");
-  if (/\[ADMIN\]/i.test(s)) return false;
-  if (/Compraste|Ganaste por ruleta|Añadida|Restada|\(\+1\)|pendiente/i.test(s)) return false;
-  // Incluye "Usaste", "Usa", "Aplicaste", etc.
-  return /us(a|aste|ado)|aplic(a|aste)|utiliz(a|aste)/i.test(s) || true;
+function inferTagFromName(name, fallback=""){
+  const s = clean(name);
+  for (const [tag,keys] of Object.entries(catalog)){
+    if (keys.some(k => s.includes(k))) return tag;
+  }
+  return normTag(fallback);
 }
+function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
+function asTimestamp(ts){
+  if (!ts) return null;
+  if (ts.toDate) return ts;
+  if (ts.seconds) return Timestamp.fromMillis(ts.seconds*1000);
+  const t = Date.parse(ts); return isNaN(t) ? null : Timestamp.fromMillis(t);
+}
+function isAttackSent(name, tag){ const s=clean(name); if (tag==="ataque") return true; return /(rob(|o|ó))|atac|destructor|envenenamiento|liberacion|mismo destino|cambio repentino/.test(s); }
+function isAttackRecv(name){ const s=clean(name); return /(te rob|te atac|fuiste atac|te quitaron|te han robado)/.test(s); }
 
-let profiles = [];         // {id, name}
-let invUnsubs = [];        // unsubs de inventarios
-let sent = []; let recv = []; // ataques (si decides alimentar attackLogs, aquí podríamos leerlos)
+let profiles = [];         // {id, name, __useLog:[]}
+let invUnsubs = [];
+let sentByUser = {}; let recvByUser = {};
 
-function timePass(createdAt){
+function timePass(ts){
   const r = rangeSel.value;
   if (r==="all") return true;
   const days = parseInt(r,10);
-  const t = createdAt?.toMillis ? createdAt.toMillis() : (createdAt?.seconds? createdAt.seconds*1000 : Date.parse(createdAt)||0);
+  const t = ts?.toMillis ? ts.toMillis() : (ts?.seconds? ts.seconds*1000 : Date.parse(ts)||0);
   if (!t) return false;
-  const cutoff = Date.now() - days*86400000;
-  return t >= cutoff;
+  return t >= Date.now() - days*86400000;
 }
 
 function recomputeAndRender(){
-  // Construye rawUsage desde inventories -> useLog ya recogidos
-  const rawUsage = [];
-  profiles.forEach(p=>{
-    const log = p.__useLog || [];
-    log.forEach(e=>{ if(e.__isUse && (!tagFilter || e.__tag===tagFilter) && timePass(e.__ts)) rawUsage.push({uid:p.id, createdAt:e.__ts, tag:e.__tag}); });
-  });
-
-  // Conteos por usuario & etiqueta
-  const countsByUserTag = {}; const totalsByUser = {};
+  const countsByUserTag = {}; const totalsByUser = {}; sentByUser = {}; recvByUser = {};
   profiles.forEach(p=>{
     countsByUserTag[p.id] = Object.fromEntries(TAGS.map(t=>[t,0]));
-    totalsByUser[p.id] = 0;
+    totalsByUser[p.id] = 0; sentByUser[p.id]=0; recvByUser[p.id]=0;
+    (p.__useLog||[]).forEach(e=>{
+      if (!timePass(e.__ts)) return;
+      const tag = e.__tag;
+      if (!tag) return;
+      if (!tagFilter || tag===tagFilter){
+        countsByUserTag[p.id][tag]++; totalsByUser[p.id]++;
+      }
+      if (isAttackSent(e.__name, tag)) sentByUser[p.id]++;
+      if (isAttackRecv(e.__name)) recvByUser[p.id]++;
+    });
   });
-  rawUsage.forEach(u=>{ if(!countsByUserTag[u.uid]) return; if(TAGS.includes(u.tag)) { countsByUserTag[u.uid][u.tag]++; totalsByUser[u.uid]++; } });
 
-  // Render chips por etiqueta + líder
+  // Chips por etiqueta
   tagRow.innerHTML="";
   const tags = tagFilter? [tagFilter]:TAGS;
   tags.forEach(tag=>{
@@ -207,8 +189,7 @@ function recomputeAndRender(){
     const chip = document.createElement("div"); chip.className="chip"; chip.innerHTML=`🏷️ ${tag} · <span class="small">líder: ${leaders} (${max})</span>`; tagRow.appendChild(chip);
   });
 
-  // Render nodos y radar
-  // Coloca los 6 usuarios fijos
+  // Nodos + radar
   const POS = [{x:50,y:5},{x:90,y:25},{x:90,y:75},{x:50,y:95},{x:10,y:75},{x:10,y:25}];
   [...board.querySelectorAll(".userNode")].forEach(n=>n.remove());
   profiles.slice(0,6).forEach((u,i)=>{
@@ -217,61 +198,90 @@ function recomputeAndRender(){
     n.innerHTML = `<div>${u.name}</div><span class="small">usos: ${totalsByUser[u.id]}</span>`;
     board.appendChild(n);
   });
-
-  // Calcular valores radar (por usuario) normalizados al máximo total
   const totals = profiles.slice(0,6).map(u=> totalsByUser[u.id] || 0);
   const maxT = Math.max(1, ...totals);
   const values = totals.map(t=> (t/maxT) || 0);
   drawRadar(values);
 
-  // Rankings (si no hay attackLogs, los dejamos vacíos)
-  const renderList=(dest,map)=>{
-    const arr=profiles.map(u=>({name:u.name,n:map[u.id]||0})).sort((a,b)=>b.n-a.n);
-    dest.innerHTML = arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join("");
-  };
-  renderList(rankSent, {}); renderList(rankRecv, {});
+  // Rankings
+  function renderList(dest,map){ const arr=profiles.map(u=>({name:u.name,n:map[u.id]||0})).sort((a,b)=>b.n-a.n); dest.innerHTML=arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join(""); }
+  renderList(rankSent, sentByUser);
+  renderList(rankRecv, recvByUser);
 
-  // Frases‑logro sencillas
+  // Frases‑logro
   const fun=[];
-  const tagMax = TAGS.map(tag=>{
-    const list = profiles.map(p=>({name:p.name, n:countsByUserTag[p.id][tag]}));
-    const m = Math.max(0, ...list.map(x=>x.n));
-    if (m>0){ const names = list.filter(x=>x.n===m).map(x=>x.name).join(", "); fun.push(`🏷️ <b>${names}</b> es/son lxs que más usa(n) cartas de <b>${tag}</b> (${m}).`); }
-  });
-  if(rawUsage.length===0) fun.push("Nada aún… ¡usen cartas!");
-  achv.innerHTML = fun.map(f=>`<div class="achItem">${f}</div>`).join("");
+  const leader = (tag)=>{
+    const list = profiles.map(p=>({name:p.name,n:countsByUserTag[p.id][tag]}));
+    const m=Math.max(0,...list.map(x=>x.n));
+    return m>0 ? {m, names:list.filter(x=>x.n===m).map(x=>x.name)} : null;
+  };
+  const avaro = leader("economía"); if (avaro) fun.push(`💰 <b>${avaro.names.join(", ")}</b> es/son lxs más avariciosxs (economía: ${avaro.m}).`);
+  const agresivo = leader("ataque"); if (agresivo) fun.push(`⚔️ <b>${agresivo.names.join(", ")}</b> reparte(n) leña (ataque: ${agresivo.m}).`);
+  const tanque = leader("defensa"); if (tanque) fun.push(`🛡️ <b>${tanque.names.join(", ")}</b> vive(n) en guardia (defensa: ${tanque.m}).`);
+  const botiquin = leader("curación"); if (botiquin) fun.push(`🩹 <b>${botiquin.names.join(", ")}</b> farmacia ambulante (curación: ${botiquin.m}).`);
+  const gachatier = leader("gacha"); if (gachatier) fun.push(`🎲 <b>${gachatier.names.join(", ")}</b> le da(n) al gacha (${gachatier.m}).`);
+  const itemlord = leader("ítem"); if (itemlord) fun.push(`🎒 <b>${itemlord.names.join(", ")}</b> acapara(n) trastos (ítems: ${itemlord.m}).`);
+  const cazador = leader("captura"); if (cazador) fun.push(`🕸️ <b>${cazador.names.join(", ")}</b> cazador(es) de bichos (captura: ${cazador.m}).`);
+  const saco = profiles.map(p=>({name:p.name, n:recvByUser[p.id]||0})).sort((a,b)=>b.n-a.n)[0]; if (saco && saco.n>0) fun.push(`😵 <b>${saco.name}</b> es el saco de boxeo (${saco.n} ataques recibidos).`);
+  achv.innerHTML = fun.length? fun.map(f=>`<div class="achItem">${f}</div>`).join("") : `<div class="achItem small">Nada aún… ¡usen cartas!</div>`;
 
-  dbg.textContent = `usos=${rawUsage.length}`;
+  const totalUsos = profiles.reduce((a,p)=> a + (p.__useLog?.length||0), 0);
+  dbg.textContent = `usuarios=${profiles.length} • usosProcesados=${totalUsos}`;
 }
 
-// Carga perfiles y engancha inventarios en vivo
+// Selección de los 6 últimos usuarios "activos"
 async function bootstrap(){
   const ps = await getDocs(collection(db,"profiles"));
-  const all = ps.docs.map(d=>({id:d.id, name:d.data().displayName || d.id}));
-  // Queremos exactamente 6 usuarios (si hay más, tomamos 6 primeros por alfabético)
-  all.sort((a,b)=> (a.name||"").localeCompare(b.name||"", 'es'));
-  profiles = all.slice(0,6);
-  // Suscribir a sus inventarios
-  invUnsubs.forEach(fn=>{try{fn&&fn()}catch{}}); invUnsubs = [];
-  for (const p of profiles){
+  let all = ps.docs.map(d=>{
+    const data=d.data()||{};
+    const last = data.lastLogin || data.lastActive || data.updatedAt || null;
+    const lastMillis = last?.toMillis ? last.toMillis() : (last?.seconds? last.seconds*1000 : Date.parse(last)||0);
+    return { id:d.id, name: data.displayName || d.id, _lastProfile: lastMillis||0 };
+  });
+  // Orden preliminar por lastProfile desc
+  all.sort((a,b)=> b._lastProfile - a._lastProfile || (a.name||"").localeCompare(b.name||"", 'es'));
+  const chosen = all.slice(0, 12); // tentativamente miramos 12 y luego nos quedamos con 6 que realmente tengan logs recientes
+
+  // Cargar inventarios y medir "última actividad real" por timestamp de useLog
+  const withLogs = [];
+  for (const p of chosen){
+    await new Promise((resolve)=>{
+      const unsub = onSnapshot(doc(db,"inventories", p.id), (snap)=>{
+        const data = snap.data() || {};
+        const raw = Array.isArray(data.useLog)? data.useLog : [];
+        const pre = raw
+          .filter(e=> e && !isAdminName(e.name))
+          .map(e=>{
+            const ts = asTimestamp(e.createdAt || e.date || e.timestamp);
+            const tag = normTag(e.tag || inferTagFromName(e.name||"", ""));
+            return { __name:String(e.name||""), __tag:tag, __ts: ts };
+          });
+        const lastTs = Math.max(0, ...pre.map(x=> x.__ts? x.__ts.toMillis():0));
+        withLogs.push({ id:p.id, name:p.name, __useLog:pre, _last:any=lastTs });
+        unsub(); resolve();
+      }, (err)=>{ resolve(); });
+    });
+  }
+  // Elegimos los 6 con lastTs más recientes
+  withLogs.sort((a,b)=> b._last - a._last || (a.name||"").localeCompare(b.name||"", 'es'));
+  const finalSix = withLogs.slice(0,6);
+  // Resuscribir en vivo a esos 6
+  profiles = finalSix;
+  finalSix.forEach(p=>{
     const unsub = onSnapshot(doc(db,"inventories", p.id), (snap)=>{
       const data = snap.data() || {};
       const raw = Array.isArray(data.useLog)? data.useLog : [];
-      // Preprocesa: añade campos __isUse, __tag, __ts por entrada
-      p.__useLog = raw.map(e=>{
-        const name = String(e?.name || "");
-        const ts = e?.createdAt || e?.date || null;
-        const when = ts && ts.toDate ? ts : (typeof ts==="string" ? new Date(ts) : null);
-        // intenta inferir el nombre de carta del texto
-        let cardName = name.replace(/^\[[^\]]+\]\s*/,""); // quita [ADMIN]
-        cardName = cardName.replace(/^(Compraste|Usaste|Usa|Aplicaste)\s+/i,"").replace(/\s*\(\+1\)|\s*\(-1\)/g,"").trim();
-        const tag = NAME_TO_TAG.get(clean(cardName)) || normTag(e?.tag || "");
-        return { __isUse: isRealUse(name), __tag: tag, __ts: when };
-      }).filter(x=> x.__isUse );
+      p.__useLog = raw
+        .filter(e=> e && !isAdminName(e.name))
+        .map(e=>{
+          const ts = asTimestamp(e.createdAt || e.date || e.timestamp);
+          const tag = normTag(e.tag || inferTagFromName(e.name||"", ""));
+          return { __name:String(e.name||""), __tag:tag, __ts: ts };
+        });
       recomputeAndRender();
     });
     invUnsubs.push(unsub);
-  }
+  });
   recomputeAndRender();
 }
 
