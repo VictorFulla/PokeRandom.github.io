@@ -689,18 +689,6 @@ const invRef = uid => doc(db,"inventories",uid);
 const profRef = uid => doc(db,"profiles",uid);
 const stealCol = collection(db,"stealRequests");
 const attackCol = collection(db,"attackRequests");
-
-// === CONTADOR ATAQUES EJECUTADOS ===
-try {
-  await addDoc(collection(db, "attackLogs"), {
-    type: "sent",
-    attackerId: currentUser.uid,
-    attackerName: currentUser.displayName || currentUser.email || currentUser.uid,
-    victimId: target?.uid || victimId || null,
-    createdAt: serverTimestamp()
-  });
-} catch(e){ console.warn("attackLogs sent warn:", e); }
-
 const debuffCol = collection(db,"debuffs");
 
 /* ========= UI comunes ========= */
@@ -886,8 +874,7 @@ const data = unseen.data();
 showStealInbox(unseen.id, data);
 
     // Abrir pop-up y marcar como visto para no repetir al recargar
-    showStealInbox(first.id, data);
-  });
+});
 }
 
 function subscribeAttackInbox(uid){
@@ -1456,19 +1443,7 @@ async function showAttackInbox(docId, data){
   const okBtn = document.createElement("button");
   okBtn.className = "btn bad";
   okBtn.textContent = "OK (recibir ataque)";
-  \1
-
-// === CONTADOR ATAQUES RECIBIDOS ===
-try {
-  await addDoc(collection(db, "attackLogs"), {
-    type: "received",
-    victimId: currentUser.uid,
-    victimName: currentUser.displayName || currentUser.email || currentUser.uid,
-    attackerId: currentAttackData?.attackerId || attackerId || null,
-    createdAt: serverTimestamp()
-  });
-} catch(e){ console.warn("attackLogs received warn:", e); }
-
+  okBtn.onclick = async () => {
     // Cerrar al instante
     toggleModal(attackModal,false);
     const _docId = currentAttackId;
@@ -1480,16 +1455,17 @@ try {
         status: "applied",
         resolvedAt: serverTimestamp()
       });
-    // === CONTADOR: ataques recibidos ===
-    try {
-      await addDoc(collection(db, "attackLogs"), {
-        type: "received",
-        victimId: currentUser.uid,
-        victimName: currentUser.displayName || currentUser.email || currentUser.uid,
-        attackerId: data?.attackerId || attackerId || null,
-        createdAt: serverTimestamp()
-      });
-    } catch (e) { console.warn("attackLogs received warn:", e); }
+
+// === CONTADOR: ataques recibidos ===
+try {
+  await addDoc(collection(db, "attackLogs"), {
+    type: "received",
+    victimId: currentUser.uid,
+    victimName: currentUser.displayName || currentUser.email || currentUser.uid,
+    attackerId: currentAttackData?.attackerId || attackerId || null,
+    createdAt: serverTimestamp()
+  });
+} catch (e) { console.warn("attackLogs received warn:", e); }
 
       toast("⚡ Ataque aplicado: karma −1");
       scheduleSave(); render();
