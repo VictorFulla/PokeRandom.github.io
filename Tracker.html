@@ -216,6 +216,8 @@ function recomputeSelectionAndRender(){
   render();
 }
 
+function recomputeAndRender(){ render(); }
+
 function render(){
   const countsByUserTag = {}; const totalsByUser = {}; const sentByUser = {}; const recvByUser = {};
   selected.forEach(p=>{
