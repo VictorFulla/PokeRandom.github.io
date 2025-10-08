@@ -3,58 +3,43 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tracker — robusto</title>
+<title>Tracker (desde inventarios)</title>
 <style>
-:root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.08);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
+:root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.10);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
 *{box-sizing:border-box}html,body{height:100%}
 body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-.wrap{max-width:1200px;margin:0 auto;padding:16px}
-.card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-.grid{display:grid;gap:16px;grid-template-columns:2fr 1fr}
+.wrap{max-width:1200px;margin:0 auto;padding:14px}
+.card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.grid{display:grid;gap:14px;grid-template-columns:2fr 1fr}
 @media(max-width:1080px){.grid{grid-template-columns:1fr}}
-.section-title{margin:0 0 12px;font-size:18px;display:flex;gap:8px;align-items:center}
-.small{font-size:12px;color:var(--muted)}
-.hr{height:1px;background:var(--edge);margin:12px 0}
-.hexWrap{display:flex;align-items:center;justify-content:center;padding:10px}
-.board{position:relative;width:640px;max-width:100%;aspect-ratio:1/1;margin:0 auto}
+.h1{display:flex;gap:10px;align-items:center;margin:0 0 8px}
+.small{font-size:12px;color:var(--muted)} .hr{height:1px;background:var(--edge);margin:10px 0}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
+.btn{background:#0e121a;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:7px 10px;cursor:pointer}
+.btn.active{outline:2px solid var(--accent)}
+select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:10px;padding:6px 10px}
+.board{position:relative;width:680px;max-width:100%;aspect-ratio:1/1;margin:0 auto}
 .userNode{position:absolute;transform:translate(-50%,-50%);background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:6px 10px;white-space:nowrap;font-weight:800;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .userNode .small{display:block;font-weight:600}
-.userNode.leader{outline:2px solid var(--accent);box-shadow:0 0 0 4px rgba(124,92,255,.2)}
 svg{position:absolute;inset:0}
-.tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
-.tagChip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-weight:800}
+.tagRow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-weight:800}
 .rankList{display:flex;flex-direction:column;gap:6px}
 .rankItem{display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:8px 10px}
 .rankItem .name{font-weight:800}
 .rankItem .count{font-variant-numeric:tabular-nums;font-weight:900}
-.debug{margin-left:auto;font-size:12px;color:#9aa4b2}
-.btn{background:#0e121a;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:6px 10px;cursor:pointer}
-.btn.active{outline:2px solid var(--accent)}
-select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:10px;padding:6px 10px}
-.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
-.filterRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.achievements{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(160px,1fr))}
+.achievements{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(180px,1fr))}
 @media(max-width:560px){.achievements{grid-template-columns:1fr}}
 .achItem{background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:10px}
+.headerRow{display:flex;align-items:center;gap:10px;justify-content:space-between}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1 class="section-title">📈 Tracker de cartas <span class="small">robusto</span> <span id="dbg" class="debug"></span></h1>
-
-  <div class="controls card">
-    <div class="filterRow">
-      <span class="small">Filtrar etiqueta:</span>
-      <button class="btn" data-tag="">Todas</button>
-      <button class="btn" data-tag="ataque">Ataque</button>
-      <button class="btn" data-tag="defensa">Defensa</button>
-      <button class="btn" data-tag="economía">Economía</button>
-      <button class="btn" data-tag="curación">Curación</button>
-      <button class="btn" data-tag="gacha">Gacha</button>
-      <button class="btn" data-tag="ítem">Ítem</button>
-      <button class="btn" data-tag="captura">Captura</button>
-    </div>
-    <div class="filterRow">
+  <div class="headerRow">
+    <h1 class="h1">📈 Tracker de cartas <span id="dbg" class="small"></span></h1>
+    <div class="headerRow" style="gap:8px">
+      <a class="btn" href="index.html">🏠 Home</a>
       <span class="small">Rango:</span>
       <select id="rangeSel">
         <option value="all">Todo el histórico</option>
@@ -65,31 +50,39 @@ select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:
     </div>
   </div>
 
-  <div id="tagRow" class="tags"></div>
+  <div class="controls card">
+    <div class="small">Filtrar etiqueta:</div>
+    <div id="tagBtns" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" data-tag="">Todas</button>
+      <button class="btn" data-tag="ataque">Ataque</button>
+      <button class="btn" data-tag="defensa">Defensa</button>
+      <button class="btn" data-tag="economía">Economía</button>
+      <button class="btn" data-tag="curación">Curación</button>
+      <button class="btn" data-tag="gacha">Gacha</button>
+      <button class="btn" data-tag="ítem">Ítem</button>
+      <button class="btn" data-tag="captura">Captura</button>
+    </div>
+  </div>
+
+  <div id="tagRow" class="tagRow"></div>
 
   <div class="grid">
     <section class="card">
-      <div class="section-title">🔷 Diagrama hexagonal de uso por usuario</div>
-      <div class="hexWrap">
-        <div class="board" id="board">
-          <svg id="hexSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
-        </div>
+      <div class="small" style="margin-bottom:6px">🔷 Diagrama hexagonal (estilo estadísticas Pokémon)</div>
+      <div class="board" id="board">
+        <svg id="hexSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
       </div>
       <div class="hr"></div>
-      <div class="section-title">🏅 Frases-logro</div>
+      <div class="small" style="margin-bottom:6px">🏅 Frases‑logro</div>
       <div id="achv" class="achievements"></div>
     </section>
-
     <aside class="card">
-      <div class="section-title">⚔️ Rankings</div>
-      <div class="small">Se actualizan con eventos reales (no incluye ADMIN).</div>
+      <div class="small">⚔️ Rankings — en vivo (solo usos reales, no ADMIN)</div>
       <div class="hr"></div>
-
-      <h3 class="small">Ataques ejecutados</h3>
+      <div class="small">Ataques ejecutados</div>
       <div id="rankSent" class="rankList"></div>
-
       <div class="hr"></div>
-      <h3 class="small">Ataques recibidos</h3>
+      <div class="small">Ataques recibidos</div>
       <div id="rankRecv" class="rankList"></div>
     </aside>
   </div>
@@ -98,7 +91,7 @@ select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, query, where, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, query, where, onSnapshot, getDocs, doc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
@@ -114,22 +107,70 @@ const db = getFirestore(app);
 
 const TAGS = ["ataque","defensa","economía","curación","gacha","ítem","captura"];
 const $ = s => document.querySelector(s);
-const board = $("#board"), svg = $("#hexSvg");
-const tagRow = $("#tagRow"), rankSent = $("#rankSent"), rankRecv = $("#rankRecv"), achv = $("#achv");
-const rangeSel = $("#rangeSel"), dbg=$("#dbg");
+const tagRow = $("#tagRow"), rankSent=$("#rankSent"), rankRecv=$("#rankRecv"), achv=$("#achv");
+const rangeSel = $("#rangeSel"), dbg=$("#dbg"), svg = $("#hexSvg"), board = $("#board");
 let tagFilter = "";
-document.querySelectorAll(".btn[data-tag]").forEach(btn=>{
-  btn.onclick = ()=>{ document.querySelectorAll(".btn[data-tag]").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); tagFilter=(btn.dataset.tag||"").toLowerCase(); recomputeAndRender(); };
-}); document.querySelector('.btn[data-tag=""]').classList.add("active");
+document.querySelectorAll(".btn[data-tag]").forEach(btn=>{ btn.onclick = ()=>{ document.querySelectorAll(".btn[data-tag]").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); tagFilter=(btn.dataset.tag||"").toLowerCase(); recomputeAndRender(); }; });
+document.querySelector('.btn[data-tag=""]').classList.add("active");
 rangeSel.onchange = ()=> recomputeAndRender();
 
-let users = [];
-let rawUsage = [];
-let rawSent = [];
-let rawRecv = [];
+// === Radar estilo Pokémon ===
 const POS = [{x:50,y:5},{x:90,y:25},{x:90,y:75},{x:50,y:95},{x:10,y:75},{x:10,y:25}];
-function renderHexGrid(){ const pts = POS.map(p=>`${p.x},${p.y}`).join(" "); svg.innerHTML = `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`; }
-renderHexGrid();
+function drawHexGrid(){ const pts = POS.map(p=>`${p.x},${p.y}`).join(" "); svg.innerHTML = `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`; }
+drawHexGrid();
+function drawRadar(values){ // values: [0..1] x6
+  const center = {x:50,y:50};
+  const scaled = values.map((v,i)=>{
+    const p = POS[i];
+    return { x: center.x + (p.x-center.x)*v, y: center.y + (p.y-center.y)*v };
+  });
+  const path = scaled.map(p=>`${p.x},${p.y}`).join(" ");
+  // capa de relleno + contorno
+  const fill = `<polygon points="${path}" fill="rgba(124,92,255,.20)" stroke="rgba(124,92,255,.60)" stroke-width="0.8"/>`;
+  // radios
+  const rays = POS.map(p=>`<line x1="50" y1="50" x2="${p.x}" y2="${p.y}" stroke="rgba(255,255,255,.10)" stroke-width="0.4"/>`).join("");
+  svg.innerHTML = `<polygon points="${POS.map(p=>`${p.x},${p.y}`).join(" ")}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>` + rays + fill;
+}
+
+// === Utilidades ===
+const normTag = t=>{
+  t=(t||"").toString().toLowerCase();
+  if (t==="cura"||t==="curacion") return "curación";
+  if (t==="item") return "ítem";
+  return t;
+};
+const clean = s => String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s*\(.*?\)\s*/g,"").replace(/\s+/g," ").trim();
+const RAW = [
+  [2,"Curacion","Objeto curativo"], [7,"Curacion","Dama curativa"],
+  [4,"Gacha","Ruleta"], [99,"Ataque","Robo de monedas"], [0,"economia","Venta ilegal"],
+  [10,"economia","10 monedas"], [3,"economia","Monedero perdido"], [2,"economia","Apuesta"],
+  [12,"captura","Captura shiny"], [2,"captura","Skip pokemon"], [10,"captura","Recaptura"], [4,"captura","Reroll"],
+  [4,"item","Masterball"], [7,"item","Compra MT"], [10,"item","Capsula habilidad"], [10,"item","Piedra Evolutiva"],
+  [10,"item","MegaPiedra"], [4,"Gacha","Caja sorpresa"], [10,"item","Objeto fuerte"],
+  [10,"Curacion","Revivir Pokemon"], [10,"Curacion","Revivir Inicial"], [7,"Curacion","Cambio de inicial"],
+  [25,"defensa","Reversa"], [7,"defensa","Bloqueo"], [10,"curacion","Bendición de Arceus"],
+  [7,"ataque","Robo Curativo"], [4,"ataque","Desgaste"], [10,"ataque","Liberación"], [10,"ataque","Robo de caja"],
+  [13,"ataque","Robo de equipo"], [7,"ataque","bloqueo pokemon"], [7,"ataque","destructor"], [5,"ataque","Mismo destino"],
+  [4,"ataque","envenenamiento"], [10,"gacha","Prime"], [4,"defensa","Venganza"], [4,"gacha","Apuesta Segura"],
+  [10,"ataque","Cambio repentino"], [0,"item","Intercambio"], [2,"defensa","Regalo"], [10,"defensa","Maldición"],
+  [7,"Ataque","Robo sigiloso"], [7,"defensa","Buff permanente"], [2,"defensa","Protección del débil"], [4,"gacha","Barajear cartas"],
+  [99,"item","Poleo Menta"], [10,"gacha","Rascada de Huevos"]
+];
+const NAME_TO_TAG = new Map(RAW.map(r=>[clean(r[2]), normTag(r[1])]));
+
+// Heurística de “uso real” desde useLog[].name
+function isRealUse(entryName){
+  const s = String(entryName||"");
+  if (/\[ADMIN\]/i.test(s)) return false;
+  if (/Compraste|Ganaste por ruleta|Añadida|Restada|\(\+1\)|pendiente/i.test(s)) return false;
+  // Incluye "Usaste", "Usa", "Aplicaste", etc.
+  return /us(a|aste|ado)|aplic(a|aste)|utiliz(a|aste)/i.test(s) || true;
+}
+
+let profiles = [];         // {id, name}
+let invUnsubs = [];        // unsubs de inventarios
+let sent = []; let recv = []; // ataques (si decides alimentar attackLogs, aquí podríamos leerlos)
+
 function timePass(createdAt){
   const r = rangeSel.value;
   if (r==="all") return true;
@@ -139,43 +180,101 @@ function timePass(createdAt){
   const cutoff = Date.now() - days*86400000;
   return t >= cutoff;
 }
-const norm = t=>{
-  t=(t||"").toString().toLowerCase();
-  if (t==="cura"||t==="curacion") return "curación";
-  if (t==="item") return "ítem";
-  return t;
-};
+
 function recomputeAndRender(){
-  const countsByUserTag = {}; const sentByUser = {}; const recvByUser = {};
-  const ensure = (uid)=>{ countsByUserTag[uid]=countsByUserTag[uid]||Object.fromEntries(TAGS.map(t=>[t,0])); sentByUser[uid]=sentByUser[uid]||0; recvByUser[uid]=recvByUser[uid]||0; };
-  rawUsage.filter(u=>(!tagFilter || norm(u.tag)===tagFilter) && timePass(u.createdAt)).forEach(u=>{ const uid=u.uid; if(!uid) return; ensure(uid); const tag = norm(u.tag); if (TAGS.includes(tag)) countsByUserTag[uid][tag]++; });
-  rawSent.filter(e=> timePass(e.createdAt)).forEach(e=>{ ensure(e.attackerId); sentByUser[e.attackerId]++; });
-  rawRecv.filter(e=> timePass(e.createdAt)).forEach(e=>{ ensure(e.victimId);   recvByUser[e.victimId]++; });
-  // render
+  // Construye rawUsage desde inventories -> useLog ya recogidos
+  const rawUsage = [];
+  profiles.forEach(p=>{
+    const log = p.__useLog || [];
+    log.forEach(e=>{ if(e.__isUse && (!tagFilter || e.__tag===tagFilter) && timePass(e.__ts)) rawUsage.push({uid:p.id, createdAt:e.__ts, tag:e.__tag}); });
+  });
+
+  // Conteos por usuario & etiqueta
+  const countsByUserTag = {}; const totalsByUser = {};
+  profiles.forEach(p=>{
+    countsByUserTag[p.id] = Object.fromEntries(TAGS.map(t=>[t,0]));
+    totalsByUser[p.id] = 0;
+  });
+  rawUsage.forEach(u=>{ if(!countsByUserTag[u.uid]) return; if(TAGS.includes(u.tag)) { countsByUserTag[u.uid][u.tag]++; totalsByUser[u.uid]++; } });
+
+  // Render chips por etiqueta + líder
+  tagRow.innerHTML="";
+  const tags = tagFilter? [tagFilter]:TAGS;
+  tags.forEach(tag=>{
+    const arr = profiles.map(p=>({uid:p.id, n: countsByUserTag[p.id][tag]}));
+    const max = Math.max(0,...arr.map(a=>a.n));
+    const leaders = arr.filter(a=>a.n===max && max>0).map(a=>profiles.find(z=>z.id===a.uid)?.name||a.uid).join(", ") || "—";
+    const chip = document.createElement("div"); chip.className="chip"; chip.innerHTML=`🏷️ ${tag} · <span class="small">líder: ${leaders} (${max})</span>`; tagRow.appendChild(chip);
+  });
+
+  // Render nodos y radar
+  // Coloca los 6 usuarios fijos
+  const POS = [{x:50,y:5},{x:90,y:25},{x:90,y:75},{x:50,y:95},{x:10,y:75},{x:10,y:25}];
   [...board.querySelectorAll(".userNode")].forEach(n=>n.remove());
-  users.slice(0,6).forEach((u,i)=>{ const n=document.createElement("div"); n.className="userNode"; n.style.left=POS[i].x+"%"; n.style.top=POS[i].y+"%"; const total=Object.values(countsByUserTag[u.id]||{}).reduce((a,b)=>a+b,0); n.innerHTML=`<div>${u.name}</div><span class="small">usos: ${total}</span>`; board.appendChild(n); });
-  const totals = users.map(u=>({uid:u.id,sum:Object.values(countsByUserTag[u.id]||{}).reduce((a,b)=>a+b,0)}));
-  const max = Math.max(0, ...totals.map(t=>t.sum));
-  totals.filter(t=>t.sum===max && max>0).forEach(t=>{ const i=users.findIndex(u=>u.id===t.uid); const node=board.querySelectorAll(".userNode")[i]; if(node) node.classList.add("leader"); });
-  tagRow.innerHTML=""; const tagsToShow = tagFilter? [tagFilter]:TAGS;
-  tagsToShow.forEach(tag=>{ const entries=users.map(u=>({uid:u.id,n:(countsByUserTag[u.id]?.[tag]||0)})); const m=Math.max(0,...entries.map(e=>e.n)); const leaders = entries.filter(e=>e.n===m && m>0).map(e=>users.find(x=>x.id===e.uid)?.name || e.uid).join(", ") || "—"; const chip=document.createElement("div"); chip.className="tagChip"; chip.innerHTML=`<span>🏷️ ${tag}</span> <span class="small">• líder: ${leaders} (${m})</span>`; tagRow.appendChild(chip); });
-  function renderList(dest,map){ const arr=users.map(u=>({name:u.name,n:map[u.id]||0})).sort((a,b)=>b.n-a.n).slice(0,6); dest.innerHTML=arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join(""); }
-  renderList(rankSent, sentByUser); renderList(rankRecv, recvByUser);
-  achv.innerHTML = ""; // simple
-  dbg.textContent = `usos=${rawUsage.length} sent=${rawSent.length} recv=${rawRecv.length}`;
+  profiles.slice(0,6).forEach((u,i)=>{
+    const n=document.createElement("div"); n.className="userNode";
+    n.style.left=POS[i].x+"%"; n.style.top=POS[i].y+"%";
+    n.innerHTML = `<div>${u.name}</div><span class="small">usos: ${totalsByUser[u.id]}</span>`;
+    board.appendChild(n);
+  });
+
+  // Calcular valores radar (por usuario) normalizados al máximo total
+  const totals = profiles.slice(0,6).map(u=> totalsByUser[u.id] || 0);
+  const maxT = Math.max(1, ...totals);
+  const values = totals.map(t=> (t/maxT) || 0);
+  drawRadar(values);
+
+  // Rankings (si no hay attackLogs, los dejamos vacíos)
+  const renderList=(dest,map)=>{
+    const arr=profiles.map(u=>({name:u.name,n:map[u.id]||0})).sort((a,b)=>b.n-a.n);
+    dest.innerHTML = arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join("");
+  };
+  renderList(rankSent, {}); renderList(rankRecv, {});
+
+  // Frases‑logro sencillas
+  const fun=[];
+  const tagMax = TAGS.map(tag=>{
+    const list = profiles.map(p=>({name:p.name, n:countsByUserTag[p.id][tag]}));
+    const m = Math.max(0, ...list.map(x=>x.n));
+    if (m>0){ const names = list.filter(x=>x.n===m).map(x=>x.name).join(", "); fun.push(`🏷️ <b>${names}</b> es/son lxs que más usa(n) cartas de <b>${tag}</b> (${m}).`); }
+  });
+  if(rawUsage.length===0) fun.push("Nada aún… ¡usen cartas!");
+  achv.innerHTML = fun.map(f=>`<div class="achItem">${f}</div>`).join("");
+
+  dbg.textContent = `usos=${rawUsage.length}`;
 }
 
+// Carga perfiles y engancha inventarios en vivo
 async function bootstrap(){
   const ps = await getDocs(collection(db,"profiles"));
-  users = ps.docs.map(d=>({id:d.id, name:d.data().displayName||d.id})).slice(0,6);
-  // inicial full fetch
-  const u0 = await getDocs(query(collection(db,"usageLogs"))); rawUsage = u0.docs.map(d=>d.data());
-  const a0 = await getDocs(query(collection(db,"attackLogs"))); const arr=a0.docs.map(d=>d.data()); rawSent = arr.filter(d=>d.type==="sent"); rawRecv = arr.filter(d=>d.type==="received");
+  const all = ps.docs.map(d=>({id:d.id, name:d.data().displayName || d.id}));
+  // Queremos exactamente 6 usuarios (si hay más, tomamos 6 primeros por alfabético)
+  all.sort((a,b)=> (a.name||"").localeCompare(b.name||"", 'es'));
+  profiles = all.slice(0,6);
+  // Suscribir a sus inventarios
+  invUnsubs.forEach(fn=>{try{fn&&fn()}catch{}}); invUnsubs = [];
+  for (const p of profiles){
+    const unsub = onSnapshot(doc(db,"inventories", p.id), (snap)=>{
+      const data = snap.data() || {};
+      const raw = Array.isArray(data.useLog)? data.useLog : [];
+      // Preprocesa: añade campos __isUse, __tag, __ts por entrada
+      p.__useLog = raw.map(e=>{
+        const name = String(e?.name || "");
+        const ts = e?.createdAt || e?.date || null;
+        const when = ts && ts.toDate ? ts : (typeof ts==="string" ? new Date(ts) : null);
+        // intenta inferir el nombre de carta del texto
+        let cardName = name.replace(/^\[[^\]]+\]\s*/,""); // quita [ADMIN]
+        cardName = cardName.replace(/^(Compraste|Usaste|Usa|Aplicaste)\s+/i,"").replace(/\s*\(\+1\)|\s*\(-1\)/g,"").trim();
+        const tag = NAME_TO_TAG.get(clean(cardName)) || normTag(e?.tag || "");
+        return { __isUse: isRealUse(name), __tag: tag, __ts: when };
+      }).filter(x=> x.__isUse );
+      recomputeAndRender();
+    });
+    invUnsubs.push(unsub);
+  }
   recomputeAndRender();
-  // realtime
-  onSnapshot(query(collection(db,"usageLogs")), (s)=>{ s.docChanges().forEach(ch=>{ if(ch.type==="added") rawUsage.push(ch.doc.data()); }); recomputeAndRender(); });
-  onSnapshot(query(collection(db,"attackLogs")), (s)=>{ s.docChanges().forEach(ch=>{ const d=ch.doc.data(); if(ch.type==="added"){ if(d.type==="sent") rawSent.push(d); else if(d.type==="received") rawRecv.push(d); } }); recomputeAndRender(); });
 }
+
 onAuthStateChanged(auth, ()=> bootstrap().catch(console.error));
 </script>
 </body>
