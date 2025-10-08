@@ -17,8 +17,8 @@ body{margin:0;background:radial-gradient(1200px 600px at 30% -10%,rgba(106,125,2
 @media(max-width:1080px){.grid{grid-template-columns:1fr}}
 .h1{display:flex;gap:10px;align-items:center;margin:0 0 8px}
 .small{font-size:12px;color:var(--muted)} .hr{height:1px;background:var(--edge);margin:10px 0}
-.rankCard{background:#0f1420;border:1px solid var(--edge);border-radius:12px;padding:12px}
-.rankTitle{font-weight:900;font-size:15px;letter-spacing:.3px;margin-bottom:8px}
+.rankCard{background:#0f1420;border:1px solid var(--edge);border-radius:12px;padding:12px;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.rankTitle{font-weight:1000;font-size:16px;letter-spacing:.35px;margin-bottom:10px}
 .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
 .btn{background:#0f1420;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease}
 .btn:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04) inset}
@@ -52,7 +52,7 @@ svg{position:absolute;inset:0}
   <div class="headerRow">
     <h1 class="h1">📈 Tracker de cartas <span id="dbg" class="small"></span></h1>
     <div class="headerRow" style="gap:8px">
-      <button id="themeBtn" class="btn" title="Cambiar tema">🌓 Tema</button>
+      
       <a class="btn" href="index.html">🏠 Home</a>
       <span class="small">Rango:</span>
       <select id="rangeSel">
@@ -92,7 +92,7 @@ svg{position:absolute;inset:0}
     </section>
     <aside class="card">
       <div class="rankCard"><div class="rankTitle">🗡️ Ataques ejecutados</div><div id="rankSent" class="rankList"></div></div>
-      <div style="height:10px"></div>
+      <div style="height:22px"></div>
       <div class="rankCard"><div class="rankTitle">🛡️ Ataques recibidos</div><div id="rankRecv" class="rankList"></div></div>
     </aside>
   </div>
@@ -120,6 +120,26 @@ const TAGS = ["ataque","defensa","economia","curacion","gacha","item","captura"]
 const DISPLAY = {ataque:"ataque", defensa:"defensa", economia:"economía", curacion:"curación", gacha:"gacha", item:"ítem", captura:"captura"};
 
 const $ = s => document.querySelector(s);
+
+// Aliases locales (name -> alias) para mostrar
+const ALIAS = new Map([
+  ["Juan caballero","Juan"],
+  ["Juan Caballero","Juan"],
+  ["Enrique Saiz Gessler","Kique"],
+  ["Eriel","Eri"],
+  ["Erial","Eri"],
+  ["Arturo Manteola Llamas","Arturo"],
+  ["Arturo Manteola LLama","Arturo"],
+  ["Abel García","Abel"],
+  ["Abel Garcia","Abel"],
+  ["victor","Fulla"],
+  ["Víctor","Fulla"]
+]);
+
+function showName(user){
+  const raw = (user && (user.alias || user.name)) || "";
+  return ALIAS.get(raw) || raw;
+}
 const tagRow = $("#tagRow"), rankSent=$("#rankSent"), rankRecv=$("#rankRecv"), achv=$("#achv");
 const rangeSel = $("#rangeSel"), dbg=$("#dbg"), svg = $("#hexSvg"), board = $("#board");
 let tagFilter = ""; // slug
@@ -269,7 +289,7 @@ function render(){
   [...board.querySelectorAll(".userNode")].forEach(n=>n.remove());
   selected.forEach((u,i)=>{
     const n=document.createElement("div"); n.className="userNode"; n.style.left=positions[i].x+"%"; n.style.top=positions[i].y+"%";
-    n.innerHTML = `<div>${u.name}</div><span class="small">usos: ${totalsByUser[u.id]||0}</span>`;
+    n.innerHTML = `<div>${showName(u)}</div><span class="small">usos: ${totalsByUser[u.id]||0}</span>`;
     board.appendChild(n);
   });
   const totals = selected.map(u=> totalsByUser[u.id] || 0);
@@ -278,7 +298,7 @@ function render(){
   drawRadar(values);
 
   // Rankings
-  function renderList(dest,map){ const arr=selected.map(u=>({name:u.name,n:map[u.id]||0})).sort((a,b)=>b.n-a.n); dest.innerHTML=arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join(""); }
+  function renderList(dest,map){ const arr=selected.map(u=>({name:u.name,n:map[u.id]||0})).sort((a,b)=>b.n-a.n); dest.innerHTML=arr.map(r=>`<div class="rankItem"><span class="name">${showName(r)}</span><span class="count">${r.n}</span></div>`).join(""); }
   renderList(rankSent, sentByUser);
   renderList(rankRecv, recvByUser);
 
