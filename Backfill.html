@@ -3,37 +3,47 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Backfill v2 — RandomLock</title>
+<title>Backfill v3 — RandomLock</title>
 <style>
 :root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.12);--text:#e7ecf5;--muted:#9aa4b2;--ok:#49d17d;--warn:#ffcc66;--err:#ff6b6b}
 *{box-sizing:border-box}html,body{height:100%}
 body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-.wrap{max-width:900px;margin:0 auto;padding:20px}
+.wrap{max-width:960px;margin:0 auto;padding:20px}
 .card{background:var(--panel);border:1px solid var(--edge);border-radius:14px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
 h1{margin:0 0 12px}
 small{color:var(--muted)}
 .btn{background:#0e121a;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
 .btn[disabled]{opacity:.5;cursor:not-allowed}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:10px 0}
-pre{background:#0e121a;border:1px solid var(--edge);padding:10px;border-radius:10px;max-height:320px;overflow:auto;white-space:pre-wrap}
+pre{background:#0e121a;border:1px solid var(--edge);padding:10px;border-radius:10px;max-height:360px;overflow:auto;white-space:pre-wrap}
 .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
 .code{font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace;font-size:12px}
-.kv{display:grid;grid-template-columns:180px 1fr;gap:8px;margin:10px 0}
+.kv{display:grid;grid-template-columns:200px 1fr;gap:8px;margin:10px 0}
 .kv b{color:#cbd5e1}
 label{display:flex;gap:6px;align-items:center}
+input[type=text]{background:#0e121a;border:1px solid var(--edge);color:#fff;border-radius:10px;padding:6px 10px;min-width:280px}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🧰 Backfill v2 (timestamps reales)</h1>
+  <h1>🧰 Backfill v3 (robusto)</h1>
   <div class="card">
     <div class="kv">
-      <div><b>Qué hace</b></div><div>Re‑importa histórico escribiendo <b>Firestore Timestamp</b> correcto en <code class="code">createdAt</code> para <code class="code">usageLogs</code> y <code class="code">attackLogs</code> (no duplica).</div>
+      <div><b>Qué hace</b></div><div>Busca histórico en varias rutas comunes y lo vuelca en <code class="code">usageLogs</code> y <code class="code">attackLogs</code> con <b>Timestamps reales</b> e <b>IDs deterministas</b>.</div>
+      <div><b>Rutas escaneadas</b></div>
+      <div class="code">
+        • <b>profiles</b> → campos <code>useLog</code>, <code>usage</code><br/>
+        • <b>inventories</b> (colección raíz) → campos <code>useLog</code>, <code>usage</code><br/>
+        • <b>collectionGroup("inventories")</b> (subcolecciones) → campos <code>useLog</code>, <code>usage</code><br/>
+        • <b>attackRequests</b> (si marcas “incluir ataques”)
+      </div>
     </div>
+
     <div class="row">
       <button id="btnAuth" class="btn">Iniciar sesión</button>
-      <button id="btnRun" class="btn" disabled>Re‑importar (corrige timestamps)</button>
+      <button id="btnRun" class="btn" disabled>Importar todo</button>
       <label><input type="checkbox" id="chkAttacks" checked/> Incluir ataques</label>
+      <label>Rama profiles personalizada (opcional): <input id="profilesPath" type="text" placeholder="profiles"/></label>
     </div>
     <pre id="log" class="code"></pre>
   </div>
@@ -42,7 +52,7 @@ label{display:flex;gap:6px;align-items:center}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, doc, getDocs, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, collectionGroup, doc, getDocs, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
@@ -62,25 +72,11 @@ const logEl = $("#log");
 const btnAuth = $("#btnAuth");
 const btnRun = $("#btnRun");
 const chkAttacks = $("#chkAttacks");
+const profilesPath = $("#profilesPath");
 
 let currentUser = null;
 
-function log(line){ logEl.textContent += line + "\n"; logEl.scrollTop = logEl.scrollHeight; }
-
-onAuthStateChanged(auth, (u)=>{
-  currentUser = u;
-  btnRun.disabled = !u;
-  if (u) log(`✔ Sesión: ${u.email||u.uid}`);
-});
-
-btnAuth.onclick = async ()=>{
-  try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ log("✖ "+e.message); }
-};
-btnRun.onclick = async ()=>{
-  if (!currentUser) return;
-  await run();
-};
-
+function log(line, cls=""){ logEl.innerHTML += (cls?`<span class="${cls}">${line}</span>`:line) + "\\n"; logEl.scrollTop = logEl.scrollHeight; }
 function asMillis(ts){
   if (!ts) return null;
   if (ts.toMillis) return ts.toMillis();
@@ -89,38 +85,162 @@ function asMillis(ts){
   const t = Date.parse(ts);
   return isNaN(t) ? null : t;
 }
-
 function idFrom(parts){
   return btoa(unescape(encodeURIComponent(parts.join("|")))).replace(/=+$/,"").slice(0,140);
 }
+function normTag(t){
+  t = (t||"").toString().toLowerCase();
+  if (t==="cura"||t==="curacion") return "curación";
+  if (t==="item") return "ítem";
+  return t;
+}
+function isAdminEntry(entry){
+  const msg = (entry.message||entry.msg||"").toString();
+  return msg.includes("[ADMIN]");
+}
+function guessIsUse(entry){
+  const a = (entry.action||entry.type||"").toString().toLowerCase();
+  if (a) return a==="use";
+  // heurística: mensajes típicos
+  const m = (entry.message||entry.msg||"").toLowerCase();
+  return /us[óo]|utiliz|aplic[óo]/.test(m);
+}
+
+onAuthStateChanged(auth, (u)=>{
+  currentUser = u;
+  if (u){ log(`✔ Sesión: ${u.email||u.uid}`,"ok"); btnRun.disabled = false; }
+  else { log("ℹ Inicia sesión para continuar."); btnRun.disabled = true; }
+});
+btnAuth.onclick = async ()=>{
+  try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ log("✖ "+e.message,"err"); }
+};
+btnRun.onclick = async ()=>{ if(!currentUser) return; await run(); };
 
 async function run(){
-  log("— Corrigiendo usageLogs…");
-  const uSnap = await getDocs(collection(db,"usageLogs"));
-  let uw = 0;
-  for (const d of uSnap.docs){
-    const data = d.data()||{};
-    const t = asMillis(data.createdAt) || Date.now();
-    const ts = Timestamp.fromMillis(t);
-    await setDoc(doc(db,"usageLogs", d.id), { ...data, createdAt: ts }, { merge:false });
-    uw++;
-  }
-  log(`OK: reescritos ${uw} usos.`);
+  const profCol = (profilesPath.value||"profiles").trim();
+  let usageFound=0, usageWrite=0, sentFound=0, sentWrite=0, recvFound=0, recvWrite=0;
 
-  if (chkAttacks.checked){
-    log("— Corrigiendo attackLogs…");
-    const aSnap = await getDocs(collection(db,"attackLogs"));
-    let aw = 0;
-    for (const d of aSnap.docs){
+  // 1) profiles
+  try{
+    log(`— Escaneando ${profCol}…`);
+    const ps = await getDocs(collection(db, profCol));
+    for (const d of ps.docs){
+      const uid = d.id;
       const data = d.data()||{};
-      const t = asMillis(data.createdAt) || Date.now();
-      const ts = Timestamp.fromMillis(t);
-      await setDoc(doc(db,"attackLogs", d.id), { ...data, createdAt: ts }, { merge:false });
-      aw++;
+      const logs = [].concat(data.useLog||[], data.usage||[]);
+      for (const e of logs){
+        if (!e) continue;
+        if (isAdminEntry(e)) continue;
+        if (!guessIsUse(e)) continue;
+        const t = asMillis(e.createdAt||e.time||e.timestamp)||Date.now();
+        const id = idFrom(["use", uid, e.cardName||e.name||"?", normTag(e.tag||e.label||"?"), t]);
+        usageFound++;
+        await setDoc(doc(db,"usageLogs", id), {
+          uid,
+          userName: data.displayName || data.userName || uid,
+          cardName: e.cardName||e.name||"",
+          tag: normTag(e.tag||e.label||""),
+          action:"use",
+          createdAt: Timestamp.fromMillis(t)
+        }, { merge:false }).catch(()=>{});
+        usageWrite++;
+      }
     }
-    log(`OK: reescritos ${aw} ataques.`);
+  }catch(e){ log("   ✖ profiles: "+e.message,"err"); }
+
+  // 2) inventories (root)
+  try{
+    log("— Escaneando inventories (raíz)…");
+    const inv = await getDocs(collection(db,"inventories"));
+    for (const d of inv.docs){
+      const uid = d.id;
+      const data = d.data()||{};
+      const logs = [].concat(data.useLog||[], data.usage||[]);
+      for (const e of logs){
+        if (!e) continue;
+        if (isAdminEntry(e)) continue;
+        if (!guessIsUse(e)) continue;
+        const t = asMillis(e.createdAt||e.time||e.timestamp)||Date.now();
+        const id = idFrom(["use", uid, e.cardName||e.name||"?", normTag(e.tag||e.label||"?"), t]);
+        usageFound++;
+        await setDoc(doc(db,"usageLogs", id), {
+          uid,
+          userName: data.userName || uid,
+          cardName: e.cardName||e.name||"",
+          tag: normTag(e.tag||e.label||""),
+          action:"use",
+          createdAt: Timestamp.fromMillis(t)
+        }, { merge:false }).catch(()=>{});
+        usageWrite++;
+      }
+    }
+  }catch(e){ log("   ✖ inventories raíz: "+e.message,"err"); }
+
+  // 3) inventories (collectionGroup)
+  try{
+    log("— Escaneando collectionGroup('inventories')…");
+    const cg = await getDocs(collectionGroup(db,"inventories"));
+    for (const d of cg.docs){
+      const data = d.data()||{};
+      const uid = data.uid || d.id;
+      const logs = [].concat(data.useLog||[], data.usage||[]);
+      for (const e of logs){
+        if (!e) continue;
+        if (isAdminEntry(e)) continue;
+        if (!guessIsUse(e)) continue;
+        const t = asMillis(e.createdAt||e.time||e.timestamp)||Date.now();
+        const id = idFrom(["use", uid, e.cardName||e.name||"?", normTag(e.tag||e.label||"?"), t]);
+        usageFound++;
+        await setDoc(doc(db,"usageLogs", id), {
+          uid,
+          userName: data.userName || uid,
+          cardName: e.cardName||e.name||"",
+          tag: normTag(e.tag||e.label||""),
+          action:"use",
+          createdAt: Timestamp.fromMillis(t)
+        }, { merge:false }).catch(()=>{});
+        usageWrite++;
+      }
+    }
+  }catch(e){ log("   ✖ inventories CG: "+e.message,"err"); }
+
+  // 4) attacks
+  if (chkAttacks.checked){
+    try{
+      log("— Escaneando attackRequests…");
+      const at = await getDocs(collection(db,"attackRequests"));
+      for (const d of at.docs){
+        const a = d.data()||{};
+        if (a.attackerId && a.victimId){
+          const t = asMillis(a.createdAt||a.timestamp)||Date.now();
+          const idS = idFrom(["sent", d.id]);
+          await setDoc(doc(db,"attackLogs", idS), {
+            type:"sent",
+            attackerId: a.attackerId,
+            attackerName: a.attackerName || a.attackerId,
+            victimId: a.victimId,
+            createdAt: Timestamp.fromMillis(t)
+          }, { merge:false }).catch(()=>{});
+          sentFound++; sentWrite++;
+        }
+        if ((a.status||"").toLowerCase()==="applied"){
+          const tr = asMillis(a.appliedAt||a.updatedAt||a.createdAt||a.timestamp)||Date.now();
+          const idR = idFrom(["recv", d.id]);
+          await setDoc(doc(db,"attackLogs", idR), {
+            type:"received",
+            victimId: a.victimId,
+            victimName: a.victimName || a.victimId,
+            attackerId: a.attackerId || null,
+            createdAt: Timestamp.fromMillis(tr)
+          }, { merge:false }).catch(()=>{});
+          recvFound++; recvWrite++;
+        }
+      }
+    }catch(e){ log("   ✖ attackRequests: "+e.message,"err"); }
   }
-  log("✅ Hecho. Abre el Tracker y debería mostrar el histórico.");
+
+  log(`✔ usos: ${usageWrite} (detectados ${usageFound}) — sent: ${sentWrite} / recv: ${recvWrite}`, "ok");
+  log("✅ Hecho. Abre el Tracker.");
 }
 </script>
 </body>
