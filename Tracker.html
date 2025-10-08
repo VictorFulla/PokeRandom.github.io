@@ -1,369 +1,266 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tracker de Cartas • Radar & Ataques</title>
-  <style>
-    :root{ --bg:#0b1020;--panel:#121937cc;--txt:#e8ecff;--muted:#a9b4ff;--accent:#7cf8ff;--accent2:#ff7cf2;--shadow:0 10px 30px rgba(0,0,0,.45) }
-    *{box-sizing:border-box}
-    body{margin:0; font-family:ui-sans-serif,system-ui,Segoe UI,Inter,Roboto; color:var(--txt);
-      background: radial-gradient(1200px 600px at 20% -10%, #20309644 0%, transparent 60%),
-                  radial-gradient(1000px 600px at 120% 10%, #7c19b944 0%, transparent 50%),
-                  linear-gradient(180deg,#0a0f21 0%, #070b16 100%);
-      min-height:100svh}
-    header{padding:18px 20px; display:flex; gap:14px; align-items:center; justify-content:space-between;
-      position:sticky; top:0; backdrop-filter: blur(8px); background:linear-gradient(180deg, #0b1020dd, #0b102055);
-      border-bottom:1px solid #ffffff18; z-index:20}
-    .brand{display:flex; align-items:center; gap:12px}
-    .logo{width:36px; height:36px; border-radius:10px; background: conic-gradient(from 210deg, var(--accent), var(--accent2), var(--accent));
-      box-shadow:0 0 20px #7cf8ff55 inset, 0 0 30px #ff7cf255}
-    h1{font-size:18px; margin:0; letter-spacing:.5px}
-    .pill{padding:6px 10px; border-radius:999px; background:#ffffff12; color:var(--muted); font-size:12px; border:1px solid #ffffff1a}
-    button{background:linear-gradient(180deg, #1a2356, #111a40); color:var(--txt); border:1px solid #6ea8ff33;
-      box-shadow:0 10px 30px rgba(0,0,0,.45); padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:600}
-    button:hover{transform:translateY(-1px); filter:brightness(1.08)}
-    main{padding:18px; max-width:1200px; margin:0 auto; display:grid; gap:18px; grid-template-columns: 1fr 400px}
-    @media (max-width:1150px){ main{grid-template-columns:1fr} }
-    .card{background:linear-gradient(180deg,#121937dd,#0f1639cc); border:1px solid #93b4ff22; border-radius:18px; padding:16px}
-    .card h2{margin:0 0 10px; font-size:16px; letter-spacing:.3px}
-    .toolbar{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px}
-    .tab{padding:8px 12px; border-radius:999px; border:1px solid #ffffff22; background:#ffffff10; color:#e8ecff; cursor:pointer; font-weight:700; font-size:13px}
-    .tab.active{outline:2px solid #7cf8ff88}
-    .center{display:grid; place-items:center}
-    #radarWrap{position:relative; width:min(640px, 90vw); aspect-ratio:1; margin:auto}
-    #radar{position:absolute; inset:0}
-    .label{position:absolute; transform:translate(-50%,-50%); font-size:12px; color:#cfe3ff}
-    .side{display:grid; gap:14px}
-    table{width:100%; border-collapse:separate; border-spacing:0 6px}
-    th,td{padding:8px 10px; font-size:13px}
-    thead th{color:var(--muted)}
-    tbody tr{background:#111743aa; border:1px solid #7ea2ff1f}
-    .mono{font-variant-numeric: tabular-nums}
-    .achievements{display:grid; grid-template-columns: repeat(2,1fr); gap:10px}
-    .badge{background:#0f1642; border:1px solid #ffffff22; border-radius:14px; padding:10px; font-size:13px}
-    .badge b{color:#fff}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Tracker — RandomLock</title>
+<style>
+:root{
+  --bg:#0d0f14; --panel:#151922; --edge:rgba(255,255,255,.08);
+  --text:#e7ecf5; --muted:#9aa4b2; --accent:#7c5cff; --br:16px;
+}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+.wrap{max-width:1200px;margin:0 auto;padding:16px}
+.card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.grid{display:grid;gap:16px;grid-template-columns:2fr 1fr}
+@media(max-width:1080px){.grid{grid-template-columns:1fr}}
+.section-title{margin:0 0 12px;font-size:18px;display:flex;gap:8px;align-items:center}
+.small{font-size:12px;color:var(--muted)}
+.badge{display:inline-flex;gap:6px;align-items:center;padding:2px 8px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-size:12px}
+.hr{height:1px;background:var(--edge);margin:12px 0}
+
+/* Hex board */
+.hexWrap{display:flex;align-items:center;justify-content:center;padding:10px}
+.board{position:relative;width:640px;max-width:100%;aspect-ratio:1/1;margin:0 auto}
+.userNode{
+  position:absolute; transform:translate(-50%,-50%);
+  background:#0e121a; border:1px solid var(--edge); border-radius:12px;
+  padding:6px 10px; white-space:nowrap; font-weight:800; font-size:14px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+}
+.userNode .small{display:block; font-weight:600}
+.userNode.leader{outline:2px solid var(--accent); box-shadow:0 0 0 4px rgba(124,92,255,.2)}
+
+svg{position:absolute; inset:0}
+
+/* Tag chips */
+.tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
+.tagChip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-weight:800}
+.tagChip .who{opacity:.85;font-weight:700}
+
+/* Rankings */
+.rankList{display:flex;flex-direction:column;gap:6px}
+.rankItem{display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:8px 10px}
+.rankItem .name{font-weight:800}
+.rankItem .count{font-variant-numeric:tabular-nums; font-weight:900}
+
+/* Logros */
+.achievements{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(160px,1fr))}
+@media(max-width:560px){.achievements{grid-template-columns:1fr}}
+.achItem{background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:10px}
+</style>
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <div class="logo"></div>
-      <h1>Tracker de Cartas • Radar & Ataques</h1>
-      <span class="pill" id="mode">Comprobando sesión…</span>
-    </div>
-    <div class="actions">
-      <button id="homeBtn">Home</button>
-    </div>
-  </header>
+<div class="wrap">
+  <h1 class="section-title">📈 Tracker de cartas <span class="small">en vivo</span></h1>
 
-  <main>
+  <!-- Etiquetas con líder actual -->
+  <div id="tagRow" class="tags"></div>
+
+  <div class="grid">
+    <!-- Panel principal: Hex + frases -->
     <section class="card">
-      <h2>Radar</h2>
-      <div class="toolbar" id="tagsBar"></div>
-      <div class="center">
-        <div id="radarWrap">
-          <canvas id="radar"></canvas>
-          <!-- labels via JS -->
+      <div class="section-title">🔷 Diagrama hexagonal de uso por usuario</div>
+      <div class="hexWrap">
+        <div class="board" id="board">
+          <!-- SVG para malla -->
+          <svg id="hexSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <!-- nodos de usuarios se inyectan aquí -->
         </div>
       </div>
+      <div class="hr"></div>
+      <div class="section-title">🏅 Frases-logro (temporada completa)</div>
+      <div id="achv" class="achievements"></div>
     </section>
 
-    <aside class="side">
-      <section class="card">
-        <h2>Historial de ataques (quién ataca a quién)</h2>
-        <div id="attacksTableWrap"></div>
-      </section>
-      <section class="card">
-        <h2>Ranking de más atacados</h2>
-        <table>
-          <thead><tr><th>#</th><th>Jugador</th><th class="mono">Golpes</th></tr></thead>
-          <tbody id="mostHitBody"></tbody>
-        </table>
-      </section>
+    <!-- Sidebar: Rankings -->
+    <aside class="card">
+      <div class="section-title">⚔️ Rankings</div>
+      <div class="small">Se actualizan con eventos reales (no incluye ADMIN).</div>
+      <div class="hr"></div>
+
+      <h3 class="small">Ataques ejecutados</h3>
+      <div id="rankSent" class="rankList"></div>
+
+      <div class="hr"></div>
+      <h3 class="small">Ataques recibidos</h3>
+      <div id="rankRecv" class="rankList"></div>
     </aside>
-  </main>
+  </div>
+</div>
 
-  <section class="card" style="max-width:1200px; margin:0 auto 20px;">
-    <h2>Estado actual</h2>
-    <div class="achievements" id="achievements"></div>
-  </section>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  getFirestore, collection, query, where, orderBy, onSnapshot, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-    import { getFirestore, collection, onSnapshot, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-    import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+const firebaseConfig = {
+  apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
+  authDomain: "pokerandom-ce300.firebaseapp.com",
+  projectId: "pokerandom-ce300",
+  storageBucket: "pokerandom-ce300.firebasestorage.app",
+  messagingSenderId: "637348459448",
+  appId: "1:637348459448:web:4ab19e68bcce734692554d"
+};
 
-    // ——— Firebase (tus credenciales) ———
-    const firebaseConfig = {
-      apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
-      authDomain: "pokerandom-ce300.firebaseapp.com",
-      projectId: "pokerandom-ce300",
-      storageBucket: "pokerandom-ce300.appspot.com",
-      messagingSenderId: "637348459448",
-      appId: "1:637348459448:web:4ab19e68bcce734692554d"
-    };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    // ——— Constantes ———
-    const TAGS = ["curación","ataque","defensa","economía","gacha","ítem","captura"];
-    const DISPLAY_ORDER = ['Enrique','Fuya','Eri','Abel','Juan','Arturo']; // orden visual
-    const NAME_ALIASES = { // displayName -> alias en tablero
-      'Ariel': 'Eri',
-      'Arturo Manteola Llamas': 'Arturo',
-      'Juan Caballero': 'Juan',
-      'Enrique Sainz Gessler': 'Enrique',
-      'Abel García': 'Abel',
-      'Víctor': 'Fuya',
-      'Victor': 'Fuya'
-    };
+const TAGS = ["ataque","defensa","economía","curación","gacha","ítem","captura"];
 
-    // catálago mínimo para resolver etiquetas por nombre si usamos fallback de inventories.useLog
-    const rawList = [
-      [2,"Curacion","Objeto curativo"],[7,"Curacion","Dama curativa"],[4,"Gacha","Ruleta"],
-      [99,"Ataque","Robo de monedas"],[0,"economia","Venta ilegal"],[10,"economia","10 monedas"],[3,"economia","Monedero perdido"],[2,"economia","Apuesta"],
-      [12,"captura","Captura shiny"],[2,"captura","Skip pokemon"],[10,"captura","Recaptura"],[4,"captura","Reroll"],
-      [4,"item","Masterball"],[7,"item","Compra MT"],[10,"item","Capsula habilidad"],[10,"item","Piedra Evolutiva"],[10,"item","MegaPiedra"],[4,"Gacha","Caja sorpresa"],[10,"item","Objeto fuerte"],
-      [10,"Curacion","Revivir Pokemon"],[10,"Curacion","Revivir Inicial"],[7,"Curacion","Cambio de inicial"],
-      [25,"defensa","Reversa"],[7,"defensa","Bloqueo"],[10,"curacion","Bendición de Arceus"],
-      [7,"ataque","Robo Curativo"],[4,"ataque","Desgaste"],[10,"ataque","Liberación"],[10,"ataque","Robo de caja"],[13,"ataque","Robo de equipo"],[7,"ataque","bloqueo pokemon"],[7,"ataque","destructor"],[5,"ataque","Mismo destino"],[4,"ataque","envenenamiento"],
-      [10,"gacha","Prime"],[4,"defensa","Venganza"],[4,"gacha","Apuesta Segura"],[10,"ataque","Cambio repentino"],[0,"item","Intercambio"],[2,"defensa","Regalo"],[10,"defensa","Maldición"],[7,"Ataque","Robo sigiloso"],[7,"defensa","Buff permanente"],[2,"defensa","Protección del débil"],[4,"gacha","Barajear cartas"],[99,"item","Poleo Menta"],[10,"gacha","Rascada de Huevos"]
-    ];
-    const normType = t => t.toLowerCase().replace('curacion','curación').replace('economia','economía').replace('item','ítem');
-    const canonical = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s*\(.*?\)\s*/g,'').trim();
-    const cardsBase = rawList.map((r,i)=>({id:`c${String(i+1).padStart(2,'0')}`, type:normType(String(r[1])), name:r[2]}));
-    const byId   = new Map(cardsBase.map(c=>[c.id,c]));
-    const byName = new Map(cardsBase.map(c=>[canonical(c.name),c]));
+const $ = s => document.querySelector(s);
+const board = $("#board");
+const svg = $("#hexSvg");
+const tagRow = $("#tagRow");
+const rankSent = $("#rankSent");
+const rankRecv = $("#rankRecv");
+const achv = $("#achv");
 
-    // ——— App ———
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
-    const auth= getAuth(app);
+let users = []; // [{id, name}]
+let countsByUserTag = {}; // uid -> {tag -> n}
+let sentByUser = {};      // uid -> n
+let recvByUser = {};      // uid -> n
 
-    document.getElementById('homeBtn').onclick = ()=> location.href='index.html';
+function nameOf(uid){ return users.find(u=>u.id===uid)?.name || uid.slice(0,6); }
 
-    onAuthStateChanged(auth, async (user)=>{
-      if(!user){
-        document.getElementById('mode').textContent = 'Sin sesión — volviendo a Home…';
-        setTimeout(()=> location.href='index.html', 400);
-        return;
+// --- Layout hex (6 posiciones) ---
+const POS = [
+  {x:50, y:5},    // top
+  {x:90, y:25},
+  {x:90, y:75},
+  {x:50, y:95},   // bottom
+  {x:10, y:75},
+  {x:10, y:25},
+];
+function renderHexGrid(){
+  // dibuja hexágono
+  const pts = POS.map(p=>`${p.x},${p.y}`).join(" ");
+  svg.innerHTML = `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`;
+}
+renderHexGrid();
+
+function ensureUser(uid,name){
+  if (!users.some(u=>u.id===uid)){
+    users.push({id:uid, name});
+  }
+  countsByUserTag[uid] = countsByUserTag[uid] || {};
+  TAGS.forEach(t=> countsByUserTag[uid][t] = countsByUserTag[uid][t] || 0);
+  sentByUser[uid] = sentByUser[uid] || 0;
+  recvByUser[uid] = recvByUser[uid] || 0;
+}
+
+function renderUsers(){
+  // limpia nodos
+  [...board.querySelectorAll(".userNode")].forEach(n=>n.remove());
+  users.slice(0,6).forEach((u, i)=>{
+    const n = document.createElement("div");
+    n.className = "userNode";
+    n.style.left = POS[i].x + "%";
+    n.style.top  = POS[i].y + "%";
+    const totalUsos = TAGS.reduce((a,t)=>a+(countsByUserTag[u.id]?.[t]||0),0);
+    n.innerHTML = `<div>${u.name}</div><span class="small">usos: ${totalUsos}</span>`;
+    board.appendChild(n);
+  });
+  // resaltar líderes globales por total
+  const totals = users.map(u=>({uid:u.id, sum:TAGS.reduce((a,t)=>a+(countsByUserTag[u.id]?.[t]||0),0)}));
+  const max = Math.max(0, ...totals.map(t=>t.sum));
+  totals.filter(t=>t.sum===max && max>0).forEach(t=>{
+    const idx = users.findIndex(u=>u.id===t.uid);
+    const node = board.querySelectorAll(".userNode")[idx];
+    if (node) node.classList.add("leader");
+  });
+}
+
+function renderTagLeaders(){
+  tagRow.innerHTML = "";
+  TAGS.forEach(tag=>{
+    let entries = users.map(u=>({uid:u.id, n:countsByUserTag[u.id]?.[tag]||0}));
+    const max = Math.max(0, ...entries.map(e=>e.n));
+    const leaders = entries.filter(e=>e.n===max && max>0).map(e=>nameOf(e.uid)).join(", ") || "—";
+    const chip = document.createElement("div");
+    chip.className = "tagChip";
+    chip.innerHTML = `<span>🏷️ ${tag}</span> <span class="who small">• líder: ${leaders} (${max})</span>`;
+    tagRow.appendChild(chip);
+  });
+}
+
+function renderRanks(){
+  function renderList(dest, map){
+    const arr = users.map(u=>({name:u.name, n:map[u.id]||0})).sort((a,b)=>b.n-a.n).slice(0,6);
+    dest.innerHTML = arr.map(row=>`<div class="rankItem"><span class="name">${row.name}</span><span class="count">${row.n}</span></div>`).join("");
+  }
+  renderList(rankSent, sentByUser);
+  renderList(rankRecv, recvByUser);
+}
+
+function renderAchievements(){
+  const ach = [];
+  const most = tag => {
+    const arr = users.map(u=>({uid:u.id, n:(countsByUserTag[u.id]?.[tag]||0)}));
+    const max = Math.max(0, ...arr.map(a=>a.n));
+    return arr.filter(a=>a.n===max && max>0).map(a=>nameOf(a.uid)).join(", ") || null;
+  };
+  const avaro = most("economía"); if (avaro) ach.push(`💰 <b>${avaro}</b> es el más avaricioso: ha usado más cartas de economía.`);
+  const agresivo = most("ataque"); if (agresivo) ach.push(`⚔️ <b>${agresivo}</b> es el más agresivo: lidera en cartas de ataque.`);
+  const tanque = most("defensa"); if (tanque) ach.push(`🛡️ <b>${tanque}</b> vive en guardia: top en cartas de defensa.`);
+  const botiquin = most("curación"); if (botiquin) ach.push(`🩹 <b>${botiquin}</b> farmacia ambulante: top en curación.`);
+  const gachatier = most("gacha"); if (gachatier) ach.push(`🎲 <b>${gachatier}</b> el ludópata: abusa del gacha.`);
+  const itemlord = most("ítem"); if (itemlord) ach.push(`🎒 <b>${itemlord}</b> el acumulador de trastos: top en ítems.`);
+  const cazador = most("captura"); if (cazador) ach.push(`🕸️ <b>${cazador}</b> poké-poacher: top en capturas.`);
+  const punching = Object.entries(recvByUser).sort((a,b)=>b[1]-a[1])[0];
+  if (punching && punching[1]>0) ach.push(`😵 <b>${nameOf(punching[0])}</b> es el saco de boxeo: el más atacado.`);
+
+  achv.innerHTML = ach.map(t=>`<div class="achItem small">${t}</div>`).join("") || `<div class="small">Nada aún… ¡usen cartas!</div>`;
+}
+
+// === Subs en vivo ===
+async function bootstrap(){
+  // 1) Perfiles (para nombres y lista fija de 6)
+  // Reutilizamos lo que ya rellenas en profiles desde index.html (colección "profiles")
+  const snap = await getDocs(collection(db, "profiles"));
+  users = snap.docs.map(d=>({id:d.id, name: d.data().displayName || d.id})).slice(0,6);
+  users.forEach(u=> ensureUser(u.id, u.name));
+  renderUsers();
+
+  // 2) USAGE: todos los usos reales (action=="use")
+  const uq = query(collection(db,"usageLogs"), where("action","==","use"), orderBy("createdAt","asc"));
+  onSnapshot(uq, (s)=>{
+    s.docChanges().forEach(ch=>{
+      const d = ch.doc.data() || {};
+      const uid = d.uid; const tag = (d.tag||"").toLowerCase();
+      if (!uid || !TAGS.includes(tag)) return;
+      ensureUser(uid, d.userName || uid);
+      countsByUserTag[uid][tag] = (countsByUserTag[uid][tag]||0) + 1;
+    });
+    renderUsers(); renderTagLeaders(); renderAchievements();
+  });
+
+  // 3) ATAQUES: contadores sent/received
+  const aq = query(collection(db,"attackLogs"), orderBy("createdAt","asc"));
+  onSnapshot(aq, (s)=>{
+    s.docChanges().forEach(ch=>{
+      const d = ch.doc.data() || {};
+      if (d.type === "sent" && d.attackerId){
+        ensureUser(d.attackerId, d.attackerName || d.attackerId);
+        sentByUser[d.attackerId] = (sentByUser[d.attackerId]||0) + 1;
       }
-      document.getElementById('mode').textContent = 'Online';
-      boot();
+      if (d.type === "received" && d.victimId){
+        ensureUser(d.victimId, d.victimName || d.victimId);
+        recvByUser[d.victimId] = (recvByUser[d.victimId]||0) + 1;
+      }
     });
+    renderRanks(); renderAchievements();
+  });
+}
 
-    // ===== Estado =====
-    let users = [];                    // [{uid,name,alias}]
-    let userIds = new Set();           // ids permitidos (los 6)
-    let countsByTag = {};              // tag -> alias -> count
-    let attacksMatrix = {};            // alias->alias->n
-    let hitsTotals = {};               // alias->n
-    TAGS.forEach(t=> countsByTag[t] = {});
-
-    async function boot(){
-      // 1) perfilar a los 6 jugadores (por displayName -> alias)
-      const ps = await getDocs(collection(db,'profiles'));
-      users = ps.docs.map(d=>{
-        const p=d.data(); const name=p.displayName||'Jugador'; const alias=NAME_ALIASES[name]||name;
-        return { uid:d.id, name, alias };
-      }).filter(u=> DISPLAY_ORDER.includes(u.alias));
-
-      // asegurar orden visual y estructuras
-      users.sort((a,b)=> DISPLAY_ORDER.indexOf(a.alias) - DISPLAY_ORDER.indexOf(b.alias));
-      userIds = new Set(users.map(u=>u.uid));
-      users.forEach(u=>{
-        TAGS.forEach(t=> countsByTag[t][u.alias]=0);
-        attacksMatrix[u.alias] = {};
-        users.forEach(v=> attacksMatrix[u.alias][v.alias]=0);
-        hitsTotals[u.alias]=0;
-      });
-
-      // 2) RADAR: primera fuente -> usageLogs (global y limpio)
-      // si no hay datos en usageLogs, caemos al fallback de inventories.useLog
-      let sawUsageLogs = false;
-      onSnapshot(collection(db,'usageLogs'), (qs)=>{
-        // reset
-        users.forEach(u=> TAGS.forEach(t=> countsByTag[t][u.alias]=0));
-        let any=false;
-        qs.forEach(doc=>{
-          const r=doc.data()||{};
-          if(!r.tag || !r.userId || !r.action) return;
-          if(r.action!=='use') return;
-          if(!userIds.has(r.userId)) return; // solo los 6
-          const alias = aliasFrom(r.userName, r.userId);
-          const tag = String(r.tag).toLowerCase();
-          if(TAGS.includes(tag) && countsByTag[tag][alias]!=null){
-            countsByTag[tag][alias]++; any=true;
-          }
-        });
-        sawUsageLogs = any;
-        renderRadar(currentTag); renderAchievements();
-      });
-
-      // Fallback: inventories.useLog (si usageLogs aún no existe / vacío)
-      onSnapshot(collection(db,'inventories'), (qs)=>{
-        if(sawUsageLogs) return; // si ya tenemos usageLogs, no usamos fallback
-        // reset
-        users.forEach(u=> TAGS.forEach(t=> countsByTag[t][u.alias]=0));
-        qs.forEach(doc=>{
-          if(!userIds.has(doc.id)) return;
-          const inv = doc.data()||{}; const alias = users.find(u=>u.uid===doc.id).alias;
-          const logs = Array.isArray(inv.useLog)? inv.useLog : [];
-          for(const e of logs){
-            const title = String(e.name||'');
-            if(/\bcompraste\b|\[ADMIN\]/i.test(title)) continue;        // ignorar compras/admin
-            let type=null;
-            if(e.cardId && byId.has(e.cardId)) type=byId.get(e.cardId).type;
-            if(!type){ const m=byName.get(canonical(title.replace(/^(usaste|usada|usar)\s+/i,''))); if(m) type=m.type; }
-            if(type && countsByTag[type] && countsByTag[type][alias]!=null){ countsByTag[type][alias]++; }
-          }
-        });
-        renderRadar(currentTag); renderAchievements();
-      });
-
-      // 3) ATAQUES: leer attackLogs (espejo público). Si aún no existe, intentamos attackRequests (puede estar bloqueado por reglas)
-      let sawAttackLogs=false;
-      onSnapshot(collection(db,'attackLogs'), (qs)=>{
-        users.forEach(u=>{ users.forEach(v=> attacksMatrix[u.alias][v.alias]=0); hitsTotals[u.alias]=0; });
-        let any=false;
-        qs.forEach(d=>{
-          const a=d.data()||{};
-          if(!a.attackerId || !a.victimId) return;
-          if(!userIds.has(a.attackerId) || !userIds.has(a.victimId)) return;
-          const att = aliasFrom(a.attackerName, a.attackerId);
-          const vic = aliasFrom(a.victimName, a.victimId);
-          if(att && vic){ attacksMatrix[att][vic]++; hitsTotals[vic]++; any=true; }
-        });
-        sawAttackLogs = any;
-        renderAttacksMatrix(); renderMostHit(); renderAchievements();
-      });
-
-      // fallback a attackRequests por si aún no hay espejo
-      onSnapshot(collection(db,'attackRequests'), (qs)=>{
-        if(sawAttackLogs) return;
-        users.forEach(u=>{ users.forEach(v=> attacksMatrix[u.alias][v.alias]=0); hitsTotals[u.alias]=0; });
-        qs.forEach(d=>{
-          const a=d.data()||{};
-          // sólo contaremos si hay nombres/ids y ambos están en nuestros 6
-          const attId=a.attackerId, vicId=a.victimId;
-          if(!attId || !vicId) return;
-          if(!userIds.has(attId) || !userIds.has(vicId)) return;
-          const att = aliasFrom(a.attackerName, attId);
-          const vic = aliasFrom(a.victimName,   vicId);
-          if(att && vic){ attacksMatrix[att][vic]++; hitsTotals[vic]++; }
-        });
-        renderAttacksMatrix(); renderMostHit(); renderAchievements();
-      });
-
-      setupUI();
-    }
-
-    function aliasFrom(name,id){
-      if(name){ const al = NAME_ALIASES[name]||name; if(al) return al; }
-      const u = users.find(x=> x.uid===id);
-      return u ? u.alias : null;
-    }
-
-    // ——— UI: tabs + radar ———
-    const tagsBar = document.getElementById('tagsBar');
-    let currentTag = TAGS[0];
-    TAGS.forEach(t=>{
-      const b=document.createElement('button'); b.className='tab'; b.textContent=t.toUpperCase();
-      if(t===currentTag) b.classList.add('active');
-      b.onclick=()=>{ currentTag=t; document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); b.classList.add('active'); renderRadar(currentTag); };
-      tagsBar.appendChild(b);
-    });
-
-    const canvas = document.getElementById('radar');
-    const wrap = document.getElementById('radarWrap');
-    const ctx = canvas.getContext('2d');
-    function sizeCanvas(){ canvas.width=wrap.clientWidth; canvas.height=wrap.clientWidth; }
-    window.addEventListener('resize', ()=>{ sizeCanvas(); renderRadar(currentTag); });
-    sizeCanvas();
-
-    function renderRadar(tag){
-      if(!ctx) return; ctx.clearRect(0,0,canvas.width,canvas.height);
-      const cx=canvas.width/2, cy=canvas.height/2; const R=canvas.width*0.38;
-      wrap.querySelectorAll('.label').forEach(n=>n.remove());
-      const players = users.map(u=>u.alias);
-      const pts=[]; const max=Math.max(1, ...players.map(p=> countsByTag[tag]?.[p]||0));
-      players.forEach((p,i)=>{
-        const ang=-Math.PI/2 + i*(2*Math.PI/players.length);
-        const label=document.createElement('div'); label.className='label'; label.textContent=p;
-        label.style.left=(cx+Math.cos(ang)*(R+18))+'px'; label.style.top=(cy+Math.sin(ang)*(R+18))+'px';
-        wrap.appendChild(label);
-        const value=countsByTag[tag]?.[p]||0; const r = R * ((value > 0 ? value : 0.08) / (max || 1));
-        pts.push([cx+Math.cos(ang)*r, cy+Math.sin(ang)*r]);
-      });
-      ctx.strokeStyle='rgba(255,255,255,.15)'; for(let k=1;k<=4;k++){ const r=R*k/4; drawPolygon(ctx, players.length, cx, cy, r); }
-      ctx.strokeStyle='rgba(124,248,255,.85)'; ctx.lineWidth=2; drawPolyline(ctx, pts, true);
-      ctx.fillStyle='rgba(124,248,255,.18)'; fillPolygon(ctx, pts);
-      ctx.fillStyle='#cfe3ff'; ctx.font='600 14px ui-sans-serif,system-ui'; ctx.textAlign='center';
-      const mx=Math.max(...players.map(p=> countsByTag[tag]?.[p]||0),0);
-      ctx.fillText(`Etiqueta: ${tag.toUpperCase()} • máx usos: ${mx}`, cx, cy+R+40);
-    }
-    function drawPolygon(ctx, n, cx, cy, r){ ctx.beginPath(); for(let i=0;i<n;i++){ const a=-Math.PI/2 + i*(2*Math.PI/n); const x=cx+Math.cos(a)*r; const y=cy+Math.sin(a)*r; if(!i) ctx.moveTo(x,y); else ctx.lineTo(x,y);} ctx.closePath(); ctx.stroke(); }
-    function drawPolyline(ctx, pts, closed=false){ ctx.beginPath(); pts.forEach(([x,y],i)=> i? ctx.lineTo(x,y): ctx.moveTo(x,y)); if(closed) ctx.closePath(); ctx.stroke(); }
-    function fillPolygon(ctx, pts){ ctx.beginPath(); pts.forEach(([x,y],i)=> i? ctx.lineTo(x,y): ctx.moveTo(x,y)); ctx.closePath(); ctx.fill(); }
-
-    // ——— Tablas de ataques ———
-    function renderAttacksMatrix(){
-      const players=users.map(u=>u.alias);
-      let html='<table><thead><tr><th>Atacante ↓ / Objetivo →</th>'+players.map(p=>`<th>${p}</th>`).join('')+'</tr></thead><tbody>';
-      players.forEach(att=>{
-        html+=`<tr><td><b>${att}</b></td>`;
-        players.forEach(vic=>{ const v=attacksMatrix[att][vic]||0; html+=`<td class="mono" style="text-align:center">${v}</td>`; });
-        html+='</tr>';
-      });
-      html+='</tbody></table>';
-      document.getElementById('attacksTableWrap').innerHTML=html;
-    }
-    function renderMostHit(){
-      const tbody=document.getElementById('mostHitBody'); tbody.innerHTML='';
-      const arr=users.map(u=>({alias:u.alias,v:hitsTotals[u.alias]||0})).sort((a,b)=> b.v-a.v);
-      arr.forEach((r,i)=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${i+1}</td><td>${r.alias}</td><td class="mono" style="text-align:right">${r.v}</td>`; tbody.appendChild(tr); });
-    }
-
-    // ——— Estado actual (logros dinámicos) ———
-    function renderAchievements(){
-      const box=document.getElementById('achievements'); box.innerHTML='';
-      const leaders={}; TAGS.forEach(tag=>{ let best=null,bestV=-1; for(const a in countsByTag[tag]){ const v=countsByTag[tag][a]; if(v>bestV){bestV=v;best=a;} } leaders[tag]={alias:best,v:bestV}; });
-      let mostHitAlias=null, mostHitV=-1; for(const a in hitsTotals){ const v=hitsTotals[a]; if(v>mostHitV){mostHitV=v; mostHitAlias=a;} }
-      const fun=[];
-      if(mostHitAlias) fun.push({icon:'🛡️', text:`<b>${mostHitAlias}</b> ha sido la <b>piñata oficial</b> (${mostHitV} ataques recibidos).`});
-     if(leaders['curación'].alias)
-  fun.push({icon:'💊',
-    text:`<span class="pill">CURACIÓN</span> <b>${leaders['curación'].alias}</b> es quien más se ha curado (${leaders['curación'].v}).
-fun.forEach(f=>{
-  const d=document.createElement('div');
-  d.className='badge';
-  d.innerHTML=`${f.icon} ${f.text}`;
-  box.appendChild(d);
+onAuthStateChanged(auth, (u)=>{
+  if (!u){ /* puedes exigir login si quieres */ }
+  bootstrap();
 });
-
-if(leaders['ataque'].alias)
-  fun.push({icon:'⚔️',
-    text:`<span class="pill">ATAQUE</span> <b>${leaders['ataque'].alias}</b> modo <b>berserker</b> (${leaders['ataque'].v}).`});
-
-if(leaders['defensa'].alias)
-  fun.push({icon:'🧱',
-    text:`<span class="pill">DEFENSA</span> <b>${leaders['defensa'].alias}</b> muralla activa (${leaders['defensa'].v}).`});
-
-if(leaders['economía'].alias)
-  fun.push({icon:'💰',
-    text:`<span class="pill">ECONOMÍA</span> <b>${leaders['economía'].alias}</b> juega al monopoly (${leaders['economía'].v}).`});
-
-if(leaders['gacha'].alias)
-  fun.push({icon:'🎰',
-    text:`<span class="pill">GACHA</span> <b>${leaders['gacha'].alias}</b> vive del azar (${leaders['gacha'].v}).`});
-
-if(leaders['ítem'].alias)
-  fun.push({icon:'🎒',
-    text:`<span class="pill">ÍTEM</span> <b>${leaders['ítem'].alias}</b> mochila a petar (${leaders['ítem'].v}).`});
-
-if(leaders['captura'].alias)
-  fun.push({icon:'🧿',
-    text:`<span class="pill">CAPTURA</span> <b>${leaders['captura'].alias}</b> cazatalentos (${leaders['captura'].v}).`});
-    }
-  </script>
+</script>
 </body>
 </html>

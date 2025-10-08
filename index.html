@@ -541,10 +541,7 @@ import {
   getRedirectResult
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-import {
-  getFirestore, doc, getDoc, setDoc, onSnapshot, enableIndexedDbPersistence,
-  collection, query, where, addDoc, updateDoc, serverTimestamp, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { addDoc, collection, doc, enableIndexedDbPersistence, getDoc, getDocs, getFirestore, onSnapshot, orderBy, query, serverTimestamp, setDoc, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
@@ -692,6 +689,18 @@ const invRef = uid => doc(db,"inventories",uid);
 const profRef = uid => doc(db,"profiles",uid);
 const stealCol = collection(db,"stealRequests");
 const attackCol = collection(db,"attackRequests");
+
+// === CONTADOR ATAQUES EJECUTADOS ===
+try {
+  await addDoc(collection(db, "attackLogs"), {
+    type: "sent",
+    attackerId: currentUser.uid,
+    attackerName: currentUser.displayName || currentUser.email || currentUser.uid,
+    victimId: target?.uid || victimId || null,
+    createdAt: serverTimestamp()
+  });
+} catch(e){ console.warn("attackLogs sent warn:", e); }
+
 const debuffCol = collection(db,"debuffs");
 
 /* ========= UI comunes ========= */
@@ -1447,7 +1456,19 @@ async function showAttackInbox(docId, data){
   const okBtn = document.createElement("button");
   okBtn.className = "btn bad";
   okBtn.textContent = "OK (recibir ataque)";
-  okBtn.onclick = async () => {
+  \1
+
+// === CONTADOR ATAQUES RECIBIDOS ===
+try {
+  await addDoc(collection(db, "attackLogs"), {
+    type: "received",
+    victimId: currentUser.uid,
+    victimName: currentUser.displayName || currentUser.email || currentUser.uid,
+    attackerId: currentAttackData?.attackerId || attackerId || null,
+    createdAt: serverTimestamp()
+  });
+} catch(e){ console.warn("attackLogs received warn:", e); }
+
     // Cerrar al instante
     toggleModal(attackModal,false);
     const _docId = currentAttackId;
