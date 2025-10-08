@@ -145,12 +145,12 @@ const toSlug = t => clean(t).replace(/curacion|cura|curativo.*/,"curacion").repl
 function inferSlugFromName(name, fallback=""){
   const s = clean(name);
   const table = {
-    gacha: ["ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
+    gacha: ["ganaste por ruleta","ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
     economia: ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
     curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
     item: [" mt ","piedra","capsula","megapiedra","objeto","masterball","equipo"],
     captura: ["captura","reroll","recaptura","shiny","skip"],
-    defensa: ["bloqueo","proteccion","reversa","venganza","regalo","buff"],
+    defensa: ["proteccion del debil","bloqueo","proteccion","reversa","venganza","regalo","buff"],
     ataque: ["ataque enviado","rob","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
   };
   for (const [slug,keys] of Object.entries(table)){
@@ -179,7 +179,14 @@ function asTimestamp(ts){
 }
 function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
 function isRealUse(name){
-  return /^\s*(Usaste|Usa|Aplicaste)\b/i.test(String(name||"")) || /^\s*Ataque enviado:/i.test(String(name||""));
+  const s = String(name||"");
+  if (/^\s*(Usaste|Usa|Aplicaste)\b/i.test(s)) return true;
+  if (/^\s*Ataque enviado:/i.test(s)) return true;
+  // Protección del débil — salió cara/cruz
+  if (/protecci[oó]n\s+del\s+d[eé]bil.*sal[ií]o\s+(cara|cruz)/i.test(s)) return true;
+  // Gacha gastado: "Ganaste por ruleta: ..."
+  if (/^\s*Ganaste\s+por\s+ruleta:/i.test(s)) return true;
+  return false;
 }
 function parseAttack(name){
   const sent = /^\s*Ataque enviado:/i.test(String(name||""));
