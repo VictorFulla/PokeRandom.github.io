@@ -5,11 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tracker — RandomLock</title>
 <style>
-:root{
-  --bg:#0d0f14; --panel:#151922; --edge:rgba(255,255,255,.08);
-  --text:#e7ecf5; --muted:#9aa4b2; --accent:#7c5cff; --br:16px;
-}
-*{box-sizing:border-box} html,body{height:100%}
+:root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.08);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
+*{box-sizing:border-box}html,body{height:100%}
 body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
 .wrap{max-width:1200px;margin:0 auto;padding:16px}
 .card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
@@ -19,62 +16,76 @@ body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--tex
 .small{font-size:12px;color:var(--muted)}
 .badge{display:inline-flex;gap:6px;align-items:center;padding:2px 8px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-size:12px}
 .hr{height:1px;background:var(--edge);margin:12px 0}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
+.filterRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
-/* Hex board */
 .hexWrap{display:flex;align-items:center;justify-content:center;padding:10px}
 .board{position:relative;width:640px;max-width:100%;aspect-ratio:1/1;margin:0 auto}
-.userNode{
-  position:absolute; transform:translate(-50%,-50%);
-  background:#0e121a; border:1px solid var(--edge); border-radius:12px;
-  padding:6px 10px; white-space:nowrap; font-weight:800; font-size:14px;
-  box-shadow:0 8px 24px rgba(0,0,0,.35);
-}
-.userNode .small{display:block; font-weight:600}
-.userNode.leader{outline:2px solid var(--accent); box-shadow:0 0 0 4px rgba(124,92,255,.2)}
+.userNode{position:absolute;transform:translate(-50%,-50%);background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:6px 10px;white-space:nowrap;font-weight:800;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.userNode .small{display:block;font-weight:600}
+.userNode.leader{outline:2px solid var(--accent);box-shadow:0 0 0 4px rgba(124,92,255,.2)}
+svg{position:absolute;inset:0}
 
-svg{position:absolute; inset:0}
-
-/* Tag chips */
 .tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
 .tagChip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-weight:800}
 .tagChip .who{opacity:.85;font-weight:700}
 
-/* Rankings */
 .rankList{display:flex;flex-direction:column;gap:6px}
 .rankItem{display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:8px 10px}
 .rankItem .name{font-weight:800}
-.rankItem .count{font-variant-numeric:tabular-nums; font-weight:900}
+.rankItem .count{font-variant-numeric:tabular-nums;font-weight:900}
 
-/* Logros */
 .achievements{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(160px,1fr))}
 @media(max-width:560px){.achievements{grid-template-columns:1fr}}
 .achItem{background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:10px}
+
+.btn{background:#0e121a;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:6px 10px;cursor:pointer}
+.btn.active{outline:2px solid var(--accent)}
+select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:10px;padding:6px 10px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1 class="section-title">📈 Tracker de cartas <span class="small">en vivo</span></h1>
 
-  <!-- Etiquetas con líder actual -->
+  <div class="controls card">
+    <div class="filterRow">
+      <span class="small">Filtrar etiqueta:</span>
+      <button class="btn" data-tag="">Todas</button>
+      <button class="btn" data-tag="ataque">Ataque</button>
+      <button class="btn" data-tag="defensa">Defensa</button>
+      <button class="btn" data-tag="economía">Economía</button>
+      <button class="btn" data-tag="curación">Curación</button>
+      <button class="btn" data-tag="gacha">Gacha</button>
+      <button class="btn" data-tag="ítem">Ítem</button>
+      <button class="btn" data-tag="captura">Captura</button>
+    </div>
+    <div class="filterRow">
+      <span class="small">Rango:</span>
+      <select id="rangeSel">
+        <option value="all">Todo el histórico</option>
+        <option value="7">Últimos 7 días</option>
+        <option value="30">Últimos 30 días</option>
+        <option value="90">Últimos 90 días</option>
+      </select>
+    </div>
+  </div>
+
   <div id="tagRow" class="tags"></div>
 
   <div class="grid">
-    <!-- Panel principal: Hex + frases -->
     <section class="card">
       <div class="section-title">🔷 Diagrama hexagonal de uso por usuario</div>
       <div class="hexWrap">
         <div class="board" id="board">
-          <!-- SVG para malla -->
           <svg id="hexSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
-          <!-- nodos de usuarios se inyectan aquí -->
         </div>
       </div>
       <div class="hr"></div>
-      <div class="section-title">🏅 Frases-logro (temporada completa)</div>
+      <div class="section-title">🏅 Frases‑logro</div>
       <div id="achv" class="achievements"></div>
     </section>
 
-    <!-- Sidebar: Rankings -->
     <aside class="card">
       <div class="section-title">⚔️ Rankings</div>
       <div class="small">Se actualizan con eventos reales (no incluye ADMIN).</div>
@@ -93,9 +104,7 @@ svg{position:absolute; inset:0}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import {
-  getFirestore, collection, query, where, orderBy, onSnapshot, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, query, where, orderBy, onSnapshot, getDocs, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
@@ -105,162 +114,166 @@ const firebaseConfig = {
   messagingSenderId: "637348459448",
   appId: "1:637348459448:web:4ab19e68bcce734692554d"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 const TAGS = ["ataque","defensa","economía","curación","gacha","ítem","captura"];
-
 const $ = s => document.querySelector(s);
-const board = $("#board");
-const svg = $("#hexSvg");
-const tagRow = $("#tagRow");
-const rankSent = $("#rankSent");
-const rankRecv = $("#rankRecv");
-const achv = $("#achv");
+const board = $("#board"), svg = $("#hexSvg");
+const tagRow = $("#tagRow"), rankSent = $("#rankSent"), rankRecv = $("#rankRecv"), achv = $("#achv");
+const rangeSel = $("#rangeSel");
+let tagFilter = ""; // "" = todos
 
-let users = []; // [{id, name}]
-let countsByUserTag = {}; // uid -> {tag -> n}
-let sentByUser = {};      // uid -> n
-let recvByUser = {};      // uid -> n
+// UI buttons
+document.querySelectorAll(".btn[data-tag]").forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll(".btn[data-tag]").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    tagFilter = (btn.dataset.tag||"").toLowerCase();
+    recomputeAndRender();
+  };
+});
+document.querySelector('.btn[data-tag=""]').classList.add("active");
+rangeSel.onchange = ()=> recomputeAndRender();
 
-function nameOf(uid){ return users.find(u=>u.id===uid)?.name || uid.slice(0,6); }
+let users = []; // [{id,name}]
+let rawUsage = []; // array de {uid, tag, createdAt}
+let rawSent = [];  // {attackerId, createdAt}
+let rawRecv = [];  // {victimId, createdAt}
 
-// --- Layout hex (6 posiciones) ---
 const POS = [
-  {x:50, y:5},    // top
-  {x:90, y:25},
-  {x:90, y:75},
-  {x:50, y:95},   // bottom
-  {x:10, y:75},
-  {x:10, y:25},
+  {x:50,y:5},{x:90,y:25},{x:90,y:75},{x:50,y:95},{x:10,y:75},{x:10,y:25},
 ];
 function renderHexGrid(){
-  // dibuja hexágono
   const pts = POS.map(p=>`${p.x},${p.y}`).join(" ");
   svg.innerHTML = `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`;
 }
 renderHexGrid();
 
-function ensureUser(uid,name){
-  if (!users.some(u=>u.id===uid)){
-    users.push({id:uid, name});
-  }
-  countsByUserTag[uid] = countsByUserTag[uid] || {};
-  TAGS.forEach(t=> countsByUserTag[uid][t] = countsByUserTag[uid][t] || 0);
-  sentByUser[uid] = sentByUser[uid] || 0;
-  recvByUser[uid] = recvByUser[uid] || 0;
+function timePass(createdAt){
+  const r = rangeSel.value;
+  if (r==="all") return true;
+  const days = parseInt(r,10);
+  const t = createdAt?.toMillis ? createdAt.toMillis() : (createdAt?.seconds? createdAt.seconds*1000 : Date.parse(createdAt)||0);
+  if (!t) return false;
+  const cutoff = Date.now() - days*86400000;
+  return t >= cutoff;
 }
 
-function renderUsers(){
-  // limpia nodos
+function recomputeAndRender(){
+  const countsByUserTag = {};
+  const sentByUser = {}, recvByUser = {};
+  const ensure = (uid)=>{
+    countsByUserTag[uid] = countsByUserTag[uid] || Object.fromEntries(TAGS.map(t=>[t,0]));
+    sentByUser[uid] = sentByUser[uid] || 0;
+    recvByUser[uid] = recvByUser[uid] || 0;
+  };
+
+  rawUsage.filter(u => (!tagFilter || (u.tag||"").toLowerCase()===tagFilter) && timePass(u.createdAt)).forEach(u=>{
+    ensure(u.uid);
+    const tag = (u.tag||"").toLowerCase();
+    if (TAGS.includes(tag)) countsByUserTag[u.uid][tag]++;
+  });
+  rawSent.filter(e=> timePass(e.createdAt)).forEach(e=>{ ensure(e.attackerId); sentByUser[e.attackerId]++; });
+  rawRecv.filter(e=> timePass(e.createdAt)).forEach(e=>{ ensure(e.victimId);   recvByUser[e.victimId]++; });
+
+  // Render users on hex
   [...board.querySelectorAll(".userNode")].forEach(n=>n.remove());
-  users.slice(0,6).forEach((u, i)=>{
+  users.slice(0,6).forEach((u,i)=>{
     const n = document.createElement("div");
     n.className = "userNode";
-    n.style.left = POS[i].x + "%";
-    n.style.top  = POS[i].y + "%";
-    const totalUsos = TAGS.reduce((a,t)=>a+(countsByUserTag[u.id]?.[t]||0),0);
-    n.innerHTML = `<div>${u.name}</div><span class="small">usos: ${totalUsos}</span>`;
+    n.style.left = POS[i].x+"%";
+    n.style.top  = POS[i].y+"%";
+    const total = Object.values(countsByUserTag[u.id]||{}).reduce((a,b)=>a+b,0);
+    n.innerHTML = `<div>${u.name}</div><span class="small">usos: ${total}</span>`;
     board.appendChild(n);
   });
-  // resaltar líderes globales por total
-  const totals = users.map(u=>({uid:u.id, sum:TAGS.reduce((a,t)=>a+(countsByUserTag[u.id]?.[t]||0),0)}));
+  // leaders by total
+  const totals = users.map(u=>({uid:u.id,sum:Object.values(countsByUserTag[u.id]||{}).reduce((a,b)=>a+b,0)}));
   const max = Math.max(0, ...totals.map(t=>t.sum));
   totals.filter(t=>t.sum===max && max>0).forEach(t=>{
-    const idx = users.findIndex(u=>u.id===t.uid);
-    const node = board.querySelectorAll(".userNode")[idx];
+    const i = users.findIndex(u=>u.id===t.uid);
+    const node = board.querySelectorAll(".userNode")[i];
     if (node) node.classList.add("leader");
   });
-}
 
-function renderTagLeaders(){
+  // chips líder por etiqueta (respetando filtro: si hay filtro, solo mostramos esa etiqueta)
   tagRow.innerHTML = "";
-  TAGS.forEach(tag=>{
-    let entries = users.map(u=>({uid:u.id, n:countsByUserTag[u.id]?.[tag]||0}));
-    const max = Math.max(0, ...entries.map(e=>e.n));
-    const leaders = entries.filter(e=>e.n===max && max>0).map(e=>nameOf(e.uid)).join(", ") || "—";
+  const tagsToShow = tagFilter? [tagFilter] : TAGS;
+  tagsToShow.forEach(tag=>{
+    const entries = users.map(u=>({uid:u.id, n:(countsByUserTag[u.id]?.[tag]||0)}));
+    const m = Math.max(0, ...entries.map(e=>e.n));
+    const leaders = entries.filter(e=>e.n===m && m>0).map(e=> users.find(x=>x.id===e.uid)?.name || e.uid).join(", ") || "—";
     const chip = document.createElement("div");
     chip.className = "tagChip";
-    chip.innerHTML = `<span>🏷️ ${tag}</span> <span class="who small">• líder: ${leaders} (${max})</span>`;
+    chip.innerHTML = `<span>🏷️ ${tag}</span> <span class="who small">• líder: ${leaders} (${m})</span>`;
     tagRow.appendChild(chip);
   });
-}
 
-function renderRanks(){
+  // rankings
   function renderList(dest, map){
     const arr = users.map(u=>({name:u.name, n:map[u.id]||0})).sort((a,b)=>b.n-a.n).slice(0,6);
-    dest.innerHTML = arr.map(row=>`<div class="rankItem"><span class="name">${row.name}</span><span class="count">${row.n}</span></div>`).join("");
+    dest.innerHTML = arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join("");
   }
   renderList(rankSent, sentByUser);
   renderList(rankRecv, recvByUser);
-}
 
-function renderAchievements(){
+  // logros
   const ach = [];
   const most = tag => {
     const arr = users.map(u=>({uid:u.id, n:(countsByUserTag[u.id]?.[tag]||0)}));
-    const max = Math.max(0, ...arr.map(a=>a.n));
-    return arr.filter(a=>a.n===max && max>0).map(a=>nameOf(a.uid)).join(", ") || null;
+    const m = Math.max(0, ...arr.map(a=>a.n));
+    return arr.filter(a=>a.n===m && m>0).map(a=> users.find(x=>x.id===a.uid)?.name || a.uid).join(", ") || null;
   };
-  const avaro = most("economía"); if (avaro) ach.push(`💰 <b>${avaro}</b> es el más avaricioso: ha usado más cartas de economía.`);
-  const agresivo = most("ataque"); if (agresivo) ach.push(`⚔️ <b>${agresivo}</b> es el más agresivo: lidera en cartas de ataque.`);
-  const tanque = most("defensa"); if (tanque) ach.push(`🛡️ <b>${tanque}</b> vive en guardia: top en cartas de defensa.`);
-  const botiquin = most("curación"); if (botiquin) ach.push(`🩹 <b>${botiquin}</b> farmacia ambulante: top en curación.`);
-  const gachatier = most("gacha"); if (gachatier) ach.push(`🎲 <b>${gachatier}</b> el ludópata: abusa del gacha.`);
-  const itemlord = most("ítem"); if (itemlord) ach.push(`🎒 <b>${itemlord}</b> el acumulador de trastos: top en ítems.`);
-  const cazador = most("captura"); if (cazador) ach.push(`🕸️ <b>${cazador}</b> poké-poacher: top en capturas.`);
-  const punching = Object.entries(recvByUser).sort((a,b)=>b[1]-a[1])[0];
-  if (punching && punching[1]>0) ach.push(`😵 <b>${nameOf(punching[0])}</b> es el saco de boxeo: el más atacado.`);
-
+  const avaro = most("economía"); if(avaro) ach.push(`💰 <b>${avaro}</b> es el más avaricioso: ha usado más cartas de economía.`);
+  const agresivo = most("ataque"); if(agresivo) ach.push(`⚔️ <b>${agresivo}</b> es el más agresivo: lidera en cartas de ataque.`);
+  const tanque = most("defensa"); if(tanque) ach.push(`🛡️ <b>${tanque}</b> vive en guardia: top en defensa.`);
+  const botiquin = most("curación"); if(botiquin) ach.push(`🩹 <b>${botiquin}</b> farmacia ambulante: top en curación.`);
+  const gachatier = most("gacha"); if(gachatier) ach.push(`🎲 <b>${gachatier}</b> el ludópata: abusa del gacha.`);
+  const itemlord = most("ítem"); if(itemlord) ach.push(`🎒 <b>${itemlord}</b> el acumulador de trastos: top en ítems.`);
+  const cazador = most("captura"); if(cazador) ach.push(`🕸️ <b>${cazador}</b> poké‑poacher: top en capturas.`);
+  const punching = users.map(u=>({name:u.name, n: rawRecv.filter(e=>e.victimId===u.id && timePass(e.createdAt)).length})).sort((a,b)=>b.n-a.n)[0];
+  if (punching && punching.n>0) ach.push(`😵 <b>${punching.name}</b> es el saco de boxeo: el más atacado.`);
   achv.innerHTML = ach.map(t=>`<div class="achItem small">${t}</div>`).join("") || `<div class="small">Nada aún… ¡usen cartas!</div>`;
 }
 
-// === Subs en vivo ===
 async function bootstrap(){
-  // 1) Perfiles (para nombres y lista fija de 6)
-  // Reutilizamos lo que ya rellenas en profiles desde index.html (colección "profiles")
-  const snap = await getDocs(collection(db, "profiles"));
-  users = snap.docs.map(d=>({id:d.id, name: d.data().displayName || d.id})).slice(0,6);
-  users.forEach(u=> ensureUser(u.id, u.name));
-  renderUsers();
+  // 1) Usuarios
+  const ps = await getDocs(collection(db,"profiles"));
+  users = ps.docs.map(d=>({id:d.id, name: d.data().displayName || d.id})).slice(0,6);
 
-  // 2) USAGE: todos los usos reales (action=="use")
+  // 2) Cargar HISTÓRICO + realtime
   const uq = query(collection(db,"usageLogs"), where("action","==","use"), orderBy("createdAt","asc"));
+  const aq = query(collection(db,"attackLogs"), orderBy("createdAt","asc"));
+  // Full fetch para mostrar pasado (si la colección ya tiene datos)
+  const u0 = await getDocs(uq);
+  rawUsage = u0.docs.map(d=>d.data());
+  const a0 = await getDocs(aq);
+  rawSent = a0.docs.filter(d=>d.data().type==="sent").map(d=>d.data());
+  rawRecv = a0.docs.filter(d=>d.data().type==="received").map(d=>d.data());
+  recomputeAndRender();
+
+  // Suscripciones en vivo
   onSnapshot(uq, (s)=>{
     s.docChanges().forEach(ch=>{
-      const d = ch.doc.data() || {};
-      const uid = d.uid; const tag = (d.tag||"").toLowerCase();
-      if (!uid || !TAGS.includes(tag)) return;
-      ensureUser(uid, d.userName || uid);
-      countsByUserTag[uid][tag] = (countsByUserTag[uid][tag]||0) + 1;
+      if (ch.type==="added"){ rawUsage.push(ch.doc.data()); }
     });
-    renderUsers(); renderTagLeaders(); renderAchievements();
+    recomputeAndRender();
   });
-
-  // 3) ATAQUES: contadores sent/received
-  const aq = query(collection(db,"attackLogs"), orderBy("createdAt","asc"));
   onSnapshot(aq, (s)=>{
     s.docChanges().forEach(ch=>{
-      const d = ch.doc.data() || {};
-      if (d.type === "sent" && d.attackerId){
-        ensureUser(d.attackerId, d.attackerName || d.attackerId);
-        sentByUser[d.attackerId] = (sentByUser[d.attackerId]||0) + 1;
-      }
-      if (d.type === "received" && d.victimId){
-        ensureUser(d.victimId, d.victimName || d.victimId);
-        recvByUser[d.victimId] = (recvByUser[d.victimId]||0) + 1;
+      const d=ch.doc.data();
+      if (ch.type==="added"){
+        if (d.type==="sent") rawSent.push(d);
+        else if (d.type==="received") rawRecv.push(d);
       }
     });
-    renderRanks(); renderAchievements();
+    recomputeAndRender();
   });
 }
 
-onAuthStateChanged(auth, (u)=>{
-  if (!u){ /* puedes exigir login si quieres */ }
-  bootstrap();
-});
+onAuthStateChanged(auth, ()=> bootstrap().catch(console.error));
 </script>
 </body>
 </html>

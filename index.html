@@ -1480,6 +1480,17 @@ try {
         status: "applied",
         resolvedAt: serverTimestamp()
       });
+    // === CONTADOR: ataques recibidos ===
+    try {
+      await addDoc(collection(db, "attackLogs"), {
+        type: "received",
+        victimId: currentUser.uid,
+        victimName: currentUser.displayName || currentUser.email || currentUser.uid,
+        attackerId: data?.attackerId || attackerId || null,
+        createdAt: serverTimestamp()
+      });
+    } catch (e) { console.warn("attackLogs received warn:", e); }
+
       toast("⚡ Ataque aplicado: karma −1");
       scheduleSave(); render();
     } catch(e){
