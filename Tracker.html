@@ -309,13 +309,13 @@ function render(){
     const m=Math.max(0,...list.map(x=>x.n));
     return m>0 ? {m, names:list.filter(x=>x.n===m).map(x=>x.name)} : null;
   };
-  [["economia","💰 lxs más avariciosxs"],
-   ["ataque","⚔️ reparte(n) leña"],
-   ["defensa","🛡️ vive(n) en guardia"],
-   ["curacion","🩹 farmacia ambulante"],
-   ["gacha","🎲 le da(n) al gacha"],
-   ["item","🎒 acapara(n) trastos"],
-   ["captura","🕸️ cazador(es)"]]
+  [["economia","💰 El más avaricioso"],
+   ["ataque","⚔️ Reparte putiasos"],
+   ["defensa","🛡️ Es un cagao"],
+   ["curacion","🩹 Farmacia de guardia"],
+   ["gacha","🎲 Le gustaan laas lolis y los gachas"],
+   ["item","🎒 Puro diogenes"],
+   ["captura","🕸️ Catch em all"]]
    .forEach(([slug,label])=>{ const r=leader(slug); if(r) fun.push(`${label} (<b>${DISPLAY[slug]}</b>): <b>${r.names.join(", ")}</b> (${r.m}).`); });
   // saco
   let worst = null; selected.forEach(u=>{ const n = 0 + ( (inventoryData.get(u.id)||[]).filter(e=> e.__attackVictimUid===u.id).length ); if(!worst || n>worst.n){ worst = {name:u.name, n}; } });
