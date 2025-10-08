@@ -8,6 +8,7 @@
 :root{--bg:#0b0f16;--panel:#131a25;--panel-2:#0e1520;--edge:rgba(170,190,255,.12);--text:#e8efff;--muted:#98a6c4;--primary:#6a7dff;--cyan:#4ad7e8;--amber:#f7b955;--glow:rgba(106,125,255,.35);--br:16px}
 [data-theme="teal"]{--primary:#2fb4ff;--cyan:#11d3b7;--amber:#ffd36b;--glow:rgba(47,180,255,.35);}
 *{box-sizing:border-box}html,body{height:100%}
+body{min-height:100vh;background-attachment:fixed,fixed,fixed}
 body{margin:0;background:radial-gradient(1200px 600px at 30% -10%,rgba(106,125,255,.18),transparent),radial-gradient(1000px 500px at 90% 10%,rgba(74,215,232,.12),transparent),linear-gradient(180deg,#0a0e16,#0a0f18);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
 .wrap{max-width:1200px;margin:0 auto;padding:14px}
 .card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--edge);border-radius:var(--br);padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);position:relative;overflow:hidden}
@@ -16,6 +17,8 @@ body{margin:0;background:radial-gradient(1200px 600px at 30% -10%,rgba(106,125,2
 @media(max-width:1080px){.grid{grid-template-columns:1fr}}
 .h1{display:flex;gap:10px;align-items:center;margin:0 0 8px}
 .small{font-size:12px;color:var(--muted)} .hr{height:1px;background:var(--edge);margin:10px 0}
+.rankTitle{font-weight:900;font-size:15px;letter-spacing:.3px;margin-bottom:8px}
+.rankCard{background:#0f1420;border:1px solid var(--edge);border-radius:12px;padding:12px}
 .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
 .btn{background:#0f1420;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease}
 .btn:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04) inset}
@@ -88,13 +91,9 @@ svg{position:absolute;inset:0}
       <div id="achv" class="achievements"></div>
     </section>
     <aside class="card">
-      <div class="small">⚔️ Rankings — en vivo (a partir del historial)</div>
-      <div class="hr"></div>
-      <div class="small">Ataques ejecutados</div>
-      <div id="rankSent" class="rankList"></div>
-      <div class="hr"></div>
-      <div class="small">Ataques recibidos</div>
-      <div id="rankRecv" class="rankList"></div>
+      <div class="rankCard"><div class="rankTitle">🗡️ Ataques ejecutados</div><div id="rankSent" class="rankList"></div></div>
+      <div style="height:10px"></div>
+      <div class="rankCard"><div class="rankTitle">🛡️ Ataques recibidos</div><div id="rankRecv" class="rankList"></div></div>
     </aside>
   </div>
 </div>
@@ -235,6 +234,8 @@ function recomputeSelectionAndRender(){
   selected = list.slice(0,6);
   render();
 }
+
+function recomputeAndRender(){ render(); }
 
 function render(){
   const countsByUserTag = {}; const totalsByUser = {}; const sentByUser = {}; const recvByUser = {};
