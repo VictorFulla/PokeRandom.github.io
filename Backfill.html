@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Backfill Tracker — RandomLock</title>
+<title>Backfill v2 — RandomLock</title>
 <style>
 :root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.12);--text:#e7ecf5;--muted:#9aa4b2;--ok:#49d17d;--warn:#ffcc66;--err:#ff6b6b}
 *{box-sizing:border-box}html,body{height:100%}
@@ -25,20 +25,15 @@ label{display:flex;gap:6px;align-items:center}
 </head>
 <body>
 <div class="wrap">
-  <h1>🧰 Backfill de histórico (usos y ataques)</h1>
+  <h1>🧰 Backfill v2 (timestamps reales)</h1>
   <div class="card">
     <div class="kv">
-      <div><b>Qué hace</b></div><div>Lee tu histórico y crea documentos en <code class="code">usageLogs</code> (solo <b>usos reales</b>) y en <code class="code">attackLogs</code> (<b>sent</b>/<b>received</b>), con IDs deterministas para evitar duplicados.</div>
-      <div><b>Requisitos</b></div><div>Estar autenticado; reglas que permitan <code>create</code> en esas colecciones.</div>
+      <div><b>Qué hace</b></div><div>Re‑importa histórico escribiendo <b>Firestore Timestamp</b> correcto en <code class="code">createdAt</code> para <code class="code">usageLogs</code> y <code class="code">attackLogs</code> (no duplica).</div>
     </div>
     <div class="row">
       <button id="btnAuth" class="btn">Iniciar sesión</button>
-      <button id="btnScan" class="btn" disabled>Escanear (dry‑run)</button>
-      <button id="btnRun" class="btn" disabled>Importar (ejecutar)</button>
+      <button id="btnRun" class="btn" disabled>Re‑importar (corrige timestamps)</button>
       <label><input type="checkbox" id="chkAttacks" checked/> Incluir ataques</label>
-    </div>
-    <div class="row">
-      <small>Si ya ejecutaste antes, puedes volver a ejecutar: los IDs son estables, así que no duplicará.</small>
     </div>
     <pre id="log" class="code"></pre>
   </div>
@@ -47,9 +42,8 @@ label{display:flex;gap:6px;align-items:center}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, collectionGroup, doc, getDoc, getDocs, setDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, doc, getDocs, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-// === TU CONFIG ===
 const firebaseConfig = {
   apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
   authDomain: "pokerandom-ce300.firebaseapp.com",
@@ -66,43 +60,25 @@ const db = getFirestore(app);
 const $ = s => document.querySelector(s);
 const logEl = $("#log");
 const btnAuth = $("#btnAuth");
-const btnScan = $("#btnScan");
 const btnRun = $("#btnRun");
 const chkAttacks = $("#chkAttacks");
 
 let currentUser = null;
-let DRY_RUN = true;
 
-function log(line, cls=""){ logEl.innerHTML += (cls?`<span class="${cls}">${line}</span>`:line) + "\\n"; logEl.scrollTop = logEl.scrollHeight; }
+function log(line){ logEl.textContent += line + "\n"; logEl.scrollTop = logEl.scrollHeight; }
 
 onAuthStateChanged(auth, (u)=>{
   currentUser = u;
-  if (u){
-    log(`✔ Sesión iniciada como ${u.email || u.uid}`, "ok");
-    btnScan.disabled = false;
-    btnRun.disabled = false;
-  } else {
-    log("ℹ No has iniciado sesión.");
-    btnScan.disabled = true;
-    btnRun.disabled = true;
-  }
+  btnRun.disabled = !u;
+  if (u) log(`✔ Sesión: ${u.email||u.uid}`);
 });
 
 btnAuth.onclick = async ()=>{
-  try{
-    await signInWithPopup(auth, new GoogleAuthProvider());
-  }catch(e){
-    log(`✖ Error login: ${e.message}`, "err");
-  }
-};
-
-btnScan.onclick = async ()=>{
-  DRY_RUN = true;
-  await runBackfill();
+  try{ await signInWithPopup(auth, new GoogleAuthProvider()); }catch(e){ log("✖ "+e.message); }
 };
 btnRun.onclick = async ()=>{
-  DRY_RUN = false;
-  await runBackfill();
+  if (!currentUser) return;
+  await run();
 };
 
 function asMillis(ts){
@@ -113,106 +89,38 @@ function asMillis(ts){
   const t = Date.parse(ts);
   return isNaN(t) ? null : t;
 }
+
 function idFrom(parts){
-  // crea un id determinista y corto
   return btoa(unescape(encodeURIComponent(parts.join("|")))).replace(/=+$/,"").slice(0,140);
 }
 
-async function runBackfill(){
-  logEl.textContent = "";
-  if (!currentUser){ log("✖ Debes iniciar sesión.", "err"); return; }
-  log(`— Backfill ${DRY_RUN? "(dry‑run)": "(EJECUCIÓN)"} —`);
-
-  let usageFound = 0, usageWrite = 0;
-  let sentFound = 0, sentWrite = 0;
-  let recvFound = 0, recvWrite = 0;
-
-  // 1) Cargar perfiles para nombres bonitos
-  const profSnap = await getDocs(collection(db,"profiles"));
-  const profiles = new Map(profSnap.docs.map(d=>[d.id, d.data()]));
-
-  // 2) Backfill USOS desde "inventories" (campos/estructura flexible)
-  log("Escaneando inventarios…");
-  const invSnap = await getDocs(collection(db,"inventories"));
-  if (invSnap.empty) log("Aviso: no encontré colección 'inventories'. Ajusta el código si tu ruta es diferente.", "warn");
-
-  for (const docSnap of invSnap.docs){
-    const inv = docSnap.data()||{};
-    const uid = inv.uid || docSnap.id;
-    const useLog = inv.useLog || inv.usage || []; // intenta varios nombres
-    if (!Array.isArray(useLog) || useLog.length===0) continue;
-
-    const userName = profiles.get(uid)?.displayName || inv.userName || uid;
-    for (let i=0;i<useLog.length;i++){
-      const entry = useLog[i]||{};
-      // EXCLUSIONES: admin o no-uso
-      const msg = (entry.message || entry.msg || "").toString();
-      const action = (entry.action || entry.type || "").toString().toLowerCase();
-      if (msg.includes("[ADMIN]")) continue;
-      if (action && action!=="use") continue;
-
-      const tag = (entry.tag || entry.label || "").toString().toLowerCase();
-      const cardName = (entry.cardName || entry.name || "").toString();
-      const t = asMillis(entry.createdAt || entry.time || entry.timestamp) || Date.now();
-      const id = idFrom(["use", uid, cardName||"?", tag||"?", t]);
-
-      usageFound++;
-      if (!DRY_RUN){
-        await setDoc(doc(db,"usageLogs", id), {
-          uid, userName, cardName, tag, action:"use",
-          createdAt: { seconds: Math.floor(t/1000), nanoseconds: 0 }
-        }, { merge: false }).catch(e=> log(`   uso SKIP por doc existente (${id}) → ${e.message}`, "warn"));
-        usageWrite++;
-      }
-    }
+async function run(){
+  log("— Corrigiendo usageLogs…");
+  const uSnap = await getDocs(collection(db,"usageLogs"));
+  let uw = 0;
+  for (const d of uSnap.docs){
+    const data = d.data()||{};
+    const t = asMillis(data.createdAt) || Date.now();
+    const ts = Timestamp.fromMillis(t);
+    await setDoc(doc(db,"usageLogs", d.id), { ...data, createdAt: ts }, { merge:false });
+    uw++;
   }
-  log(`Usos detectados: ${usageFound}  ${DRY_RUN? "": "→ escritos: "+usageWrite}`, usageFound? "ok":"warn");
+  log(`OK: reescritos ${uw} usos.`);
 
-  // 3) Backfill ATAQUES desde "attackRequests"
   if (chkAttacks.checked){
-    log("Escaneando attackRequests…");
-    const atkSnap = await getDocs(collection(db,"attackRequests"));
-    for (const docSnap of atkSnap.docs){
-      const d = docSnap.data()||{};
-      // sent
-      if (d.attackerId && d.victimId){
-        const t = asMillis(d.createdAt || d.timestamp) || Date.now();
-        const idS = idFrom(["sent", docSnap.id]);
-        sentFound++;
-        if (!DRY_RUN){
-          await setDoc(doc(db,"attackLogs", idS), {
-            type:"sent",
-            attackerId: d.attackerId,
-            attackerName: profiles.get(d.attackerId)?.displayName || d.attackerId,
-            victimId: d.victimId,
-            createdAt: { seconds: Math.floor(t/1000), nanoseconds:0 }
-          }, { merge:false }).catch(e=> log(`   sent SKIP (${idS}) → ${e.message}`, "warn"));
-          sentWrite++;
-        }
-      }
-      // received (solo si aplicado)
-      if ((d.status||"").toLowerCase()==="applied"){
-        const tr = asMillis(d.appliedAt || d.updatedAt || d.createdAt || d.timestamp) || Date.now();
-        const idR = idFrom(["recv", docSnap.id]);
-        recvFound++;
-        if (!DRY_RUN){
-          await setDoc(doc(db,"attackLogs", idR), {
-            type:"received",
-            victimId: d.victimId,
-            victimName: profiles.get(d.victimId)?.displayName || d.victimId,
-            attackerId: d.attackerId || null,
-            createdAt: { seconds: Math.floor(tr/1000), nanoseconds:0 }
-          }, { merge:false }).catch(e=> log(`   recv SKIP (${idR}) → ${e.message}`, "warn"));
-          recvWrite++;
-        }
-      }
+    log("— Corrigiendo attackLogs…");
+    const aSnap = await getDocs(collection(db,"attackLogs"));
+    let aw = 0;
+    for (const d of aSnap.docs){
+      const data = d.data()||{};
+      const t = asMillis(data.createdAt) || Date.now();
+      const ts = Timestamp.fromMillis(t);
+      await setDoc(doc(db,"attackLogs", d.id), { ...data, createdAt: ts }, { merge:false });
+      aw++;
     }
-    log(`Ataques detectados: sent=${sentFound}, received=${recvFound}  ${DRY_RUN? "": "→ escritos: sent="+sentWrite+", recv="+recvWrite}`, (sentFound+recvFound)? "ok":"warn");
-  } else {
-    log("Saltando ataques (desmarcado).");
+    log(`OK: reescritos ${aw} ataques.`);
   }
-
-  log(DRY_RUN? "✅ Dry‑run completado. Si ves bien los conteos, pulsa 'Importar (ejecutar)'":"✅ Importación completada.", "ok");
+  log("✅ Hecho. Abre el Tracker y debería mostrar el histórico.");
 }
 </script>
 </body>
