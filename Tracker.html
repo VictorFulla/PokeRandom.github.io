@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tracker (inventarios • estricto v5)</title>
+<title>Tracker (inventarios • estricto+slug)</title>
 <style>
 :root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.10);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
 *{box-sizing:border-box}html,body{height:100%}
@@ -105,7 +105,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Canonical slugs
+// Canonical slugs (sin tildes)
 const TAGS = ["ataque","defensa","economia","curacion","gacha","item","captura"];
 const DISPLAY = {ataque:"ataque", defensa:"defensa", economia:"economía", curacion:"curación", gacha:"gacha", item:"ítem", captura:"captura"};
 
@@ -145,12 +145,12 @@ const toSlug = t => clean(t).replace(/curacion|cura|curativo.*/,"curacion").repl
 function inferSlugFromName(name, fallback=""){
   const s = clean(name);
   const table = {
-    gacha: ["ruleta","ganaste por ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
+    gacha: ["ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
     economia: ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
     curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
     item: [" mt ","piedra","capsula","megapiedra","objeto","masterball","equipo"],
     captura: ["captura","reroll","recaptura","shiny","skip"],
-    defensa: ["proteccion del debil","bloqueo","proteccion","reversa","venganza","regalo","buff"],
+    defensa: ["bloqueo","proteccion","reversa","venganza","regalo","buff"],
     ataque: ["ataque enviado","rob","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
   };
   for (const [slug,keys] of Object.entries(table)){
@@ -178,20 +178,9 @@ function asTimestamp(ts){
   return isNaN(t) ? null : Timestamp.fromMillis(t);
 }
 function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
-// Aceptar usos reales:
-// - Usaste/Usa/Aplicaste ...
-// - Ataque enviado: ...
-// - "Protección del débil — salió ..." (cuenta como uso de defensa)
-// - "Ganaste por ruleta ..." (cuenta como uso de gacha)
 function isRealUse(name){
-  const s = String(name||"");
-  if (/^\s*(Usaste|Usa|Aplicaste)\b/i.test(s)) return true;
-  if (/^\s*Ataque enviado:/i.test(s)) return true;
-  if (/protecci[oó]n del d[eé]bil.*sal[ií]o/i.test(s)) return true;
-  if (/^\s*Ganaste\s+por\s+ruleta/i.test(s)) return true;
-  return false;
+  return /^\s*(Usaste|Usa|Aplicaste)\b/i.test(String(name||"")) || /^\s*Ataque enviado:/i.test(String(name||""));
 }
-// Detectar ataques enviados y víctima con "→ Nombre"
 function parseAttack(name){
   const sent = /^\s*Ataque enviado:/i.test(String(name||""));
   let victim=null;
@@ -227,6 +216,8 @@ function recomputeSelectionAndRender(){
   render();
 }
 
+function recomputeAndRender(){ render(); }
+
 function render(){
   const countsByUserTag = {}; const totalsByUser = {}; const sentByUser = {}; const recvByUser = {};
   selected.forEach(p=>{
@@ -236,8 +227,8 @@ function render(){
   selected.forEach(p=>{
     (inventoryData.get(p.id) || []).forEach(e=>{
       if (!timePass(e.__ts)) return;
-      const slug = e.__slug; if (!slug) return;
-      if (!tagFilter || slug===tagFilter){ countsByUserTag[p.id][slug]++; totalsByUser[p.id]++; }
+      const tag = e.__slug; if (!tag) return;
+      if (!tagFilter || tag===tagFilter){ countsByUserTag[p.id][tag]++; totalsByUser[p.id]++; }
       if (e.__attackSent){ sentByUser[p.id]++; }
       if (e.__attackVictimUid && timePass(e.__ts)){ if (recvByUser[e.__attackVictimUid]==null) recvByUser[e.__attackVictimUid]=0; recvByUser[e.__attackVictimUid]++; }
     });
@@ -286,6 +277,7 @@ function render(){
    ["item","🎒 acapara(n) trastos"],
    ["captura","🕸️ cazador(es)"]]
    .forEach(([slug,label])=>{ const r=leader(slug); if(r) fun.push(`${label} (<b>${DISPLAY[slug]}</b>): <b>${r.names.join(", ")}</b> (${r.m}).`); });
+  // saco
   let worst = null; selected.forEach(u=>{ const n = 0 + ( (inventoryData.get(u.id)||[]).filter(e=> e.__attackVictimUid===u.id).length ); if(!worst || n>worst.n){ worst = {name:u.name, n}; } });
   if (worst && worst.n>0) fun.push(`😵 <b>${worst.name}</b> es el saco de boxeo (${worst.n} ataques recibidos).`);
   achv.innerHTML = fun.length? fun.map(f=>`<div class="achItem">${f}</div>`).join("") : `<div class="achItem small">Nada aún… ¡usen cartas!</div>`;
@@ -315,7 +307,7 @@ async function bootstrap(){
       const entries = [];
       for (const e of raw){
         if (!e || isAdminName(e.name)) continue;
-        if (!isRealUse(e.name)) continue; // SOLO usos y ataques enviados + casos especiales
+        if (!isRealUse(e.name)) continue; // SOLO usos y ataques enviados
         const ts = asTimestamp(e.createdAt || e.date || e.timestamp);
         const millis = ts?.toMillis ? ts.toMillis() : 0;
         const key = millis + "::" + String(e.name||"");
