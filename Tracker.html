@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tracker (inventarios • activos)</title>
+<title>Tracker (inventarios • estricto)</title>
 <style>
 :root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.10);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
 *{box-sizing:border-box}html,body{height:100%}
@@ -127,9 +127,9 @@ function drawRadar(values){
 }
 drawHexGrid();
 
-// === Normalización & heurísticas ===
+// === Normalización & heurísticas estrictas ===
 const normTag = t=>{ t=(t||"").toString().toLowerCase(); if (t==="cura"||t==="curacion") return "curación"; if (t==="item") return "ítem"; return t; };
-const clean = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/\s*\(.*?\)\s*/g,"").replace(/\s+/g," ").trim();
+const clean = s => String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s*\(.*?\)\s*/g,"").replace(/\s+/g," ").trim();
 const catalog = {
   "gacha": ["ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
   "economía": ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
@@ -147,20 +147,38 @@ function inferTagFromName(name, fallback=""){
   return normTag(fallback);
 }
 function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
+function parseEsDate(str){
+  // dd/mm/yyyy, HH:MM:SS
+  const m = String(str||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),\s*(\d{1,2}):(\d{2}):(\d{2})/);
+  if(!m) return NaN;
+  const [_,d,mo,y,h,mi,s]=m.map(Number);
+  return new Date(y,mo-1,d,h,mi,s).getTime();
+}
 function asTimestamp(ts){
   if (!ts) return null;
   if (ts?.toDate) return ts;
   if (typeof ts?.seconds === "number") return Timestamp.fromMillis(ts.seconds*1000);
-  const t = Date.parse(ts); return isNaN(t) ? null : Timestamp.fromMillis(t);
+  if (typeof ts === "string"){
+    const t1 = Date.parse(ts);
+    const t2 = parseEsDate(ts);
+    const t = !isNaN(t1)? t1 : (!isNaN(t2)? t2 : NaN);
+    return isNaN(t) ? null : Timestamp.fromMillis(t);
+  }
+  const t = Date.parse(ts);
+  return isNaN(t) ? null : Timestamp.fromMillis(t);
 }
 // Detectar ataques y víctima con "→ Nombre"
 function parseAttack(name){
   const s = clean(name);
-  const isAtk = /(ataque|rob|atac|destructor|envenenamiento|liberacion|mismo destino|cambio repentino|desgaste)/.test(s);
+  const isAtk = /^\s*ataque enviado:/i.test(name) || /(rob|atac|desgaste|destructor|envenenamiento|liberacion|mismo destino|cambio repentino)/.test(s);
   if (!isAtk) return { sent:false, victim:null };
   const m = name.match(/→\s*([^\(]+)|->\s*([^\(]+)/);
   const victim = m ? (m[1]||m[2]||"").trim() : null;
   return { sent:true, victim };
+}
+// Aceptar SOLO usos reales
+function isRealUse(name){
+  return /^\s*(Usaste|Usa|Aplicaste)\b/i.test(String(name||"")) || /^\s*Ataque enviado:/i.test(String(name||""));
 }
 
 let profiles = [];   // todos
@@ -269,28 +287,32 @@ async function bootstrap(){
   });
   profiles.forEach(p=> nameToUid.set(clean(p.name), p.id));
 
-  // Inventarios en vivo
+  // Inventarios en vivo + dedupe
   profiles.forEach(p=>{
+    const seen = new Set(); // por usuario
     const unsub = onSnapshot(doc(db,"inventories", p.id), (snap)=>{
       const data = snap.data() || {};
       const raw = Array.isArray(data.useLog) ? data.useLog : [];
-      const entries = raw
-        .filter(e=> e && !isAdminName(e.name))
-        .map(e=>{
-          const ts = asTimestamp(e.createdAt || e.date || e.timestamp);
-          const tag = normTag(e.tag || inferTagFromName(e.name||"", ""));
-          const atk = parseAttack(String(e.name||""));
-          let victimUid = null;
-          if (atk.victim){
-            const key = clean(atk.victim);
-            victimUid = nameToUid.get(key) || null;
-          }
-          return { __name:String(e.name||""), __tag:tag, __ts: ts, __attackSent: atk.sent, __attackVictimUid: victimUid };
-        });
+      const entries = [];
+      for (const e of raw){
+        if (!e || isAdminName(e.name)) continue;
+        if (!isRealUse(e.name)) continue; // SOLO usos y ataques enviados
+        const ts = asTimestamp(e.createdAt || e.date || e.timestamp);
+        const millis = ts?.toMillis ? ts.toMillis() : 0;
+        const key = millis + "::" + String(e.name||"");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const tag = normTag(e.tag || inferTagFromName(e.name||"", ""));
+        const atk = parseAttack(String(e.name||""));
+        let victimUid = null;
+        if (atk.victim){
+          const keyName = clean(atk.victim);
+          victimUid = nameToUid.get(keyName) || null;
+        }
+        entries.push({ __name:String(e.name||""), __tag:tag, __ts: ts, __attackSent: atk.sent, __attackVictimUid: victimUid });
+      }
       inventoryData.set(p.id, entries);
       recomputeSelectionAndRender();
-    }, (err)=>{
-      console.warn("inventories snapshot error for", p.id, err);
     });
     invUnsubs.push(unsub);
   });
