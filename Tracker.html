@@ -5,53 +5,43 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tracker (inventarios • estricto+slug)</title>
 <style>
-<<<<<<< HEAD
-:root{--bg:#0a0c10;--panel:#12151c;--panel-2:#0e1117;--edge:rgba(180,200,255,.10);--text:#e9efff;--muted:#9fb0cc;--primary:#66aaff;--cyan:#00e0ff;--amber:#ff9d3c;--glow:rgba(102,170,255,.35);--br:16px}
+:root{--bg:#0b0f16;--panel:#131a25;--panel-2:#0e1520;--edge:rgba(170,190,255,.12);--text:#e8efff;--muted:#98a6c4;--primary:#6a7dff;--cyan:#4ad7e8;--amber:#f7b955;--glow:rgba(106,125,255,.35);--br:16px}
 [data-theme="teal"]{--primary:#2fb4ff;--cyan:#11d3b7;--amber:#ffd36b;--glow:rgba(47,180,255,.35);}
 *{box-sizing:border-box}html,body{height:100%}
-body{margin:0;background:radial-gradient(1200px 600px at 25% -10%,rgba(102,170,255,.12),transparent),radial-gradient(900px 500px at 90% 0%,rgba(255,157,60,.06),transparent),linear-gradient(180deg,#080a0e,#0a0c10);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-=======
-:root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.10);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
-*{box-sizing:border-box}html,body{height:100%}
-body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
->>>>>>> parent of 0aafb68 (Update Tracker.html)
+body{margin:0;background:radial-gradient(1200px 600px at 30% -10%,rgba(106,125,255,.18),transparent),radial-gradient(1000px 500px at 90% 10%,rgba(74,215,232,.12),transparent),linear-gradient(180deg,#0a0e16,#0a0f18);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
 .wrap{max-width:1200px;margin:0 auto;padding:14px}
-.card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--edge);border-radius:var(--br);padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);position:relative;overflow:hidden}
+.card:before{content:"";position:absolute;inset:-1px;background:radial-gradient(600px 200px at 20% -20%,var(--glow),transparent);pointer-events:none;opacity:.5}
 .grid{display:grid;gap:14px;grid-template-columns:2fr 1fr}
 @media(max-width:1080px){.grid{grid-template-columns:1fr}}
 .h1{display:flex;gap:10px;align-items:center;margin:0 0 8px}
 .small{font-size:12px;color:var(--muted)} .hr{height:1px;background:var(--edge);margin:10px 0}
 .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
-.btn{background:#0e121a;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:7px 10px;cursor:pointer}
-.btn.active{outline:2px solid var(--accent)}
+.btn{background:#0f1420;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease}
+.btn:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04) inset}
+.btn.active{box-shadow:0 0 0 2px var(--primary) inset, 0 0 18px rgba(106,125,255,.25)}
 select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:10px;padding:6px 10px}
-.board{position:relative;width:680px;max-width:100%;aspect-ratio:1/1;margin:0 auto}
-.userNode{position:absolute;transform:translate(-50%,-50%);background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:6px 10px;white-space:nowrap;font-weight:800;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-.userNode .small{display:block;font-weight:600}
+.board{position:relative;width:740px;max-width:100%;aspect-ratio:1/1;margin:0 auto}
+.userNode{position:absolute;transform:translate(-50%,-50%);background:linear-gradient(180deg,#0f1623,#0c111b);border:1px solid var(--edge);border-radius:12px;padding:6px 10px;white-space:nowrap;font-weight:800;font-size:13px;max-width:140px;text-overflow:ellipsis;overflow:hidden}
+.userNode .small{display:block;font-weight:600;color:var(--muted);font-size:12px}
+.userNode:after{content:"";position:absolute;inset:-1px;border-radius:12px;box-shadow:0 0 0 1px rgba(255,255,255,.03) inset, 0 0 14px rgba(106,125,255,.15);pointer-events:none}
 svg{position:absolute;inset:0}
+.radar-poly{filter:url(#glow)}
+.grid-ray{opacity:.7}
+@media (prefers-reduced-motion:no-preference){ .animate-morph{transition:d .45s cubic-bezier(.22,.8,.25,1);} }
 .tagRow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
 .chip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-weight:800}
-.rankList{display:flex;flex-direction:column;gap:6px;min-height:40px}
-.rankItem{display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:8px 10px}
-.rankItem .name{font-weight:800}
-.rankItem .count{font-variant-numeric:tabular-nums;font-weight:900}
-.achievements{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(180px,1fr))}
+.rankList{display:flex;flex-direction:column;gap:8px;min-height:40px}
+.rankItem{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:#0f1420;border:1px solid var(--edge);border-radius:12px;padding:10px 12px}
+.rankItem .row{display:flex;align-items:center;gap:10px}
+.badgeDot{width:8px;height:8px;border-radius:999px;background:var(--primary);box-shadow:0 0 8px var(--glow)}
+.miniBar{height:8px;background:linear-gradient(90deg,var(--primary),var(--cyan));border-radius:999px}
+.rankItem .name{font-weight:900}
+.rankItem .count{font-variant-numeric:tabular-nums;font-weight:900;opacity:.95}
+.achievements{display:grid;gap:8px;grid-template-columns:1fr}
 @media(max-width:560px){.achievements{grid-template-columns:1fr}}
 .achItem{background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:10px}
 .headerRow{display:flex;align-items:center;gap:10px;justify-content:space-between}
-
-/* --- visual polish --- */
-.badge{background:#0f1420;border:1px solid var(--edge);padding:4px 8px;border-radius:999px;font-weight:700}
-.rankCards{display:grid;gap:10px}
-.rankCard{background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px}
-.rankTitle{display:flex;align-items:center;gap:8px;font-weight:900;letter-spacing:.2px}
-.rankItem{display:flex;align-items:center;gap:10px;justify-content:space-between;background:#0f1420;border:1px solid var(--edge);border-radius:10px;padding:10px 12px}
-.rankItem .name{font-weight:900}
-.rankItem .count{font-variant-numeric:tabular-nums;font-weight:900;opacity:.9}
-.achievements{display:grid;gap:8px;grid-template-columns:1fr}
-.achItem{background:#0f1420;border:1px solid var(--edge);border-radius:12px;padding:10px;font-weight:700}
-/* Buttons row compact */
-.controls .btn{padding:6px 10px}
 </style>
 </head>
 <body>
@@ -59,6 +49,7 @@ svg{position:absolute;inset:0}
   <div class="headerRow">
     <h1 class="h1">📈 Tracker de cartas <span id="dbg" class="small"></span></h1>
     <div class="headerRow" style="gap:8px">
+      <button id="themeBtn" class="btn" title="Cambiar tema">🌓 Tema</button>
       <a class="btn" href="index.html">🏠 Home</a>
       <span class="small">Rango:</span>
       <select id="rangeSel">
@@ -97,17 +88,13 @@ svg{position:absolute;inset:0}
       <div id="achv" class="achievements"></div>
     </section>
     <aside class="card">
-      <div class="small">⚔️ Rankings — en vivo</div>
-      <div class="rankCards">
-        <div class="rankCard">
-          <div class="rankTitle">🗡️ Ataques ejecutados</div>
-          <div id="rankSent" class="rankList"></div>
-        </div>
-        <div class="rankCard">
-          <div class="rankTitle">🛡️ Ataques recibidos</div>
-          <div id="rankRecv" class="rankList"></div>
-        </div>
-      </div>
+      <div class="small">⚔️ Rankings — en vivo (a partir del historial)</div>
+      <div class="hr"></div>
+      <div class="small">Ataques ejecutados</div>
+      <div id="rankSent" class="rankList"></div>
+      <div class="hr"></div>
+      <div class="small">Ataques recibidos</div>
+      <div id="rankRecv" class="rankList"></div>
     </aside>
   </div>
 </div>
@@ -134,6 +121,15 @@ const TAGS = ["ataque","defensa","economia","curacion","gacha","item","captura"]
 const DISPLAY = {ataque:"ataque", defensa:"defensa", economia:"economía", curacion:"curación", gacha:"gacha", item:"ítem", captura:"captura"};
 
 const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function sparkline(values, w=80, h=28){
+  if(!values || values.length<2){ return `<svg width="${w}" height="${h}"></svg>`; }
+  const max=Math.max(...values), min=Math.min(...values);
+  const span=max-min || 1, step=(w-8)/(values.length-1);
+  let d=`M4 ${h-4-((values[0]-min)/span)*(h-8)}`;
+  for(let i=1;i<values.length;i++){ const x=4+i*step; const y=h-4-((values[i]-min)/span)*(h-8); d+=` L${x} ${y}`; }
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="url(#sg)" stroke-width="2"/><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--primary)"/><stop offset="1" stop-color="var(--cyan)"/></linearGradient></defs></svg>`;
+}
 const tagRow = $("#tagRow"), rankSent=$("#rankSent"), rankRecv=$("#rankRecv"), achv=$("#achv");
 const rangeSel = $("#rangeSel"), dbg=$("#dbg"), svg = $("#hexSvg"), board = $("#board");
 let tagFilter = ""; // slug
@@ -157,13 +153,9 @@ function drawRadar(values){
   const center={x:50,y:50};
   const scaled=values.map((v,i)=>{ const p=POS[i]; return { x:center.x+(p.x-center.x)*v, y:center.y+(p.y-center.y)*v }; });
   const path=scaled.map(p=>`${p.x},${p.y}`).join(" ");
-<<<<<<< HEAD
-  const fill=`<polygon class="radar-poly animate-morph" points="${path}" fill="rgba(102,170,255,.22)" stroke="rgba(0,224,255,.85)" stroke-width="1.4"/>`;
-=======
-  const fill=`<polygon points="${path}" fill="rgba(124,92,255,.20)" stroke="rgba(124,92,255,.60)" stroke-width="0.8"/>`;
->>>>>>> parent of 0aafb68 (Update Tracker.html)
+  const fill=`<polygon class="radar-poly animate-morph" points="${path}" fill="rgba(106,125,255,.22)" stroke="rgba(106,125,255,.65)" stroke-width="1.2"/>`;
   const rays = POS.map(p=>`<line x1="50" y1="50" x2="${p.x}" y2="${p.y}" stroke="rgba(255,255,255,.10)" stroke-width="0.4"/>`).join("");
-  svg.innerHTML = `<polygon points="${POS.map(p=>`${p.x},${p.y}`).join(" ")}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>` + rays + fill;
+  svg.innerHTML = `<defs><filter id="glow"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><polygon points="50,5,90,25,90,75,50,95,10,75,10,25" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>` + rays + fill;
 }
 drawHexGrid();
 
@@ -173,12 +165,12 @@ const toSlug = t => clean(t).replace(/curacion|cura|curativo.*/,"curacion").repl
 function inferSlugFromName(name, fallback=""){
   const s = clean(name);
   const table = {
-    gacha: ["ganaste por ruleta","ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
+    gacha: ["ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
     economia: ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
     curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
     item: [" mt ","piedra","capsula","megapiedra","objeto","masterball","equipo"],
     captura: ["captura","reroll","recaptura","shiny","skip"],
-    defensa: ["proteccion del debil","bloqueo","proteccion","reversa","venganza","regalo","buff"],
+    defensa: ["bloqueo","proteccion","reversa","venganza","regalo","buff"],
     ataque: ["ataque enviado","rob","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
   };
   for (const [slug,keys] of Object.entries(table)){
@@ -207,14 +199,7 @@ function asTimestamp(ts){
 }
 function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
 function isRealUse(name){
-  const s = String(name||"");
-  if (/^\s*(Usaste|Usa|Aplicaste)\b/i.test(s)) return true;
-  if (/^\s*Ataque enviado:/i.test(s)) return true;
-  // Protección del débil — salió cara/cruz
-  if (/protecci[oó]n\s+del\s+d[eé]bil.*sal[ií]o\s+(cara|cruz)/i.test(s)) return true;
-  // Gacha gastado: "Ganaste por ruleta: ..."
-  if (/^\s*Ganaste\s+por\s+ruleta:/i.test(s)) return true;
-  return false;
+  return /^\s*(Usaste|Usa|Aplicaste)\b/i.test(String(name||"")) || /^\s*Ataque enviado:/i.test(String(name||""));
 }
 function parseAttack(name){
   const sent = /^\s*Ataque enviado:/i.test(String(name||""));
@@ -251,8 +236,6 @@ function recomputeSelectionAndRender(){
   render();
 }
 
-function recomputeAndRender(){ render(); }
-
 function render(){
   const countsByUserTag = {}; const totalsByUser = {}; const sentByUser = {}; const recvByUser = {};
   selected.forEach(p=>{
@@ -279,6 +262,25 @@ function render(){
     const el = document.createElement("div"); el.className="chip"; el.innerHTML = `🏷️ ${DISPLAY[slug]} · <span class="small">líder: ${leaders} (${max})</span>`; tagRow.appendChild(el);
   });
 
+  // Trend buckets per user (12 steps within selected range)
+  const buckets = 12;
+  const now = Date.now();
+  const rangeDays = rangeSel.value==="all" ? 120 : parseInt(rangeSel.value,10);
+  const rangeMs = (rangeSel.value==="all" ? 120*86400000 : rangeDays*86400000);
+  const start = now - rangeMs;
+  const step = rangeMs / buckets;
+  const trendSent = {}, trendRecv = {};
+  selected.forEach(u=>{ trendSent[u.id]=Array(buckets).fill(0); trendRecv[u.id]=Array(buckets).fill(0); });
+  selected.forEach(p=>{
+    (inventoryData.get(p.id)||[]).forEach(e=>{
+      const t = e.__ts?.toMillis ? e.__ts.toMillis() : 0;
+      if (!t || t<start || t>now) return;
+      const idx = Math.min(buckets-1, Math.max(0, Math.floor((t-start)/step)));
+      if (e.__attackSent) trendSent[p.id][idx]++;
+      if (e.__attackVictimUid===p.id) trendRecv[p.id][idx]++;
+    });
+  });
+
   // Nodes + radar
   const positions = POS;
   [...board.querySelectorAll(".userNode")].forEach(n=>n.remove());
@@ -294,8 +296,8 @@ function render(){
 
   // Rankings
   function renderList(dest,map){ const arr=selected.map(u=>({name:u.name,n:map[u.id]||0})).sort((a,b)=>b.n-a.n); dest.innerHTML=arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join(""); }
-  renderList(rankSent, sentByUser);
-  renderList(rankRecv, recvByUser);
+  renderList(rankSent, sentByUser, trendSent);
+  renderList(rankRecv, recvByUser, trendRecv);
 
   // Frases‑logro
   const fun=[];
@@ -304,14 +306,14 @@ function render(){
     const m=Math.max(0,...list.map(x=>x.n));
     return m>0 ? {m, names:list.filter(x=>x.n===m).map(x=>x.name)} : null;
   };
-  [["economia","💰 Avaricia"],
-   ["ataque","🗡️ Ataque"],
-   ["defensa","🛡️ Defensa"],
-   ["curacion","🩹 Curación"],
-   ["gacha","🎲 Gacha"],
-   ["item","🎒 Ítems"],
-   ["captura","🕸️ Captura"]]
-   .forEach(([slug,label])=>{ const r=leader(slug); if(r) fun.push(`${label}: <b>${r.names.join(", ")}</b> (${r.m})`); });
+  [["economia","💰 lxs más avariciosxs"],
+   ["ataque","⚔️ reparte(n) leña"],
+   ["defensa","🛡️ vive(n) en guardia"],
+   ["curacion","🩹 farmacia ambulante"],
+   ["gacha","🎲 le da(n) al gacha"],
+   ["item","🎒 acapara(n) trastos"],
+   ["captura","🕸️ cazador(es)"]]
+   .forEach(([slug,label])=>{ const r=leader(slug); if(r) fun.push(`${label} (<b>${DISPLAY[slug]}</b>): <b>${r.names.join(", ")}</b> (${r.m}).`); });
   // saco
   let worst = null; selected.forEach(u=>{ const n = 0 + ( (inventoryData.get(u.id)||[]).filter(e=> e.__attackVictimUid===u.id).length ); if(!worst || n>worst.n){ worst = {name:u.name, n}; } });
   if (worst && worst.n>0) fun.push(`😵 <b>${worst.name}</b> es el saco de boxeo (${worst.n} ataques recibidos).`);
@@ -366,6 +368,11 @@ async function bootstrap(){
 }
 
 onAuthStateChanged(auth, ()=> bootstrap().catch(console.error));
+const themeBtn = document.getElementById("themeBtn");
+if(themeBtn){ themeBtn.addEventListener("click", ()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  document.documentElement.setAttribute("data-theme", cur==='teal'?'':'teal');
+}); }
 </script>
 </body>
 </html>
