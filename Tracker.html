@@ -32,6 +32,19 @@ svg{position:absolute;inset:0}
 @media(max-width:560px){.achievements{grid-template-columns:1fr}}
 .achItem{background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:10px}
 .headerRow{display:flex;align-items:center;gap:10px;justify-content:space-between}
+
+/* --- visual polish --- */
+.badge{background:#0f1420;border:1px solid var(--edge);padding:4px 8px;border-radius:999px;font-weight:700}
+.rankCards{display:grid;gap:10px}
+.rankCard{background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:10px}
+.rankTitle{display:flex;align-items:center;gap:8px;font-weight:900;letter-spacing:.2px}
+.rankItem{display:flex;align-items:center;gap:10px;justify-content:space-between;background:#0f1420;border:1px solid var(--edge);border-radius:10px;padding:10px 12px}
+.rankItem .name{font-weight:900}
+.rankItem .count{font-variant-numeric:tabular-nums;font-weight:900;opacity:.9}
+.achievements{display:grid;gap:8px;grid-template-columns:1fr}
+.achItem{background:#0f1420;border:1px solid var(--edge);border-radius:12px;padding:10px;font-weight:700}
+/* Buttons row compact */
+.controls .btn{padding:6px 10px}
 </style>
 </head>
 <body>
@@ -64,11 +77,11 @@ svg{position:absolute;inset:0}
     </div>
   </div>
 
-  <div id="tagRow" class="tagRow"></div>
+  <div id="tagRow" class="tagRow" style="display:none"></div>
 
   <div class="grid">
     <section class="card">
-      <div class="small" style="margin-bottom:6px">🔷 Diagrama hexagonal (estadísticas estilo Pokémon)</div>
+      <div class="small" style="margin-bottom:6px">🔷 Diagrama hexagonal</div>
       <div class="board" id="board">
         <svg id="hexSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
       </div>
@@ -77,13 +90,17 @@ svg{position:absolute;inset:0}
       <div id="achv" class="achievements"></div>
     </section>
     <aside class="card">
-      <div class="small">⚔️ Rankings — en vivo (a partir del historial)</div>
-      <div class="hr"></div>
-      <div class="small">Ataques ejecutados</div>
-      <div id="rankSent" class="rankList"></div>
-      <div class="hr"></div>
-      <div class="small">Ataques recibidos</div>
-      <div id="rankRecv" class="rankList"></div>
+      <div class="small">⚔️ Rankings — en vivo</div>
+      <div class="rankCards">
+        <div class="rankCard">
+          <div class="rankTitle">🗡️ Ataques ejecutados</div>
+          <div id="rankSent" class="rankList"></div>
+        </div>
+        <div class="rankCard">
+          <div class="rankTitle">🛡️ Ataques recibidos</div>
+          <div id="rankRecv" class="rankList"></div>
+        </div>
+      </div>
     </aside>
   </div>
 </div>
@@ -276,14 +293,14 @@ function render(){
     const m=Math.max(0,...list.map(x=>x.n));
     return m>0 ? {m, names:list.filter(x=>x.n===m).map(x=>x.name)} : null;
   };
-  [["economia","💰 lxs más avariciosxs"],
-   ["ataque","⚔️ reparte(n) leña"],
-   ["defensa","🛡️ vive(n) en guardia"],
-   ["curacion","🩹 farmacia ambulante"],
-   ["gacha","🎲 le da(n) al gacha"],
-   ["item","🎒 acapara(n) trastos"],
-   ["captura","🕸️ cazador(es)"]]
-   .forEach(([slug,label])=>{ const r=leader(slug); if(r) fun.push(`${label} (<b>${DISPLAY[slug]}</b>): <b>${r.names.join(", ")}</b> (${r.m}).`); });
+  [["economia","💰 Avaricia"],
+   ["ataque","🗡️ Ataque"],
+   ["defensa","🛡️ Defensa"],
+   ["curacion","🩹 Curación"],
+   ["gacha","🎲 Gacha"],
+   ["item","🎒 Ítems"],
+   ["captura","🕸️ Captura"]]
+   .forEach(([slug,label])=>{ const r=leader(slug); if(r) fun.push(`${label}: <b>${r.names.join(", ")}</b> (${r.m})`); });
   // saco
   let worst = null; selected.forEach(u=>{ const n = 0 + ( (inventoryData.get(u.id)||[]).filter(e=> e.__attackVictimUid===u.id).length ); if(!worst || n>worst.n){ worst = {name:u.name, n}; } });
   if (worst && worst.n>0) fun.push(`😵 <b>${worst.name}</b> es el saco de boxeo (${worst.n} ataques recibidos).`);
