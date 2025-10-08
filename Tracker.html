@@ -3,65 +3,54 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tracker — RandomLock</title>
+<title>Tracker (inventarios • estricto+slug)</title>
 <style>
-:root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.08);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
+:root{--bg:#0b0f16;--panel:#131a25;--panel-2:#0e1520;--edge:rgba(170,190,255,.12);--text:#e8efff;--muted:#98a6c4;--primary:#6a7dff;--cyan:#4ad7e8;--amber:#f7b955;--glow:rgba(106,125,255,.35);--br:16px}
+[data-theme="teal"]{--primary:#2fb4ff;--cyan:#11d3b7;--amber:#ffd36b;--glow:rgba(47,180,255,.35);}
 *{box-sizing:border-box}html,body{height:100%}
-body{min-height:100vh;background-attachment:fixed,fixed,fixed}
-body{margin:0;background:linear-gradient(180deg,#0b0e13,#0d1016);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
-.wrap{max-width:1200px;margin:0 auto;padding:16px}
-.card{background:var(--panel);border:1px solid var(--edge);border-radius:var(--br);padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-.grid{display:grid;gap:16px;grid-template-columns:2fr 1fr}
+body{margin:0;background:radial-gradient(1200px 600px at 30% -10%,rgba(106,125,255,.18),transparent),radial-gradient(1000px 500px at 90% 10%,rgba(74,215,232,.12),transparent),linear-gradient(180deg,#0a0e16,#0a0f18);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto}
+.wrap{max-width:1200px;margin:0 auto;padding:14px}
+.card{background:linear-gradient(180deg,var(--panel),var(--panel-2));border:1px solid var(--edge);border-radius:var(--br);padding:14px;box-shadow:0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.02);position:relative;overflow:hidden}
+.card:before{content:"";position:absolute;inset:-1px;background:radial-gradient(600px 200px at 20% -20%,var(--glow),transparent);pointer-events:none;opacity:.5}
+.grid{display:grid;gap:14px;grid-template-columns:2fr 1fr}
 @media(max-width:1080px){.grid{grid-template-columns:1fr}}
-.section-title{margin:0 0 12px;font-size:18px;display:flex;gap:8px;align-items:center}
-.small{font-size:12px;color:var(--muted)}
-.badge{display:inline-flex;gap:6px;align-items:center;padding:2px 8px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-size:12px}
-.hr{height:1px;background:var(--edge);margin:12px 0}
+.h1{display:flex;gap:10px;align-items:center;margin:0 0 8px}
+.small{font-size:12px;color:var(--muted)} .hr{height:1px;background:var(--edge);margin:10px 0}
 .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
-.filterRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-
-.hexWrap{display:flex;align-items:center;justify-content:center;padding:10px}
-.board{position:relative;width:640px;max-width:100%;aspect-ratio:1/1;margin:0 auto}
-.userNode{position:absolute;transform:translate(-50%,-50%);background:#0e121a;border:1px solid var(--edge);border-radius:12px;padding:6px 10px;white-space:nowrap;font-weight:800;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
-.userNode .small{display:block;font-weight:600}
-.userNode.leader{outline:2px solid var(--accent);box-shadow:0 0 0 4px rgba(124,92,255,.2)}
+.btn{background:#0f1420;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:8px 12px;cursor:pointer;transition:transform .12s ease, box-shadow .12s ease}
+.btn:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04) inset}
+.btn.active{box-shadow:0 0 0 2px var(--primary) inset, 0 0 18px rgba(106,125,255,.25)}
+select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:10px;padding:6px 10px}
+.board{position:relative;width:740px;max-width:100%;aspect-ratio:1/1;margin:0 auto}
+.userNode{position:absolute;transform:translate(-50%,-50%);background:linear-gradient(180deg,#0f1623,#0c111b);border:1px solid var(--edge);border-radius:12px;padding:6px 10px;white-space:nowrap;font-weight:800;font-size:13px;max-width:140px;text-overflow:ellipsis;overflow:hidden}
+.userNode .small{display:block;font-weight:600;color:var(--muted);font-size:12px}
+.userNode:after{content:"";position:absolute;inset:-1px;border-radius:12px;box-shadow:0 0 0 1px rgba(255,255,255,.03) inset, 0 0 14px rgba(106,125,255,.15);pointer-events:none}
 svg{position:absolute;inset:0}
-
-.tags{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
-.tagChip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-weight:800}
-.tagChip .who{opacity:.85;font-weight:700}
-
-.rankList{display:flex;flex-direction:column;gap:6px}
-.rankItem{display:flex;align-items:center;gap:8px;justify-content:space-between;background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:8px 10px}
-.rankItem .name{font-weight:800}
-.rankItem .count{font-variant-numeric:tabular-nums;font-weight:900}
-
-.achievements{display:grid;gap:8px;grid-template-columns:repeat(2,minmax(160px,1fr))}
+.radar-poly{filter:url(#glow)}
+.grid-ray{opacity:.7}
+@media (prefers-reduced-motion:no-preference){ .animate-morph{transition:d .45s cubic-bezier(.22,.8,.25,1);} }
+.tagRow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border-radius:999px;background:#0e121a;border:1px solid var(--edge);font-weight:800}
+.rankList{display:flex;flex-direction:column;gap:8px;min-height:40px}
+.rankItem{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:#0f1420;border:1px solid var(--edge);border-radius:12px;padding:10px 12px}
+.rankItem .row{display:flex;align-items:center;gap:10px}
+.badgeDot{width:8px;height:8px;border-radius:999px;background:var(--primary);box-shadow:0 0 8px var(--glow)}
+.miniBar{height:8px;background:linear-gradient(90deg,var(--primary),var(--cyan));border-radius:999px}
+.rankItem .name{font-weight:900}
+.rankItem .count{font-variant-numeric:tabular-nums;font-weight:900;opacity:.95}
+.achievements{display:grid;gap:8px;grid-template-columns:1fr}
 @media(max-width:560px){.achievements{grid-template-columns:1fr}}
 .achItem{background:#0e121a;border:1px solid var(--edge);border-radius:10px;padding:10px}
-
-.btn{background:#0e121a;border:1px solid var(--edge);color:#fff;border-radius:999px;padding:6px 10px;cursor:pointer}
-.btn.active{outline:2px solid var(--accent)}
-select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:10px;padding:6px 10px}
+.headerRow{display:flex;align-items:center;gap:10px;justify-content:space-between}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1 class="section-title">📈 Tracker de cartas <span class="small">en vivo</span></h1>
-
-  <div class="controls card">
-    <div class="filterRow">
-      <span class="small">Filtrar etiqueta:</span>
-      <button class="btn" data-tag="">Todas</button>
-      <button class="btn" data-tag="ataque">Ataque</button>
-      <button class="btn" data-tag="defensa">Defensa</button>
-      <button class="btn" data-tag="economía">Economía</button>
-      <button class="btn" data-tag="curación">Curación</button>
-      <button class="btn" data-tag="gacha">Gacha</button>
-      <button class="btn" data-tag="ítem">Ítem</button>
-      <button class="btn" data-tag="captura">Captura</button>
-    </div>
-    <div class="filterRow">
+  <div class="headerRow">
+    <h1 class="h1">📈 Tracker de cartas <span id="dbg" class="small"></span></h1>
+    <div class="headerRow" style="gap:8px">
+      <button id="themeBtn" class="btn" title="Cambiar tema">🌓 Tema</button>
+      <a class="btn" href="index.html">🏠 Home</a>
       <span class="small">Rango:</span>
       <select id="rangeSel">
         <option value="all">Todo el histórico</option>
@@ -72,31 +61,39 @@ select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:
     </div>
   </div>
 
-  <div id="tagRow" class="tags"></div>
+  <div class="controls card">
+    <div class="small">Filtrar etiqueta:</div>
+    <div id="tagBtns" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" data-slug="">Todas</button>
+      <button class="btn" data-slug="ataque">Ataque</button>
+      <button class="btn" data-slug="defensa">Defensa</button>
+      <button class="btn" data-slug="economia">Economía</button>
+      <button class="btn" data-slug="curacion">Curación</button>
+      <button class="btn" data-slug="gacha">Gacha</button>
+      <button class="btn" data-slug="item">Ítem</button>
+      <button class="btn" data-slug="captura">Captura</button>
+    </div>
+  </div>
+
+  <div id="tagRow" class="tagRow" style="display:none"></div>
 
   <div class="grid">
     <section class="card">
-      <div class="section-title">🔷 Diagrama hexagonal de uso por usuario</div>
-      <div class="hexWrap">
-        <div class="board" id="board">
-          <svg id="hexSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
-        </div>
+      <div class="small" style="margin-bottom:6px">🔷 Diagrama hexagonal</div>
+      <div class="board" id="board">
+        <svg id="hexSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
       </div>
       <div class="hr"></div>
-      <div class="section-title">🏅 Frases‑logro</div>
+      <div class="small" style="margin-bottom:6px">🏅 Frases‑logro</div>
       <div id="achv" class="achievements"></div>
     </section>
-
     <aside class="card">
-      <div class="section-title">⚔️ Rankings</div>
-      <div class="small">Se actualizan con eventos reales (no incluye ADMIN).</div>
+      <div class="small">⚔️ Rankings — en vivo (a partir del historial)</div>
       <div class="hr"></div>
-
-      <h3 class="small">Ataques ejecutados</h3>
+      <div class="small">Ataques ejecutados</div>
       <div id="rankSent" class="rankList"></div>
-
       <div class="hr"></div>
-      <h3 class="small">Ataques recibidos</h3>
+      <div class="small">Ataques recibidos</div>
       <div id="rankRecv" class="rankList"></div>
     </aside>
   </div>
@@ -105,7 +102,7 @@ select{background:#0e121a;color:#fff;border:1px solid var(--edge);border-radius:
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { getFirestore, collection, query, where, orderBy, onSnapshot, getDocs, serverTimestamp, addDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, collection, getDocs, onSnapshot, doc, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCPhWAShfR33sAuZ2H4Y2BAGnF8wkkv_S0",
@@ -119,162 +116,263 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const TAGS = ["ataque","defensa","economía","curación","gacha","ítem","captura"];
-const $ = s => document.querySelector(s);
-const board = $("#board"), svg = $("#hexSvg");
-const tagRow = $("#tagRow"), rankSent = $("#rankSent"), rankRecv = $("#rankRecv"), achv = $("#achv");
-const rangeSel = $("#rangeSel");
-let tagFilter = ""; // "" = todos
+// Canonical slugs (sin tildes)
+const TAGS = ["ataque","defensa","economia","curacion","gacha","item","captura"];
+const DISPLAY = {ataque:"ataque", defensa:"defensa", economia:"economía", curacion:"curación", gacha:"gacha", item:"ítem", captura:"captura"};
 
-// UI buttons
-document.querySelectorAll(".btn[data-tag]").forEach(btn=>{
-  btn.onclick = ()=>{
-    document.querySelectorAll(".btn[data-tag]").forEach(b=>b.classList.remove("active"));
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function sparkline(values, w=80, h=28){
+  if(!values || values.length<2){ return `<svg width="${w}" height="${h}"></svg>`; }
+  const max=Math.max(...values), min=Math.min(...values);
+  const span=max-min || 1, step=(w-8)/(values.length-1);
+  let d=`M4 ${h-4-((values[0]-min)/span)*(h-8)}`;
+  for(let i=1;i<values.length;i++){ const x=4+i*step; const y=h-4-((values[i]-min)/span)*(h-8); d+=` L${x} ${y}`; }
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${d}" fill="none" stroke="url(#sg)" stroke-width="2"/><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--primary)"/><stop offset="1" stop-color="var(--cyan)"/></linearGradient></defs></svg>`;
+}
+const tagRow = $("#tagRow"), rankSent=$("#rankSent"), rankRecv=$("#rankRecv"), achv=$("#achv");
+const rangeSel = $("#rangeSel"), dbg=$("#dbg"), svg = $("#hexSvg"), board = $("#board");
+let tagFilter = ""; // slug
+
+// event handlers
+document.querySelectorAll(".btn[data-slug]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".btn[data-slug]").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
-    tagFilter = (btn.dataset.tag||"").toLowerCase();
+    tagFilter=(btn.dataset.slug||"");
     recomputeAndRender();
-  };
+  });
 });
-document.querySelector('.btn[data-tag=""]').classList.add("active");
+document.querySelector('.btn[data-slug=""]').classList.add("active");
 rangeSel.onchange = ()=> recomputeAndRender();
 
-let users = []; // [{id,name}]
-let rawUsage = []; // array de {uid, tag, createdAt}
-let rawSent = [];  // {attackerId, createdAt}
-let rawRecv = [];  // {victimId, createdAt}
-
-const POS = [
-  {x:50,y:5},{x:90,y:25},{x:90,y:75},{x:50,y:95},{x:10,y:75},{x:10,y:25},
-];
-function renderHexGrid(){
-  const pts = POS.map(p=>`${p.x},${p.y}`).join(" ");
-  svg.innerHTML = `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`;
+// Radar
+const POS = [{x:50,y:5},{x:90,y:25},{x:90,y:75},{x:50,y:95},{x:10,y:75},{x:10,y:25}];
+function drawHexGrid(){ const pts = POS.map(p=>`${p.x},${p.y}`).join(" "); svg.innerHTML = `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`; }
+function drawRadar(values){
+  const center={x:50,y:50};
+  const scaled=values.map((v,i)=>{ const p=POS[i]; return { x:center.x+(p.x-center.x)*v, y:center.y+(p.y-center.y)*v }; });
+  const path=scaled.map(p=>`${p.x},${p.y}`).join(" ");
+  const fill=`<polygon class="radar-poly animate-morph" points="${path}" fill="rgba(106,125,255,.22)" stroke="rgba(106,125,255,.65)" stroke-width="1.2"/>`;
+  const rays = POS.map(p=>`<line x1="50" y1="50" x2="${p.x}" y2="${p.y}" stroke="rgba(255,255,255,.10)" stroke-width="0.4"/>`).join("");
+  svg.innerHTML = `<defs><filter id="glow"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><polygon points="50,5,90,25,90,75,50,95,10,75,10,25" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>` + rays + fill;
 }
-renderHexGrid();
+drawHexGrid();
 
-function timePass(createdAt){
+// Helpers
+const clean = s => String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s*\(.*?\)\s*/g,"").replace(/\s+/g," ").trim();
+const toSlug = t => clean(t).replace(/curacion|cura|curativo.*/,"curacion").replace(/^item$/,"item");
+function inferSlugFromName(name, fallback=""){
+  const s = clean(name);
+  const table = {
+    gacha: ["ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
+    economia: ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
+    curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
+    item: [" mt ","piedra","capsula","megapiedra","objeto","masterball","equipo"],
+    captura: ["captura","reroll","recaptura","shiny","skip"],
+    defensa: ["bloqueo","proteccion","reversa","venganza","regalo","buff"],
+    ataque: ["ataque enviado","rob","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
+  };
+  for (const [slug,keys] of Object.entries(table)){
+    if (keys.some(k => s.includes(k))) return slug;
+  }
+  return toSlug(fallback);
+}
+function parseEsDate(str){
+  const m = String(str||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),\s*(\d{1,2}):(\d{2}):(\d{2})/);
+  if(!m) return NaN;
+  const [_,d,mo,y,h,mi,s]=m.map(Number);
+  return new Date(y,mo-1,d,h,mi,s).getTime();
+}
+function asTimestamp(ts){
+  if (!ts) return null;
+  if (ts?.toDate) return ts;
+  if (typeof ts?.seconds === "number") return Timestamp.fromMillis(ts.seconds*1000);
+  if (typeof ts === "string"){
+    const t1 = Date.parse(ts);
+    const t2 = parseEsDate(ts);
+    const t = !isNaN(t1)? t1 : (!isNaN(t2)? t2 : NaN);
+    return isNaN(t) ? null : Timestamp.fromMillis(t);
+  }
+  const t = Date.parse(ts);
+  return isNaN(t) ? null : Timestamp.fromMillis(t);
+}
+function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
+function isRealUse(name){
+  return /^\s*(Usaste|Usa|Aplicaste)\b/i.test(String(name||"")) || /^\s*Ataque enviado:/i.test(String(name||""));
+}
+function parseAttack(name){
+  const sent = /^\s*Ataque enviado:/i.test(String(name||""));
+  let victim=null;
+  const m = String(name||"").match(/→\s*([^\(]+)|->\s*([^\(]+)/);
+  if (m) victim=(m[1]||m[2]||"").trim();
+  return {sent, victim};
+}
+
+let profiles = [];   // todos
+let selected = [];   // los 6 activos
+let invUnsubs = [];
+const inventoryData = new Map(); // uid -> entries
+const nameToUid = new Map();
+
+function timePass(ts){
   const r = rangeSel.value;
   if (r==="all") return true;
   const days = parseInt(r,10);
-  const t = createdAt?.toMillis ? createdAt.toMillis() : (createdAt?.seconds? createdAt.seconds*1000 : Date.parse(createdAt)||0);
+  const t = ts?.toMillis ? ts.toMillis() : (ts?.seconds? ts.seconds*1000 : Date.parse(ts)||0);
   if (!t) return false;
-  const cutoff = Date.now() - days*86400000;
-  return t >= cutoff;
+  return t >= Date.now() - days*86400000;
 }
 
-function recomputeAndRender(){
-  const countsByUserTag = {};
-  const sentByUser = {}, recvByUser = {};
-  const ensure = (uid)=>{
-    countsByUserTag[uid] = countsByUserTag[uid] || Object.fromEntries(TAGS.map(t=>[t,0]));
-    sentByUser[uid] = sentByUser[uid] || 0;
-    recvByUser[uid] = recvByUser[uid] || 0;
-  };
-
-  rawUsage.filter(u => (!tagFilter || (u.tag||"").toLowerCase()===tagFilter) && timePass(u.createdAt)).forEach(u=>{
-    ensure(u.uid);
-    const tag = (u.tag||"").toLowerCase();
-    if (TAGS.includes(tag)) countsByUserTag[u.uid][tag]++;
+function recomputeSelectionAndRender(){
+  const list = profiles.map(p=>{
+    const logs = inventoryData.get(p.id) || [];
+    const lastUse = Math.max(0, ...logs.map(e=> e.__ts ? e.__ts.toMillis() : 0));
+    const lastProfile = p._lastProfile || 0;
+    return { ...p, _lastUse:lastUse, _lastSort: Math.max(lastUse, lastProfile) };
   });
-  rawSent.filter(e=> timePass(e.createdAt)).forEach(e=>{ ensure(e.attackerId); sentByUser[e.attackerId]++; });
-  rawRecv.filter(e=> timePass(e.createdAt)).forEach(e=>{ ensure(e.victimId);   recvByUser[e.victimId]++; });
+  list.sort((a,b)=> b._lastSort - a._lastSort || (a.name||"").localeCompare(b.name||"", 'es'));
+  selected = list.slice(0,6);
+  render();
+}
 
-  // Render users on hex
+function render(){
+  const countsByUserTag = {}; const totalsByUser = {}; const sentByUser = {}; const recvByUser = {};
+  selected.forEach(p=>{
+    countsByUserTag[p.id] = Object.fromEntries(TAGS.map(t=>[t,0]));
+    totalsByUser[p.id]=0; sentByUser[p.id]=0; recvByUser[p.id]=0;
+  });
+  selected.forEach(p=>{
+    (inventoryData.get(p.id) || []).forEach(e=>{
+      if (!timePass(e.__ts)) return;
+      const tag = e.__slug; if (!tag) return;
+      if (!tagFilter || tag===tagFilter){ countsByUserTag[p.id][tag]++; totalsByUser[p.id]++; }
+      if (e.__attackSent){ sentByUser[p.id]++; }
+      if (e.__attackVictimUid && timePass(e.__ts)){ if (recvByUser[e.__attackVictimUid]==null) recvByUser[e.__attackVictimUid]=0; recvByUser[e.__attackVictimUid]++; }
+    });
+  });
+
+  // Chips
+  const tags = tagFilter? [tagFilter]:TAGS;
+  tagRow.innerHTML = "";
+  tags.forEach(slug=>{
+    const arr = selected.map(p=>({uid:p.id, n: countsByUserTag[p.id][slug]}));
+    const max = Math.max(0,...arr.map(a=>a.n));
+    const leaders = arr.filter(a=>a.n===max && max>0).map(a=>selected.find(z=>z.id===a.uid)?.name||a.uid).join(", ") || "—";
+    const el = document.createElement("div"); el.className="chip"; el.innerHTML = `🏷️ ${DISPLAY[slug]} · <span class="small">líder: ${leaders} (${max})</span>`; tagRow.appendChild(el);
+  });
+
+  // Trend buckets per user (12 steps within selected range)
+  const buckets = 12;
+  const now = Date.now();
+  const rangeDays = rangeSel.value==="all" ? 120 : parseInt(rangeSel.value,10);
+  const rangeMs = (rangeSel.value==="all" ? 120*86400000 : rangeDays*86400000);
+  const start = now - rangeMs;
+  const step = rangeMs / buckets;
+  const trendSent = {}, trendRecv = {};
+  selected.forEach(u=>{ trendSent[u.id]=Array(buckets).fill(0); trendRecv[u.id]=Array(buckets).fill(0); });
+  selected.forEach(p=>{
+    (inventoryData.get(p.id)||[]).forEach(e=>{
+      const t = e.__ts?.toMillis ? e.__ts.toMillis() : 0;
+      if (!t || t<start || t>now) return;
+      const idx = Math.min(buckets-1, Math.max(0, Math.floor((t-start)/step)));
+      if (e.__attackSent) trendSent[p.id][idx]++;
+      if (e.__attackVictimUid===p.id) trendRecv[p.id][idx]++;
+    });
+  });
+
+  // Nodes + radar
+  const positions = POS;
   [...board.querySelectorAll(".userNode")].forEach(n=>n.remove());
-  users.slice(0,6).forEach((u,i)=>{
-    const n = document.createElement("div");
-    n.className = "userNode";
-    n.style.left = POS[i].x+"%";
-    n.style.top  = POS[i].y+"%";
-    const total = Object.values(countsByUserTag[u.id]||{}).reduce((a,b)=>a+b,0);
-    n.innerHTML = `<div>${u.name}</div><span class="small">usos: ${total}</span>`;
+  selected.forEach((u,i)=>{
+    const n=document.createElement("div"); n.className="userNode"; n.style.left=positions[i].x+"%"; n.style.top=positions[i].y+"%";
+    n.innerHTML = `<div>${u.name}</div><span class="small">usos: ${totalsByUser[u.id]||0}</span>`;
     board.appendChild(n);
   });
-  // leaders by total
-  const totals = users.map(u=>({uid:u.id,sum:Object.values(countsByUserTag[u.id]||{}).reduce((a,b)=>a+b,0)}));
-  const max = Math.max(0, ...totals.map(t=>t.sum));
-  totals.filter(t=>t.sum===max && max>0).forEach(t=>{
-    const i = users.findIndex(u=>u.id===t.uid);
-    const node = board.querySelectorAll(".userNode")[i];
-    if (node) node.classList.add("leader");
-  });
+  const totals = selected.map(u=> totalsByUser[u.id] || 0);
+  const maxT = Math.max(1, ...totals);
+  const values = totals.map(t=> (t/maxT) || 0);
+  drawRadar(values);
 
-  // chips líder por etiqueta (respetando filtro: si hay filtro, solo mostramos esa etiqueta)
-  tagRow.innerHTML = "";
-  const tagsToShow = tagFilter? [tagFilter] : TAGS;
-  tagsToShow.forEach(tag=>{
-    const entries = users.map(u=>({uid:u.id, n:(countsByUserTag[u.id]?.[tag]||0)}));
-    const m = Math.max(0, ...entries.map(e=>e.n));
-    const leaders = entries.filter(e=>e.n===m && m>0).map(e=> users.find(x=>x.id===e.uid)?.name || e.uid).join(", ") || "—";
-    const chip = document.createElement("div");
-    chip.className = "tagChip";
-    chip.innerHTML = `<span>🏷️ ${tag}</span> <span class="who small">• líder: ${leaders} (${m})</span>`;
-    tagRow.appendChild(chip);
-  });
+  // Rankings
+  function renderList(dest,map){ const arr=selected.map(u=>({name:u.name,n:map[u.id]||0})).sort((a,b)=>b.n-a.n); dest.innerHTML=arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join(""); }
+  renderList(rankSent, sentByUser, trendSent);
+  renderList(rankRecv, recvByUser, trendRecv);
 
-  // rankings
-  function renderList(dest, map){
-    const arr = users.map(u=>({name:u.name, n:map[u.id]||0})).sort((a,b)=>b.n-a.n).slice(0,6);
-    dest.innerHTML = arr.map(r=>`<div class="rankItem"><span class="name">${r.name}</span><span class="count">${r.n}</span></div>`).join("");
-  }
-  renderList(rankSent, sentByUser);
-  renderList(rankRecv, recvByUser);
-
-  // logros
-  const ach = [];
-  const most = tag => {
-    const arr = users.map(u=>({uid:u.id, n:(countsByUserTag[u.id]?.[tag]||0)}));
-    const m = Math.max(0, ...arr.map(a=>a.n));
-    return arr.filter(a=>a.n===m && m>0).map(a=> users.find(x=>x.id===a.uid)?.name || a.uid).join(", ") || null;
+  // Frases‑logro
+  const fun=[];
+  const leader = (slug)=>{
+    const list = selected.map(p=>({name:p.name,n:countsByUserTag[p.id][slug]}));
+    const m=Math.max(0,...list.map(x=>x.n));
+    return m>0 ? {m, names:list.filter(x=>x.n===m).map(x=>x.name)} : null;
   };
-  const avaro = most("economía"); if(avaro) ach.push(`💰 <b>${avaro}</b> es el más avaricioso: ha usado más cartas de economía.`);
-  const agresivo = most("ataque"); if(agresivo) ach.push(`⚔️ <b>${agresivo}</b> es el más agresivo: lidera en cartas de ataque.`);
-  const tanque = most("defensa"); if(tanque) ach.push(`🛡️ <b>${tanque}</b> vive en guardia: top en defensa.`);
-  const botiquin = most("curación"); if(botiquin) ach.push(`🩹 <b>${botiquin}</b> farmacia ambulante: top en curación.`);
-  const gachatier = most("gacha"); if(gachatier) ach.push(`🎲 <b>${gachatier}</b> el ludópata: abusa del gacha.`);
-  const itemlord = most("ítem"); if(itemlord) ach.push(`🎒 <b>${itemlord}</b> el acumulador de trastos: top en ítems.`);
-  const cazador = most("captura"); if(cazador) ach.push(`🕸️ <b>${cazador}</b> poké‑poacher: top en capturas.`);
-  const punching = users.map(u=>({name:u.name, n: rawRecv.filter(e=>e.victimId===u.id && timePass(e.createdAt)).length})).sort((a,b)=>b.n-a.n)[0];
-  if (punching && punching.n>0) ach.push(`😵 <b>${punching.name}</b> es el saco de boxeo: el más atacado.`);
-  achv.innerHTML = ach.map(t=>`<div class="achItem small">${t}</div>`).join("") || `<div class="small">Nada aún… ¡usen cartas!</div>`;
+  [["economia","💰 lxs más avariciosxs"],
+   ["ataque","⚔️ reparte(n) leña"],
+   ["defensa","🛡️ vive(n) en guardia"],
+   ["curacion","🩹 farmacia ambulante"],
+   ["gacha","🎲 le da(n) al gacha"],
+   ["item","🎒 acapara(n) trastos"],
+   ["captura","🕸️ cazador(es)"]]
+   .forEach(([slug,label])=>{ const r=leader(slug); if(r) fun.push(`${label} (<b>${DISPLAY[slug]}</b>): <b>${r.names.join(", ")}</b> (${r.m}).`); });
+  // saco
+  let worst = null; selected.forEach(u=>{ const n = 0 + ( (inventoryData.get(u.id)||[]).filter(e=> e.__attackVictimUid===u.id).length ); if(!worst || n>worst.n){ worst = {name:u.name, n}; } });
+  if (worst && worst.n>0) fun.push(`😵 <b>${worst.name}</b> es el saco de boxeo (${worst.n} ataques recibidos).`);
+  achv.innerHTML = fun.length? fun.map(f=>`<div class="achItem">${f}</div>`).join("") : `<div class="achItem small">Nada aún… ¡usen cartas!</div>`;
+
+  const totalUsos = selected.reduce((a,u)=> a + ((inventoryData.get(u.id)||[]).length), 0);
+  dbg.textContent = `usuarios=${selected.length} • usosProcesados=${totalUsos}`;
 }
 
 async function bootstrap(){
-  // 1) Usuarios
+  // Perfiles
   const ps = await getDocs(collection(db,"profiles"));
-  users = ps.docs.map(d=>({id:d.id, name: d.data().displayName || d.id})).slice(0,6);
-
-  // 2) Cargar HISTÓRICO + realtime
-  const uq = query(collection(db,"usageLogs"), where("action","==","use"), orderBy("createdAt","asc"));
-  const aq = query(collection(db,"attackLogs"), orderBy("createdAt","asc"));
-  // Full fetch para mostrar pasado (si la colección ya tiene datos)
-  const u0 = await getDocs(uq);
-  rawUsage = u0.docs.map(d=>d.data());
-  const a0 = await getDocs(aq);
-  rawSent = a0.docs.filter(d=>d.data().type==="sent").map(d=>d.data());
-  rawRecv = a0.docs.filter(d=>d.data().type==="received").map(d=>d.data());
-  recomputeAndRender();
-
-  // Suscripciones en vivo
-  onSnapshot(uq, (s)=>{
-    s.docChanges().forEach(ch=>{
-      if (ch.type==="added"){ rawUsage.push(ch.doc.data()); }
-    });
-    recomputeAndRender();
+  profiles = ps.docs.map(d=>{
+    const data=d.data()||{};
+    const last = data.lastLogin || data.lastActive || data.updatedAt || null;
+    const lastMillis = last?.toMillis ? last.toMillis() : (last?.seconds? last.seconds*1000 : Date.parse(last)||0);
+    const name = data.displayName || d.id;
+    return { id:d.id, name, _lastProfile:lastMillis };
   });
-  onSnapshot(aq, (s)=>{
-    s.docChanges().forEach(ch=>{
-      const d=ch.doc.data();
-      if (ch.type==="added"){
-        if (d.type==="sent") rawSent.push(d);
-        else if (d.type==="received") rawRecv.push(d);
+  profiles.forEach(p=> nameToUid.set(clean(p.name), p.id));
+
+  // Inventarios en vivo + dedupe
+  profiles.forEach(p=>{
+    const seen = new Set(); // por usuario
+    const unsub = onSnapshot(doc(db,"inventories", p.id), (snap)=>{
+      const data = snap.data() || {};
+      const raw = Array.isArray(data.useLog) ? data.useLog : [];
+      const entries = [];
+      for (const e of raw){
+        if (!e || isAdminName(e.name)) continue;
+        if (!isRealUse(e.name)) continue; // SOLO usos y ataques enviados
+        const ts = asTimestamp(e.createdAt || e.date || e.timestamp);
+        const millis = ts?.toMillis ? ts.toMillis() : 0;
+        const key = millis + "::" + String(e.name||"");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const slug = toSlug(e.tag || inferSlugFromName(e.name||"", ""));
+        const atk = parseAttack(String(e.name||""));
+        let victimUid = null;
+        if (atk.victim){
+          const keyName = clean(atk.victim);
+          victimUid = nameToUid.get(keyName) || null;
+        }
+        entries.push({ __name:String(e.name||""), __slug:slug, __ts: ts, __attackSent: atk.sent, __attackVictimUid: victimUid });
       }
+      inventoryData.set(p.id, entries);
+      recomputeSelectionAndRender();
     });
-    recomputeAndRender();
+    invUnsubs.push(unsub);
   });
+  recomputeSelectionAndRender();
 }
 
 onAuthStateChanged(auth, ()=> bootstrap().catch(console.error));
+const themeBtn = document.getElementById("themeBtn");
+if(themeBtn){ themeBtn.addEventListener("click", ()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  document.documentElement.setAttribute("data-theme", cur==='teal'?'':'teal');
+}); }
 </script>
 </body>
 </html>
