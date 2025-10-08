@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tracker (inventarios • estricto)</title>
+<title>Tracker (inventarios • estricto+slug)</title>
 <style>
 :root{--bg:#0d0f14;--panel:#151922;--edge:rgba(255,255,255,.10);--text:#e7ecf5;--muted:#9aa4b2;--accent:#7c5cff;--br:16px}
 *{box-sizing:border-box}html,body{height:100%}
@@ -53,14 +53,14 @@ svg{position:absolute;inset:0}
   <div class="controls card">
     <div class="small">Filtrar etiqueta:</div>
     <div id="tagBtns" style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn" data-tag="">Todas</button>
-      <button class="btn" data-tag="ataque">Ataque</button>
-      <button class="btn" data-tag="defensa">Defensa</button>
-      <button class="btn" data-tag="economía">Economía</button>
-      <button class="btn" data-tag="curación">Curación</button>
-      <button class="btn" data-tag="gacha">Gacha</button>
-      <button class="btn" data-tag="ítem">Ítem</button>
-      <button class="btn" data-tag="captura">Captura</button>
+      <button class="btn" data-slug="">Todas</button>
+      <button class="btn" data-slug="ataque">Ataque</button>
+      <button class="btn" data-slug="defensa">Defensa</button>
+      <button class="btn" data-slug="economia">Economía</button>
+      <button class="btn" data-slug="curacion">Curación</button>
+      <button class="btn" data-slug="gacha">Gacha</button>
+      <button class="btn" data-slug="item">Ítem</button>
+      <button class="btn" data-slug="captura">Captura</button>
     </div>
   </div>
 
@@ -105,16 +105,28 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const TAGS = ["ataque","defensa","economía","curación","gacha","ítem","captura"];
+// Canonical slugs (sin tildes)
+const TAGS = ["ataque","defensa","economia","curacion","gacha","item","captura"];
+const DISPLAY = {ataque:"ataque", defensa:"defensa", economia:"economía", curacion:"curación", gacha:"gacha", item:"ítem", captura:"captura"};
+
 const $ = s => document.querySelector(s);
 const tagRow = $("#tagRow"), rankSent=$("#rankSent"), rankRecv=$("#rankRecv"), achv=$("#achv");
 const rangeSel = $("#rangeSel"), dbg=$("#dbg"), svg = $("#hexSvg"), board = $("#board");
-let tagFilter = "";
-document.querySelectorAll(".btn[data-tag]").forEach(btn=>{ btn.onclick = ()=>{ document.querySelectorAll(".btn[data-tag]").forEach(b=>b.classList.remove("active")); btn.classList.add("active"); tagFilter=(btn.dataset.tag||"").toLowerCase(); recomputeAndRender(); }; });
-document.querySelector('.btn[data-tag=""]').classList.add("active");
+let tagFilter = ""; // slug
+
+// event handlers
+document.querySelectorAll(".btn[data-slug]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".btn[data-slug]").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    tagFilter=(btn.dataset.slug||"");
+    recomputeAndRender();
+  });
+});
+document.querySelector('.btn[data-slug=""]').classList.add("active");
 rangeSel.onchange = ()=> recomputeAndRender();
 
-// === Radar ===
+// Radar
 const POS = [{x:50,y:5},{x:90,y:25},{x:90,y:75},{x:50,y:95},{x:10,y:75},{x:10,y:25}];
 function drawHexGrid(){ const pts = POS.map(p=>`${p.x},${p.y}`).join(" "); svg.innerHTML = `<polygon points="${pts}" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="1"/>`; }
 function drawRadar(values){
@@ -127,28 +139,26 @@ function drawRadar(values){
 }
 drawHexGrid();
 
-// === Normalización & heurísticas estrictas ===
-const normTag = t=>{ t=(t||"").toString().toLowerCase(); if (t==="cura"||t==="curacion") return "curación"; if (t==="item") return "ítem"; return t; };
+// Helpers
 const clean = s => String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s*\(.*?\)\s*/g,"").replace(/\s+/g," ").trim();
-const catalog = {
-  "gacha": ["ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
-  "economía": ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
-  "curación": ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
-  "ítem": ["mt","piedra","capsula","megapiedra","objeto","masterball","equipo"],
-  "captura": ["captura","reroll","recaptura","shiny","skip"],
-  "defensa": ["bloqueo","proteccion","reversa","venganza","regalo","buff"],
-  "ataque": ["robo","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
-};
-function inferTagFromName(name, fallback=""){
+const toSlug = t => clean(t).replace(/curacion|cura|curativo.*/,"curacion").replace(/^item$/,"item");
+function inferSlugFromName(name, fallback=""){
   const s = clean(name);
-  for (const [tag,keys] of Object.entries(catalog)){
-    if (keys.some(k => s.includes(k))) return tag;
+  const table = {
+    gacha: ["ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
+    economia: ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
+    curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
+    item: [" mt ","piedra","capsula","megapiedra","objeto","masterball","equipo"],
+    captura: ["captura","reroll","recaptura","shiny","skip"],
+    defensa: ["bloqueo","proteccion","reversa","venganza","regalo","buff"],
+    ataque: ["ataque enviado","rob","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
+  };
+  for (const [slug,keys] of Object.entries(table)){
+    if (keys.some(k => s.includes(k))) return slug;
   }
-  return normTag(fallback);
+  return toSlug(fallback);
 }
-function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
 function parseEsDate(str){
-  // dd/mm/yyyy, HH:MM:SS
   const m = String(str||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4}),\s*(\d{1,2}):(\d{2}):(\d{2})/);
   if(!m) return NaN;
   const [_,d,mo,y,h,mi,s]=m.map(Number);
@@ -167,24 +177,22 @@ function asTimestamp(ts){
   const t = Date.parse(ts);
   return isNaN(t) ? null : Timestamp.fromMillis(t);
 }
-// Detectar ataques y víctima con "→ Nombre"
-function parseAttack(name){
-  const s = clean(name);
-  const isAtk = /^\s*ataque enviado:/i.test(name) || /(rob|atac|desgaste|destructor|envenenamiento|liberacion|mismo destino|cambio repentino)/.test(s);
-  if (!isAtk) return { sent:false, victim:null };
-  const m = name.match(/→\s*([^\(]+)|->\s*([^\(]+)/);
-  const victim = m ? (m[1]||m[2]||"").trim() : null;
-  return { sent:true, victim };
-}
-// Aceptar SOLO usos reales
+function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
 function isRealUse(name){
   return /^\s*(Usaste|Usa|Aplicaste)\b/i.test(String(name||"")) || /^\s*Ataque enviado:/i.test(String(name||""));
+}
+function parseAttack(name){
+  const sent = /^\s*Ataque enviado:/i.test(String(name||""));
+  let victim=null;
+  const m = String(name||"").match(/→\s*([^\(]+)|->\s*([^\(]+)/);
+  if (m) victim=(m[1]||m[2]||"").trim();
+  return {sent, victim};
 }
 
 let profiles = [];   // todos
 let selected = [];   // los 6 activos
 let invUnsubs = [];
-const inventoryData = new Map(); // uid -> entries preprocesadas
+const inventoryData = new Map(); // uid -> entries
 const nameToUid = new Map();
 
 function timePass(ts){
@@ -196,7 +204,6 @@ function timePass(ts){
   return t >= Date.now() - days*86400000;
 }
 
-// Recalcular selección de 6 activos y render
 function recomputeSelectionAndRender(){
   const list = profiles.map(p=>{
     const logs = inventoryData.get(p.id) || [];
@@ -218,7 +225,7 @@ function render(){
   selected.forEach(p=>{
     (inventoryData.get(p.id) || []).forEach(e=>{
       if (!timePass(e.__ts)) return;
-      const tag = e.__tag; if (!tag) return;
+      const tag = e.__slug; if (!tag) return;
       if (!tagFilter || tag===tagFilter){ countsByUserTag[p.id][tag]++; totalsByUser[p.id]++; }
       if (e.__attackSent){ sentByUser[p.id]++; }
       if (e.__attackVictimUid && timePass(e.__ts)){ if (recvByUser[e.__attackVictimUid]==null) recvByUser[e.__attackVictimUid]=0; recvByUser[e.__attackVictimUid]++; }
@@ -228,11 +235,11 @@ function render(){
   // Chips
   const tags = tagFilter? [tagFilter]:TAGS;
   tagRow.innerHTML = "";
-  tags.forEach(tag=>{
-    const arr = selected.map(p=>({uid:p.id, n: countsByUserTag[p.id][tag]}));
+  tags.forEach(slug=>{
+    const arr = selected.map(p=>({uid:p.id, n: countsByUserTag[p.id][slug]}));
     const max = Math.max(0,...arr.map(a=>a.n));
     const leaders = arr.filter(a=>a.n===max && max>0).map(a=>selected.find(z=>z.id===a.uid)?.name||a.uid).join(", ") || "—";
-    const el = document.createElement("div"); el.className="chip"; el.innerHTML = `🏷️ ${tag} · <span class="small">líder: ${leaders} (${max})</span>`; tagRow.appendChild(el);
+    const el = document.createElement("div"); el.className="chip"; el.innerHTML = `🏷️ ${DISPLAY[slug]} · <span class="small">líder: ${leaders} (${max})</span>`; tagRow.appendChild(el);
   });
 
   // Nodes + radar
@@ -255,18 +262,20 @@ function render(){
 
   // Frases‑logro
   const fun=[];
-  const leader = (tag)=>{
-    const list = selected.map(p=>({name:p.name,n:countsByUserTag[p.id][tag]}));
+  const leader = (slug)=>{
+    const list = selected.map(p=>({name:p.name,n:countsByUserTag[p.id][slug]}));
     const m=Math.max(0,...list.map(x=>x.n));
     return m>0 ? {m, names:list.filter(x=>x.n===m).map(x=>x.name)} : null;
   };
-  const avaro = leader("economía"); if (avaro) fun.push(`💰 <b>${avaro.names.join(", ")}</b> es/son lxs más avariciosxs (economía: ${avaro.m}).`);
-  const agresivo = leader("ataque"); if (agresivo) fun.push(`⚔️ <b>${agresivo.names.join(", ")}</b> reparte(n) leña (ataque: ${agresivo.m}).`);
-  const tanque = leader("defensa"); if (tanque) fun.push(`🛡️ <b>${tanque.names.join(", ")}</b> vive(n) en guardia (defensa: ${tanque.m}).`);
-  const botiquin = leader("curación"); if (botiquin) fun.push(`🩹 <b>${botiquin.names.join(", ")}</b> farmacia ambulante (curación: ${botiquin.m}).`);
-  const gachatier = leader("gacha"); if (gachatier) fun.push(`🎲 <b>${gachatier.names.join(", ")}</b> le da(n) al gacha (${gachatier.m}).`);
-  const itemlord = leader("ítem"); if (itemlord) fun.push(`🎒 <b>${itemlord.names.join(", ")}</b> acapara(n) trastos (ítems: ${itemlord.m}).`);
-  const cazador = leader("captura"); if (cazador) fun.push(`🕸️ <b>${cazador.names.join(", ")}</b> cazador(es) de bichos (captura: ${cazador.m}).`);
+  [["economia","💰 lxs más avariciosxs"],
+   ["ataque","⚔️ reparte(n) leña"],
+   ["defensa","🛡️ vive(n) en guardia"],
+   ["curacion","🩹 farmacia ambulante"],
+   ["gacha","🎲 le da(n) al gacha"],
+   ["item","🎒 acapara(n) trastos"],
+   ["captura","🕸️ cazador(es)"]]
+   .forEach(([slug,label])=>{ const r=leader(slug); if(r) fun.push(`${label} (<b>${DISPLAY[slug]}</b>): <b>${r.names.join(", ")}</b> (${r.m}).`); });
+  // saco
   let worst = null; selected.forEach(u=>{ const n = 0 + ( (inventoryData.get(u.id)||[]).filter(e=> e.__attackVictimUid===u.id).length ); if(!worst || n>worst.n){ worst = {name:u.name, n}; } });
   if (worst && worst.n>0) fun.push(`😵 <b>${worst.name}</b> es el saco de boxeo (${worst.n} ataques recibidos).`);
   achv.innerHTML = fun.length? fun.map(f=>`<div class="achItem">${f}</div>`).join("") : `<div class="achItem small">Nada aún… ¡usen cartas!</div>`;
@@ -302,14 +311,14 @@ async function bootstrap(){
         const key = millis + "::" + String(e.name||"");
         if (seen.has(key)) continue;
         seen.add(key);
-        const tag = normTag(e.tag || inferTagFromName(e.name||"", ""));
+        const slug = toSlug(e.tag || inferSlugFromName(e.name||"", ""));
         const atk = parseAttack(String(e.name||""));
         let victimUid = null;
         if (atk.victim){
           const keyName = clean(atk.victim);
           victimUid = nameToUid.get(keyName) || null;
         }
-        entries.push({ __name:String(e.name||""), __tag:tag, __ts: ts, __attackSent: atk.sent, __attackVictimUid: victimUid });
+        entries.push({ __name:String(e.name||""), __slug:slug, __ts: ts, __attackSent: atk.sent, __attackVictimUid: victimUid });
       }
       inventoryData.set(p.id, entries);
       recomputeSelectionAndRender();
