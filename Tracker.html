@@ -373,7 +373,7 @@ async function bootstrap(){
         const key = millis + "::" + String(e.name||"");
         if (seen.has(key)) continue;
         seen.add(key);
-        const slug = toSlug(e.tag || inferSlugFromName(e.name||"", ""));
+        const slug = inferSlugFromName(e.name || e.tag || "", "");
         const atk = parseAttack(String(e.name||""));
         let victimUid = null;
         if (atk.victim){
