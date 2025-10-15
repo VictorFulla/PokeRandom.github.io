@@ -181,17 +181,27 @@ drawHexGrid();
 const clean = s => String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s*\(.*?\)\s*/g,"").replace(/\s+/g," ").trim();
 const toSlug = t => clean(t).replace(/curacion|cura|curativo.*/,"curacion").replace(/^item$/,"item");
 function inferSlugFromName(name, fallback=""){
-  const s = clean(name);
- const table = {
-  gacha: ["ruleta","ganaste por ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
-  economia: ["moneda","monedas","venta","vender","apuesta","mercado","monedero","dinero","pago","compraste","compra"],
-  curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
-  item: ["mt","piedra","capsula","megapiedra","objeto","masterball","equipo"],
-  captura: ["captura","capturar","recaptura","reroll","shiny","skip"],
-  defensa: ["proteccion del debil","proteccion","bloqueo","reversa","venganza","regalo","buff"],
-  ataque: ["ataque enviado","rob","robo","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
-};
-  for (const [slug,keys] of Object.entries(table)){
+  const original = String(name||"");
+  const s = clean(original); // tu clean actual
+
+  // 🧲 PRIORIDAD: cualquier "Ganaste por ruleta: ..." se etiqueta como gacha
+  if (/^ganaste\s+por\s+ruleta:/i.test(original)) return "gacha";
+
+  // Opcional: si algún día registras "Usaste Ruleta", también gacha
+  if (/^usaste\s+ruleta\b/i.test(original)) return "gacha";
+
+  // ...aquí sigue tu tabla/heurística habitual
+  const table = {
+    gacha: ["ruleta","ganaste por ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
+    economia: ["moneda","monedas","venta","vender","apuesta","mercado","monedero","dinero","pago","compraste","compra"],
+    curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
+    item: ["mt","piedra","capsula","megapiedra","objeto","masterball","equipo"],
+    captura: ["captura","capturar","recaptura","reroll","shiny","skip"],
+    defensa: ["proteccion del debil","proteccion","bloqueo","reversa","venganza","regalo","buff"],
+    ataque: ["ataque enviado","rob","robo","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
+  };
+
+  for (const [slug, keys] of Object.entries(table)){
     if (keys.some(k => s.includes(k))) return slug;
   }
   return toSlug(fallback);
