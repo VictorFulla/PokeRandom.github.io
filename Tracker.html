@@ -217,13 +217,18 @@ function asTimestamp(ts){
 }
 function isAdminName(name){ return /\[admin\]/i.test(String(name||"")); }
 function isRealUse(name){
-  const s = String(name||"");
-  if (/^\s*(Usaste|Usa|Aplicaste)\b/i.test(s)) return true;
-  if (/^\s*Ataque enviado:/i.test(s)) return true;
-  // Protección del débil — salió cara/cruz
-  if (/protecci[oó]n\s+del\s+d[eé]bil.*sal[ií]o\s+(cara|cruz)/i.test(s)) return true;
-  // Gacha gastado: "Ganaste por ruleta: ..."
-  if (/^\s*Ganaste\s+por\s+ruleta:/i.test(s)) return true;
+  const s = String(name||"").trim();
+
+  // ✅ Usos reales
+  if (/^Usaste\b/i.test(s)) return true;                 // "Usaste ..."
+  if (/^Ataque enviado:/i.test(s)) return true;          // "Ataque enviado: ..."
+  if (/protecci[oó]n\s+del\s+d[eé]bil.*sal[ií]o\s+(cara|cruz)/i.test(s)) return true; // Protección del débil (cara/cruz)
+
+  // ✅ Cuenta la tirada de ruleta como uso de gacha
+  if (/^Ganaste\s+por\s+ruleta:/i.test(s)) return true;  // "Ganaste por ruleta: ..."
+
+  // ❌ No contar compras ni premios gratis
+  // "Compraste ...", "[ADMIN]", "[GLOBAL]", "Ruleta gratis ..."
   return false;
 }
 function parseAttack(name){
