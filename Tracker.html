@@ -183,14 +183,14 @@ const toSlug = t => clean(t).replace(/curacion|cura|curativo.*/,"curacion").repl
 function inferSlugFromName(name, fallback=""){
   const s = clean(name);
   const table = {
-    gacha: ["ganaste por ruleta","ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
-    economia: ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
-    curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
-    item: ["mt","piedra","capsula","megapiedra","objeto","masterball","equipo"],
-    captura: ["captura","reroll","recaptura","shiny","skip"],
-    defensa: ["proteccion del debil","bloqueo","proteccion","reversa","venganza","regalo","buff"],
-    ataque: ["ataque enviado","rob","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
-  };
+  gacha: ["ganaste por ruleta","ruleta","caja","prime","apuesta segura","rascada","barajear","huevo"],
+  economia: ["moneda","venta","apuesta","mercado","monedero","dinero","pago"],
+  curacion: ["curativ","revivir","cura","bendicion","sanar","medic","dama curativa"],
+  item: [" mt ","piedra","capsula","megapiedra","objeto","masterball","equipo"],
+  captura: ["captura","reroll","recaptura","shiny","skip"],
+  defensa: ["proteccion del debil","bloqueo","proteccion","reversa","venganza","regalo","buff"],
+  ataque: ["ataque enviado","rob","atac","destructor","envenenamiento","liberacion","mismo destino","cambio repentino","bloqueo pokemon","robo sigiloso","desgaste"]
+};
   for (const [slug,keys] of Object.entries(table)){
     if (keys.some(k => s.includes(k))) return slug;
   }
